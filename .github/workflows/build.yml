@@ -2,7 +2,7 @@ name: citra-builds
 
 on:
   push:
-    branches: [ "fix/android-packaging" ]
+    branches: [ "Ludashi" ]
     tags: [ "1.0.0" ]
   pull_request:
     branches: [ "*" ]
