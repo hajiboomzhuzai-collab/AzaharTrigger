@@ -270,6 +270,7 @@ object NativeLibrary {
     external fun playTimeManagerStop()
     external fun playTimeManagerGetPlayTime(titleId: Long): Long
     external fun playTimeManagerGetCurrentTitleId(): Long
+    external fun getSystemUsername(): String
 
     private external fun uninstallTitle(titleId: Long, mediaType: Int): Boolean
     fun uninstallTitle(titleId: Long, mediaType: Game.MediaType): Boolean {
