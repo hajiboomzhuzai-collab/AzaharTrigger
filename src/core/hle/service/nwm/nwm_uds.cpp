@@ -4,10 +4,10 @@
 
 #include <algorithm>
 #include <cstring>
+#include <unordered_map>
 #include <boost/serialization/list.hpp>
 #include <boost/serialization/map.hpp>
 #include <cryptopp/osrng.h>
-#include <unordered_map>
 #include "common/archives.h"
 #include "common/common_types.h"
 #include "common/hacks/hack_manager.h"
@@ -517,9 +517,7 @@ void NWM_UDS::HandleDeauthenticationFrame(const Network::WifiPacket& packet) {
     count++;
 
     if (count < 3) {
-        LOG_WARNING(Service_NWM,
-                    "Ignoring deauthentication packet %d/3",
-                    count);
+        LOG_WARNING(Service_NWM, "Ignoring deauthentication packet %d/3", count);
         return;
     }
 
@@ -527,7 +525,7 @@ void NWM_UDS::HandleDeauthenticationFrame(const Network::WifiPacket& packet) {
 
     Node node = node_map[packet.transmitter_address];
     node_map.erase(packet.transmitter_address);
-    
+
     if (!node.connected) {
         LOG_DEBUG(Service_NWM, "Received DeauthenticationFrame from a not connected MAC Address");
         return;
