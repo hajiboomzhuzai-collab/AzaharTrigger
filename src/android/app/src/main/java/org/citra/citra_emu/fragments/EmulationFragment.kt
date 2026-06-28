@@ -227,32 +227,10 @@ class EmulationFragment : Fragment(), SurfaceHolder.Callback, Choreographer.Fram
         binding.doneControlConfig.setOnClickListener {
             binding.doneControlConfig.visibility = View.GONE
             binding.surfaceInputOverlay.setIsInEditMode(false)
-            binding.chatButton.setOnClickListener {
-                ChatDialog().show(parentFragmentManager, "chat")
-            }
         }
 
-        fun addChatOverlayMessage(message: String) {
-            if (chatMessages.size >= 8) {
-                chatMessages.removeFirst()
-            }
-
-            chatMessages.addLast(message)
-
-            binding.chatOverlay.text = chatMessages.joinToString("\n")
-            binding.chatOverlay.visibility = View.VISIBLE
-            binding.chatOverlay.alpha = 1f
-
-            chatHandler.removeCallbacksAndMessages(null)
-
-            chatHandler.postDelayed({
-                binding.chatOverlay.animate()
-                    .alpha(0f)
-                    .setDuration(300)
-                    .withEndAction {
-                        binding.chatOverlay.visibility = View.GONE
-                    }
-            }, 5000)
+        binding.chatButton.setOnClickListener {
+                ChatDialog().show(parentFragmentManager, "chat")
         }
         
         // Show/hide the "Stats" overlay
@@ -260,6 +238,12 @@ class EmulationFragment : Fragment(), SurfaceHolder.Callback, Choreographer.Fram
 
         val position = IntSetting.PERFORMANCE_OVERLAY_POSITION.int
         updateStatsPosition(position)
+
+        NetPlayManager.setOnMessageReceivedListener { _, msg ->
+            requireActivity().runOnUiThread {
+                addChatOverlayMessage(msg)
+            }
+        }
 
         binding.drawerLayout.setDrawerLockMode(DrawerLayout.LOCK_MODE_LOCKED_CLOSED)
         binding.drawerLayout.addDrawerListener(object : DrawerListener {
@@ -571,6 +555,29 @@ class EmulationFragment : Fragment(), SurfaceHolder.Callback, Choreographer.Fram
         }
     }
 
+    private fun addChatOverlayMessage(message: String) {
+
+        if (chatMessages.size >= 8)
+            chatMessages.removeFirst()
+
+        chatMessages.addLast(message)
+
+        binding.chatOverlay.text = chatMessages.joinToString("\n")
+        binding.chatOverlay.visibility = View.VISIBLE
+        binding.chatOverlay.alpha = 1f
+
+        chatHandler.removeCallbacksAndMessages(null)
+
+        chatHandler.postDelayed({
+            binding.chatOverlay.animate()
+                .alpha(0f)
+                .setDuration(300)
+                .withEndAction {
+                    binding.chatOverlay.visibility = View.GONE
+                }
+        }, 5000)
+    }
+
     override fun onPause() {
         if (NativeLibrary.isRunning()) {
             emulationState.pause()
@@ -585,15 +592,21 @@ class EmulationFragment : Fragment(), SurfaceHolder.Callback, Choreographer.Fram
     }
 
     override fun onDestroy() {
+        // Remove chat callback
+        NetPlayManager.setOnMessageReceivedListener { _, _ -> }
+
         if (::emulationState.isInitialized && requireActivity().isFinishing) {
             emulationState.stop()
         }
+
         EmulationLifecycleUtil.removeHook(onPause)
         EmulationLifecycleUtil.removeHook(onShutdown)
+
         if (gameFd != null) {
             ParcelFileDescriptor.adoptFd(gameFd!!).close()
             gameFd = null
         }
+
         super.onDestroy()
     }
 
