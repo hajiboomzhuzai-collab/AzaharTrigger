@@ -235,12 +235,6 @@ object NetPlayManager {
             }
         }
 
-            Handler(Looper.getMainLooper()).post {
-                ChatOverlayManager.post(message)
-                }
-            }
-
-
         messageListener?.invoke(type, msg)
         adapterRefreshListener?.invoke(type, msg)
     }
