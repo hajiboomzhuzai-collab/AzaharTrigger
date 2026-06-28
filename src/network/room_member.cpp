@@ -15,7 +15,7 @@
 
 namespace Network {
 
-constexpr u32 ConnectionTimeoutMs = 5000;
+constexpr u32 ConnectionTimeoutMs = 15000;
 
 class RoomMember::RoomMemberImpl {
 public:
