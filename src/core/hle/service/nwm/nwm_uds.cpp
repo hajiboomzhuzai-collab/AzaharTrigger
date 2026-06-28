@@ -1422,7 +1422,7 @@ void NWM_UDS::ConnectToNetwork(Kernel::HLERequestContext& ctx, u16 command_id,
     ConnectToNetworkHLE(net_info, connection_type, passphrase);
     // Originally 300 ms, but was changed to 5s to accommodate high ping
     // Since this timing is handled by core_timing it could differ from the 'real world' time
-    static constexpr std::chrono::nanoseconds UDSConnectionTimeout{30000000000}; 30000000000
+    static constexpr std::chrono::nanoseconds UDSConnectionTimeout{30000000000};
 
     connection_event = ctx.SleepClientThread("uds::ConnectToNetwork", UDSConnectionTimeout,
                                              std::make_shared<ThreadCallback>(command_id));
