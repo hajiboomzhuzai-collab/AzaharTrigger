@@ -236,8 +236,7 @@ object NetPlayManager {
         }
 
             Handler(Looper.getMainLooper()).post {
-                if (!isChatOpen) {
-                    Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
+                ChatOverlayManager.post(message)
                 }
             }
 
