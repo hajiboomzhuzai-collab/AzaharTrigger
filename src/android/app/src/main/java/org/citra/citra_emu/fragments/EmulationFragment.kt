@@ -239,9 +239,9 @@ class EmulationFragment : Fragment(), SurfaceHolder.Callback, Choreographer.Fram
         val position = IntSetting.PERFORMANCE_OVERLAY_POSITION.int
         updateStatsPosition(position)
 
-        NetPlayManager.setOnMessageReceivedListener { _, msg ->
+        NetPlayManager.setOnMessageReceivedListener { type, msg ->
             requireActivity().runOnUiThread {
-                addChatOverlayMessage(msg)
+                addChatOverlayMessage(type, msg)
             }
         }
 
@@ -555,7 +555,15 @@ class EmulationFragment : Fragment(), SurfaceHolder.Callback, Choreographer.Fram
         }
     }
 
-    private fun addChatOverlayMessage(message: String) {
+    private fun addChatOverlayMessage(type: Int, msg: String) {
+        val text = when (type) {
+            NetPlayManager.NetPlayStatus.CHAT_MESSAGE -> msg
+            NetPlayManager.NetPlayStatus.MEMBER_JOIN -> "➕ $msg joined"
+            NetPlayManager.NetPlayStatus.MEMBER_LEAVE -> "➖ $msg left"
+            NetPlayManager.NetPlayStatus.MEMBER_KICKED -> "❌ $msg kicked"
+            NetPlayManager.NetPlayStatus.MEMBER_BANNED -> "🚫 $msg banned"
+            else -> msg
+        }
 
         if (chatMessages.size >= 8)
             chatMessages.removeFirst()
