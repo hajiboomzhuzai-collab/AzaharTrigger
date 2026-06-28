@@ -13,7 +13,6 @@ import android.os.Build
 import android.os.Handler
 import android.os.Looper
 import android.text.format.Formatter
-import android.widget.Toast
 import androidx.preference.PreferenceManager
 import org.citra.citra_emu.CitraApplication
 import org.citra.citra_emu.NativeLibrary
