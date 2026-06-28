@@ -7,6 +7,7 @@
 #include <boost/serialization/list.hpp>
 #include <boost/serialization/map.hpp>
 #include <cryptopp/osrng.h>
+#include <unordered_map>
 #include "common/archives.h"
 #include "common/common_types.h"
 #include "common/hacks/hack_manager.h"
@@ -31,6 +32,8 @@ SERIALIZE_EXPORT_IMPL(Service::NWM::NWM_UDS)
 SERVICE_CONSTRUCT_IMPL(Service::NWM::NWM_UDS)
 
 namespace Service::NWM {
+
+static std::unordered_map<Network::MacAddress, int> deauth_counter;
 
 template <class Archive>
 void NWM_UDS::serialize(Archive& ar, const unsigned int) {
@@ -509,9 +512,22 @@ void NWM_UDS::HandleDeauthenticationFrame(const Network::WifiPacket& packet) {
         return;
     }
 
+    auto& count = deauth_counter[packet.transmitter_address];
+
+    count++;
+
+    if (count < 3) {
+        LOG_WARNING(Service_NWM,
+                    "Ignoring deauthentication packet %d/3",
+                    count);
+        return;
+    }
+
+    deauth_counter.erase(packet.transmitter_address);
+
     Node node = node_map[packet.transmitter_address];
     node_map.erase(packet.transmitter_address);
-
+    
     if (!node.connected) {
         LOG_DEBUG(Service_NWM, "Received DeauthenticationFrame from a not connected MAC Address");
         return;
@@ -1406,7 +1422,7 @@ void NWM_UDS::ConnectToNetwork(Kernel::HLERequestContext& ctx, u16 command_id,
     ConnectToNetworkHLE(net_info, connection_type, passphrase);
     // Originally 300 ms, but was changed to 5s to accommodate high ping
     // Since this timing is handled by core_timing it could differ from the 'real world' time
-    static constexpr std::chrono::nanoseconds UDSConnectionTimeout{5000000000};
+    static constexpr std::chrono::nanoseconds UDSConnectionTimeout{30000000000}; 30000000000
 
     connection_event = ctx.SleepClientThread("uds::ConnectToNetwork", UDSConnectionTimeout,
                                              std::make_shared<ThreadCallback>(command_id));
