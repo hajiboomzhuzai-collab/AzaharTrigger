@@ -104,6 +104,9 @@ class EmulationFragment : Fragment(), SurfaceHolder.Callback, Choreographer.Fram
     private var _binding: FragmentEmulationBinding? = null
     private val binding get() = _binding!!
 
+    private val chatMessages = ArrayDeque<String>()
+    private val chatHandler = Handler(Looper.getMainLooper())
+
     private val args by navArgs<EmulationFragmentArgs>()
 
     private lateinit var game: Game
@@ -224,8 +227,34 @@ class EmulationFragment : Fragment(), SurfaceHolder.Callback, Choreographer.Fram
         binding.doneControlConfig.setOnClickListener {
             binding.doneControlConfig.visibility = View.GONE
             binding.surfaceInputOverlay.setIsInEditMode(false)
+            binding.chatButton.setOnClickListener {
+                ChatDialog().show(parentFragmentManager, "chat")
+            }
         }
 
+        fun addChatOverlayMessage(message: String) {
+            if (chatMessages.size >= 8) {
+                chatMessages.removeFirst()
+            }
+
+            chatMessages.addLast(message)
+
+            binding.chatOverlay.text = chatMessages.joinToString("\n")
+            binding.chatOverlay.visibility = View.VISIBLE
+            binding.chatOverlay.alpha = 1f
+
+            chatHandler.removeCallbacksAndMessages(null)
+
+            chatHandler.postDelayed({
+                binding.chatOverlay.animate()
+                    .alpha(0f)
+                    .setDuration(300)
+                    .withEndAction {
+                        binding.chatOverlay.visibility = View.GONE
+                    }
+            }, 5000)
+        }
+        
         // Show/hide the "Stats" overlay
         updateShowPerformanceOverlay()
 
