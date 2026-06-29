@@ -104,6 +104,10 @@ object NetPlayManager {
         messageListeners.remove(listener)
     }
 
+    fun removeAllMessageListeners() {
+        messageListeners.clear()
+    }
+
     fun getPublicRooms(): List<RoomInfo> {
         val roomData = netPlayGetPublicRooms()
         val rooms = mutableMapOf<String, RoomInfo>()
