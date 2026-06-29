@@ -582,11 +582,11 @@ class EmulationFragment : Fragment(), SurfaceHolder.Callback, Choreographer.Fram
         chatHandler.postDelayed({
             binding.chatOverlay.animate()
                 .alpha(0f)
-                .setDuration(300)
+                .setDuration(500)
                 .withEndAction {
                     binding.chatOverlay.visibility = View.GONE
                 }
-        }, 5000)
+        }, 10000)
     }
 
     override fun onPause() {
