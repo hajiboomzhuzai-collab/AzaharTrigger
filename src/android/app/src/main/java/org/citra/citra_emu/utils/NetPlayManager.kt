@@ -102,20 +102,16 @@ object NetPlayManager {
 
     private var overlayListener: ((String) -> Unit)? = null
 
-    fun setOverlayListener(listener: (String) -> Unit) {
+    fun setOverlayListener(listener: ((String) -> Unit)?) {
         overlayListener = listener
     }
 
     fun showLocalOverlayMessage(message: String) {
         overlayListener?.invoke(message)
-        {
-    
-    fun removeOnMessageReceivedListener(listener: (Int, String) -> Unit) {
-        messageListeners.remove(listener)
     }
 
-    fun removeAllMessageListeners() {
-        messageListeners.clear()
+    fun removeOnMessageReceivedListener(listener: (Int, String) -> Unit) {
+        messageListeners.remove(listener)
     }
 
     fun getPublicRooms(): List<RoomInfo> {
@@ -259,7 +255,7 @@ object NetPlayManager {
 
         // Update overlay
         overlayListener?.invoke(message)
-        }
+    }
 
     private fun formatNetPlayStatus(context: Context, type: Int, msg: String): String {
         return when (type) {
