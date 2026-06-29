@@ -241,9 +241,9 @@ class EmulationFragment : Fragment(), SurfaceHolder.Callback, Choreographer.Fram
         val position = IntSetting.PERFORMANCE_OVERLAY_POSITION.int
         updateStatsPosition(position)
 
-        NetPlayManager.addOnMessageReceivedListener { type: Int, msg: String ->
+        NetPlayManager.setOverlayListener { message ->
             requireActivity().runOnUiThread {
-                addChatOverlayMessage(type, msg)
+                addChatOverlayMessage(message)
             }
         }
 
@@ -603,7 +603,7 @@ class EmulationFragment : Fragment(), SurfaceHolder.Callback, Choreographer.Fram
     }
 
     override fun onDestroy() {
-        NetPlayManager.removeAllMessageListeners()
+        NetPlayManager.setOverlayListener(null)
 
         if (::emulationState.isInitialized && requireActivity().isFinishing) {
             emulationState.stop()
