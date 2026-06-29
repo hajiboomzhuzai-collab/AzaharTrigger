@@ -106,10 +106,10 @@ object NetPlayManager {
         overlayListener = listener
     }
 
-    fun showLocalOverlayMessage(message: String) {
-        overlayListener?.invoke(message)
+    fun showLocalOverlayMessage(type: Int, message: String) {
+        overlayListener?.invoke(type, message)
     }
-
+    
     fun removeOnMessageReceivedListener(listener: (Int, String) -> Unit) {
         messageListeners.remove(listener)
     }
