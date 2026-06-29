@@ -232,7 +232,7 @@ class EmulationFragment : Fragment(), SurfaceHolder.Callback, Choreographer.Fram
         }
 
         binding.chatButton.setOnClickListener {
-                ChatDialog().show(parentFragmentManager, "chat")
+            ChatDialog(requireContext()).show()
         }
         
         // Show/hide the "Stats" overlay
