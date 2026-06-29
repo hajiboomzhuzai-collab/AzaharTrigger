@@ -1,4 +1,4 @@
-<b>AzaharTrigger Mod</b> is a fork of the Azahar Plus 3DS emulator with extra features.
+<b>AzaharTrigger Mod</b> is a fork of the <b>Azahar Plus 3DS</b> emulator with extra features.
 
 Each version is the same as the corresponding version of Azahar exept for this:
 - Compatibility with all game files. If a file works with any Citra fork, it works with AzaharPlus.
