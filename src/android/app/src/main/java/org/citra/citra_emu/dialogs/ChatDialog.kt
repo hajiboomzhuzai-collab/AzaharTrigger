@@ -78,8 +78,11 @@ class ChatDialog(context: Context) : BottomSheetDialog(context) {
 
     private fun sendMessage(message: String) {
         val username = NetPlayManager.getUsername(context)
+
+        // Send to the server
         NetPlayManager.netPlaySendMessage(message)
 
+        // Add to chat history immediately
         val chatMessage = ChatMessage(
             nickname = username,
             username = "",
@@ -88,6 +91,13 @@ class ChatDialog(context: Context) : BottomSheetDialog(context) {
         )
 
         NetPlayManager.addChatMessage(chatMessage)
+
+        // Also notify overlay so your own message appears instantly
+        NetPlayManager.addNetPlayMessage(
+            NetPlayManager.NetPlayStatus.CHAT_MESSAGE,
+            "$username: $message"
+        )
+
         chatAdapter.notifyDataSetChanged()
         scrollToBottom()
     }
