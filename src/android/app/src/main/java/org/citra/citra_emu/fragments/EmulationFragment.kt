@@ -68,6 +68,7 @@ import org.citra.citra_emu.activities.EmulationActivity
 import org.citra.citra_emu.databinding.DialogCheckboxBinding
 import org.citra.citra_emu.databinding.DialogSliderBinding
 import org.citra.citra_emu.databinding.FragmentEmulationBinding
+import org.citra.citra_emu.dialogs.ChatDialog
 import org.citra.citra_emu.display.PortraitScreenLayout
 import org.citra.citra_emu.display.ScreenAdjustmentUtil
 import org.citra.citra_emu.display.ScreenLayout
@@ -89,6 +90,7 @@ import org.citra.citra_emu.utils.GameHelper
 import org.citra.citra_emu.utils.GameIconUtils
 import org.citra.citra_emu.utils.EmulationLifecycleUtil
 import org.citra.citra_emu.utils.Log
+import org.citra.citra_emu.utils.NetPlayManager
 import org.citra.citra_emu.utils.ViewUtils
 import org.citra.citra_emu.viewmodel.EmulationViewModel
 
@@ -565,10 +567,11 @@ class EmulationFragment : Fragment(), SurfaceHolder.Callback, Choreographer.Fram
             else -> msg
         }
 
-        if (chatMessages.size >= 8)
+        if (chatMessages.size >= 8) {
             chatMessages.removeFirst()
+        }
 
-        chatMessages.addLast(message)
+        chatMessages.addLast(text)
 
         binding.chatOverlay.text = chatMessages.joinToString("\n")
         binding.chatOverlay.visibility = View.VISIBLE
