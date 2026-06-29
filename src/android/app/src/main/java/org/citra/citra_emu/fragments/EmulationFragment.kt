@@ -603,8 +603,7 @@ class EmulationFragment : Fragment(), SurfaceHolder.Callback, Choreographer.Fram
     }
 
     override fun onDestroy() {
-        // Remove chat callback
-        NetPlayManager.removeOnMessageReceivedListener(listener)
+        NetPlayManager.removeAllMessageListeners()
 
         if (::emulationState.isInitialized && requireActivity().isFinishing) {
             emulationState.stop()
