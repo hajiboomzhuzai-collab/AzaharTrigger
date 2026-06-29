@@ -100,9 +100,9 @@ object NetPlayManager {
         messageListeners.add(listener)
     }
 
-    private var overlayListener: ((String) -> Unit)? = null
+    private var overlayListener: ((Int, String) -> Unit)? = null
 
-    fun setOverlayListener(listener: ((String) -> Unit)?) {
+    fun setOverlayListener(listener: ((Int, String) -> Unit)?) {
         overlayListener = listener
     }
 
@@ -254,7 +254,7 @@ object NetPlayManager {
         adapterRefreshListener?.invoke(type, msg)
 
         // Update overlay
-        overlayListener?.invoke(message)
+        overlayListener?.invoke(type, message)
     }
 
     private fun formatNetPlayStatus(context: Context, type: Int, msg: String): String {
