@@ -241,7 +241,7 @@ class EmulationFragment : Fragment(), SurfaceHolder.Callback, Choreographer.Fram
         val position = IntSetting.PERFORMANCE_OVERLAY_POSITION.int
         updateStatsPosition(position)
 
-        NetPlayManager.setOnMessageReceivedListener { type, msg ->
+        NetPlayManager.addOnMessageReceivedListener { type: Int, msg: String ->
             requireActivity().runOnUiThread {
                 addChatOverlayMessage(type, msg)
             }
