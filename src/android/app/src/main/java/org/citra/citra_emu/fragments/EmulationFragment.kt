@@ -582,7 +582,7 @@ class EmulationFragment : Fragment(), SurfaceHolder.Callback, Choreographer.Fram
         chatHandler.postDelayed({
             binding.chatOverlay.animate()
                 .alpha(0f)
-                .setDuration(500)
+                .setDuration(300)
                 .withEndAction {
                     binding.chatOverlay.visibility = View.GONE
                 }
