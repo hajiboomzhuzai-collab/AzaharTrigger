@@ -56,6 +56,7 @@ import androidx.navigation.findNavController
 import androidx.navigation.fragment.navArgs
 import androidx.preference.PreferenceManager
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
+import com.google.android.material.floatingactionbutton.FloatingActionButton
 import com.google.android.material.slider.Slider
 import java.io.File
 import kotlinx.coroutines.flow.collectLatest
@@ -234,6 +235,8 @@ class EmulationFragment : Fragment(), SurfaceHolder.Callback, Choreographer.Fram
         binding.chatButton.setOnClickListener {
             ChatDialog(requireContext()).show()
         }
+
+        makeChatButtonDraggable(binding.chatButton)
         
         // Show/hide the "Stats" overlay
         updateShowPerformanceOverlay()
@@ -589,6 +592,61 @@ class EmulationFragment : Fragment(), SurfaceHolder.Callback, Choreographer.Fram
         }, 10000)
     }
 
+    private fun makeChatButtonDraggable(fab: FloatingActionButton) {
+        var dX = 0f
+        var dY = 0f
+        var downRawX = 0f
+        var downRawY = 0f
+        var dragging = false
+
+        fab.setOnTouchListener { view, event ->
+            when (event.actionMasked) {
+
+                MotionEvent.ACTION_DOWN -> {
+                    downRawX = event.rawX
+                    downRawY = event.rawY
+
+                    dX = view.x - downRawX
+                    dY = view.y - downRawY
+
+                    dragging = false
+                    true
+                }
+
+                MotionEvent.ACTION_MOVE -> {
+                    if (kotlin.math.abs(event.rawX - downRawX) > 8 ||
+                        kotlin.math.abs(event.rawY - downRawY) > 8) {
+                        dragging = true
+                    }
+
+                    if (dragging) {
+                        val parent = view.parent as View
+
+                        val newX = (event.rawX + dX)
+                            .coerceIn(0f, (parent.width - view.width).toFloat())
+
+                        val newY = (event.rawY + dY)
+                            .coerceIn(0f, (parent.height - view.height).toFloat())
+
+                        view.x = newX
+                        view.y = newY
+                    }
+
+                    true
+                }
+
+                MotionEvent.ACTION_UP -> {
+                    if (!dragging) {
+                        view.performClick()
+                    }
+                    true
+                }
+
+                else -> false
+            }
+        }
+    }
+    
     override fun onPause() {
         if (NativeLibrary.isRunning()) {
             emulationState.pause()
