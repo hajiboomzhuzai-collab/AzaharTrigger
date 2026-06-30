@@ -286,8 +286,7 @@ SecureDataHeader ParseSecureDataHeader(std::span<const u8> data) {
     return header;
 }
 
-std::vector<u8> GenerateEAPoLStartFrame(u16 association_id, ConnectionType conn_type,
-                                        const NodeInfo& node_info) {
+std::vector<u8> GenerateEAPoLStartFrame(u16 association_id, const NodeInfo& node_info) {
     EAPoLStartPacket eapol_start{};
     eapol_start.association_id = association_id;
     eapol_start.connection_type = conn_type;
