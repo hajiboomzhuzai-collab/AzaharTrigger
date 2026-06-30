@@ -237,6 +237,10 @@ class EmulationFragment : Fragment(), SurfaceHolder.Callback, Choreographer.Fram
         }
 
         makeChatButtonDraggable(binding.chatButton)
+
+        binding.chatButton.visibility =
+            if (NetPlayManager.netPlayIsJoined()) View.VISIBLE
+            else View.GONE
         
         // Show/hide the "Stats" overlay
         updateShowPerformanceOverlay()
@@ -246,7 +250,17 @@ class EmulationFragment : Fragment(), SurfaceHolder.Callback, Choreographer.Fram
 
         NetPlayManager.setOverlayListener { type, message ->
             requireActivity().runOnUiThread {
+
                 addChatOverlayMessage(type, message)
+
+                when (type) {
+                    NetPlayManager.NetPlayStatus.ROOM_JOINED,
+                    NetPlayManager.NetPlayStatus.LOST_CONNECTION,
+                    NetPlayManager.NetPlayStatus.HOST_KICKED,
+                    NetPlayManager.NetPlayStatus.ROOM_UNINITIALIZED -> {
+                        updateChatButtonVisibility()
+                    }
+                }
             }
         }
 
@@ -645,6 +659,17 @@ class EmulationFragment : Fragment(), SurfaceHolder.Callback, Choreographer.Fram
                 else -> false
             }
         }
+    }
+
+    private fun updateChatButtonVisibility() {
+        binding.chatButton.visibility =
+            if (NetPlayManager.netPlayIsJoined()) View.VISIBLE
+            else View.GONE
+    }
+
+    override fun onResume() {
+        super.onResume()
+        updateChatButtonVisibility()
     }
     
     override fun onPause() {
