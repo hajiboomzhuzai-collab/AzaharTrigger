@@ -548,6 +548,7 @@ class EmulationFragment : Fragment(), SurfaceHolder.Callback, Choreographer.Fram
 
     override fun onResume() {
         super.onResume()
+        updateChatButtonVisibility()
         Choreographer.getInstance().postFrameCallback(this)
         if (NativeLibrary.isRunning()) {
             emulationState.unpause()
@@ -665,11 +666,6 @@ class EmulationFragment : Fragment(), SurfaceHolder.Callback, Choreographer.Fram
         binding.chatButton.visibility =
             if (NetPlayManager.netPlayIsJoined()) View.VISIBLE
             else View.GONE
-    }
-
-    override fun onResume() {
-        super.onResume()
-        updateChatButtonVisibility()
     }
     
     override fun onPause() {
