@@ -2,7 +2,7 @@ name: citra-builds
 
 on:
   push:
-    branches: [ "Chat-Rework-2" ]
+    branches: [ "Chat-Rework-FAB" ]
     tags: [ "1.0.0" ]
   pull_request:
     branches: [ "*" ]
