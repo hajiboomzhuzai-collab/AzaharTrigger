@@ -250,8 +250,14 @@ class EmulationFragment : Fragment(), SurfaceHolder.Callback, Choreographer.Fram
 
         NetPlayManager.setOverlayListener { type, message ->
             requireActivity().runOnUiThread {
-                addChatOverlayMessage(type, message)
 
+                if (!NetPlayManager.netPlayIsJoined()) {
+                    clearChatOverlay()
+                    updateChatButtonVisibility()
+                    return@runOnUiThread
+                }
+
+                addChatOverlayMessage(type, message)
                 updateChatButtonVisibility()
             }
         }
@@ -570,10 +576,10 @@ class EmulationFragment : Fragment(), SurfaceHolder.Callback, Choreographer.Fram
     private fun addChatOverlayMessage(type: Int, msg: String) {
         val text = when (type) {
             NetPlayManager.NetPlayStatus.CHAT_MESSAGE -> msg
-            NetPlayManager.NetPlayStatus.MEMBER_JOIN -> "➕ $msg joined"
-            NetPlayManager.NetPlayStatus.MEMBER_LEAVE -> "➖ $msg left"
-            NetPlayManager.NetPlayStatus.MEMBER_KICKED -> "❌ $msg kicked"
-            NetPlayManager.NetPlayStatus.MEMBER_BANNED -> "🚫 $msg banned"
+            NetPlayManager.NetPlayStatus.MEMBER_JOIN -> "➕ $msg"
+            NetPlayManager.NetPlayStatus.MEMBER_LEAVE -> "➖ $msg"
+            NetPlayManager.NetPlayStatus.MEMBER_KICKED -> "❌ $msg"
+            NetPlayManager.NetPlayStatus.MEMBER_BANNED -> "🚫 $msg"
             else -> msg
         }
 
@@ -655,9 +661,24 @@ class EmulationFragment : Fragment(), SurfaceHolder.Callback, Choreographer.Fram
     }
 
     private fun updateChatButtonVisibility() {
+        val joined = NetPlayManager.netPlayIsJoined()
+
         binding.chatButton.visibility =
-            if (NetPlayManager.netPlayIsJoined()) View.VISIBLE
+            if (joined) View.VISIBLE
             else View.GONE
+
+        if (!joined) {
+            clearChatOverlay()
+        }
+    }
+
+    private fun clearChatOverlay() {
+        chatMessages.clear()
+        chatHandler.removeCallbacksAndMessages(null)
+
+        binding.chatOverlay.text = ""
+        binding.chatOverlay.visibility = View.GONE
+        binding.chatOverlay.alpha = 1f
     }
     
     override fun onPause() {
