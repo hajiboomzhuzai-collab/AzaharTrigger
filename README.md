@@ -8,6 +8,7 @@ Each version is the same as the corresponding version of Azahar exept for this:
 - ZipPass: A new way to exchange StreetPass data through zip files
 
 - Added back local multiplayer, from Kleidis and rebased by diegolix29
+- Added chat overlay like Citra MMJ
   
 The Azahar logo is the property of PabloMK7 and angyartanddraw
 ---
