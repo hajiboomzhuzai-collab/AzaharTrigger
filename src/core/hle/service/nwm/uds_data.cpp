@@ -374,11 +374,4 @@ EAPoLLogoffPacket ParseEAPoLLogoffFrame(std::span<const u8> frame) {
     return eapol_logoff;
 }
 
-EAPoLStartPacket DeserializeEAPolStartPacket(std::span<const u8> frame) {
-    EAPoLStartPacket eapol_start;
-
-    std::memcpy(&eapol_start, frame.data() + sizeof(LLCHeader), sizeof(eapol_start));
-    return eapol_start;
-}
-
 } // namespace Service::NWM
