@@ -250,17 +250,9 @@ class EmulationFragment : Fragment(), SurfaceHolder.Callback, Choreographer.Fram
 
         NetPlayManager.setOverlayListener { type, message ->
             requireActivity().runOnUiThread {
-
                 addChatOverlayMessage(type, message)
 
-                when (type) {
-                    NetPlayManager.NetPlayStatus.ROOM_JOINED,
-                    NetPlayManager.NetPlayStatus.LOST_CONNECTION,
-                    NetPlayManager.NetPlayStatus.HOST_KICKED,
-                    NetPlayManager.NetPlayStatus.ROOM_UNINITIALIZED -> {
-                        updateChatButtonVisibility()
-                    }
-                }
+                updateChatButtonVisibility()
             }
         }
 
