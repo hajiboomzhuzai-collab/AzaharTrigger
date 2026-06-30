@@ -151,8 +151,6 @@ u16 GetEAPoLFrameType(std::span<const u8> frame);
  */
 NodeInfo DeserializeNodeInfoFromFrame(std::span<const u8> frame);
 
-EAPoLStartPacket DeserializeEAPolStartPacket(std::span<const u8> frame);
-
 /*
  * Returns a NodeInfo constructed from the data in the specified EAPoLNodeInfo.
  */
