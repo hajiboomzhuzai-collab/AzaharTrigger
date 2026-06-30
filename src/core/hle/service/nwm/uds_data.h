@@ -132,8 +132,7 @@ SecureDataHeader ParseSecureDataHeader(std::span<const u8> data);
  * communication.
  * @returns The generated frame body.
  */
-std::vector<u8> GenerateEAPoLStartFrame(u16 association_id, ConnectionType conn_type,
-                                        const NodeInfo& node_info);
+std::vector<u8> GenerateEAPoLStartFrame(u16 association_id, const NodeInfo& node_info);
 
 /*
  * Returns the EtherType of the specified 802.11 frame.
