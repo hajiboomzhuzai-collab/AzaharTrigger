@@ -190,8 +190,7 @@ void NWM_UDS::HandleAssociationResponseFrame(const Network::WifiPacket& packet) 
     using Network::WifiPacket;
     WifiPacket eapol_start;
     eapol_start.channel = network_channel;
-    eapol_start.data =
-        GenerateEAPoLStartFrame(std::get<u16>(assoc_result), current_node);
+    eapol_start.data = GenerateEAPoLStartFrame(std::get<u16>(assoc_result), current_node);
     // TODO(B3N30): Encrypt the packet.
     eapol_start.destination_address = packet.transmitter_address;
     eapol_start.type = WifiPacket::PacketType::Data;
