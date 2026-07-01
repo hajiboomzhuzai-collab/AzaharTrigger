@@ -11,7 +11,7 @@ namespace Service::NWM {
 enum class ConnectionType : u8 {
     Client = 0x1,
     Spectator = 0x2,
-}
+};
 
 // Compatibility helper for MMJ / Mandarine legacy packets
 static inline ConnectionType NormalizeConnectionType(u8 value) {
