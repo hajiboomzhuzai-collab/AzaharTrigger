@@ -225,10 +225,17 @@ void NWM_UDS::HandleEAPoLPacket(const Network::WifiPacket& packet) {
 
         auto eapol_start = DeserializeEAPolStartPacket(packet.data);
 
+        LOG_ERROR(Service_NWM,
+          "[DEBUG] EAPoL Start received: assoc={} conn_type={}",
+          static_cast<u16>(eapol_start.association_id),
+          static_cast<u32>(eapol_start.connection_type));
+        
         auto node = DeserializeNodeInfo(eapol_start.node);
 
         if (eapol_start.connection_type == ConnectionType::Client) {
             // Get an unused network node id
+            LOG_ERROR(Service_NWM,
+              "[DEBUG] Accepting client");
             u16 node_id = GetNextAvailableNodeId();
             node.network_node_id = node_id;
 
@@ -245,6 +252,8 @@ void NWM_UDS::HandleEAPoLPacket(const Network::WifiPacket& packet) {
             node_map[packet.transmitter_address].spec = false;
 
             BroadcastNodeMap();
+            LOG_ERROR(Service_NWM,
+                "[DEBUG] BroadcastNodeMap done");
         } else if (eapol_start.connection_type == ConnectionType::Spectator) {
             node_map[packet.transmitter_address].node_id = NodeIDSpec;
             node_map[packet.transmitter_address].connected = true;
@@ -270,10 +279,13 @@ void NWM_UDS::HandleEAPoLPacket(const Network::WifiPacket& packet) {
         // For now we will broadcast the eapol packet instead
         eapol_logoff.destination_address = Network::BroadcastMac;
         eapol_logoff.type = WifiPacket::PacketType::Data;
-
+        LOG_ERROR(Service_NWM,
+          "[DEBUG] Sending EAPoL Logoff");
         SendPacket(eapol_logoff);
 
         connection_status_event->Signal();
+        LOG_ERROR(Service_NWM,
+          "[DEBUG] Client accepted completely");
     } else if (connection_status.status == NetworkStatus::Connecting) {
         auto logoff = ParseEAPoLLogoffFrame(packet.data);
 
@@ -457,6 +469,10 @@ void NWM_UDS::SendAssociationResponseFrame(const MacAddress& address) {
 }
 
 void NWM_UDS::HandleAuthenticationFrame(const Network::WifiPacket& packet) {
+    LOG_ERROR(Service_NWM, "[DEBUG] Authentication from {:02X}:{:02X}:{:02X}:{:02X}:{:02X}:{:02X}",
+          packet.transmitter_address[0], packet.transmitter_address[1],
+          packet.transmitter_address[2], packet.transmitter_address[3],
+          packet.transmitter_address[4], packet.transmitter_address[5]);
     // Only the SEQ1 auth frame is handled here, the SEQ2 frame doesn't need any special behavior
     if (GetAuthenticationSeqNumber(packet.data) == AuthenticationSeq::SEQ1) {
         using Network::WifiPacket;
