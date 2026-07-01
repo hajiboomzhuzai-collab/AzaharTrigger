@@ -13,6 +13,19 @@ enum class ConnectionType : u8 {
     Spectator = 0x2,
 }
 
-constexpr u8 LEGACY_CONNECTION_CLIENT = 0x0;
+// Compatibility helper for MMJ / Mandarine legacy packets
+static inline ConnectionType NormalizeConnectionType(u8 value) {
+    switch (value) {
+        case 0:
+        case 1:
+            return ConnectionType::Client;
+
+        case 2:
+            return ConnectionType::Spectator;
+
+        default:
+            return ConnectionType::Client;
+    }
+}
 
 }; // namespace Service::NWM
