@@ -376,26 +376,47 @@ EAPoLLogoffPacket ParseEAPoLLogoffFrame(std::span<const u8> frame) {
     return eapol_logoff;
 }
 
+struct LegacyEAPoLStartPacket {
+    u16_be magic;
+    u16_be association_id;
+    EAPoLNodeInfo node;
+};
+
 EAPoLStartPacket DeserializeEAPolStartPacket(std::span<const u8> frame) {
-    EAPoLStartPacket eapol_start{};
+    EAPoLStartPacket eapol_start;
 
-    const u8* data = frame.data() + sizeof(LLCHeader);
-    const size_t size = frame.size() - sizeof(LLCHeader);
+    std::memcpy(&eapol_start, frame.data() + sizeof(LLCHeader), sizeof(eapol_start));
+    return eapol_start;
+}
 
-    if (size == sizeof(EAPoLStartPacket)) {
-        // Azahar packet
-        std::memcpy(&eapol_start, data, sizeof(EAPoLStartPacket));
-    } else {
-        // Legacy MMJ / Mandarine packet
-        LegacyEAPoLStartPacket legacy{};
-        std::memcpy(&legacy, data, sizeof(legacy));
+ParsedEAPoLStart ParseCompatibleEAPoLStart(std::span<const u8> frame) {
+    ParsedEAPoLStart result{};
 
-        eapol_start.association_id = legacy.association_id;
-        eapol_start.connection_type = ConnectionType::Client;
-        eapol_start.node = legacy.node;
+    // Try modern Azahar packet first.
+    result.packet = DeserializeEAPolStartPacket(frame);
+
+    const auto type = static_cast<u32>(result.packet.connection_type);
+
+    if (type == static_cast<u32>(ConnectionType::Client) ||
+        type == static_cast<u32>(ConnectionType::Spectator)) {
+        result.legacy = false;
+        return result;
     }
 
-    return eapol_start;
+    // Fall back to legacy MMJ / Mandarine format.
+    LegacyEAPoLStartPacket legacy{};
+
+    std::memcpy(&legacy,
+                frame.data() + sizeof(LLCHeader),
+                sizeof(legacy));
+
+    result.packet.magic = legacy.magic;
+    result.packet.association_id = legacy.association_id;
+    result.packet.connection_type = ConnectionType::Client;
+    result.packet.node = legacy.node;
+    result.legacy = true;
+
+    return result;
 }
 
 } // namespace Service::NWM
