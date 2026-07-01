@@ -222,154 +222,6 @@ void NWM_UDS::HandleEAPoLPacket(const Network::WifiPacket& packet) {
 
         ASSERT(connection_status.max_nodes != connection_status.total_nodes);
 
-        auto node = DeserializeNodeInfo(eapol_start.node);
-
-        if (eapol_start.connection_type == ConnectionType::Client) {
-            // Get an unused network node id
-            u16 node_id = GetNextAvailableNodeId();
-            node.network_node_id = node_id;
-
-            connection_status.node_bitmask |= 1 << (node_id - 1);
-            connection_status.changed_nodes |= 1 << (node_id - 1);
-            connection_status.nodes[node_id - 1] = node.network_node_id;
-            connection_status.total_nodes++;
-
-            node_info[node_id - 1] = node;
-            network_info.total_nodes++;
-
-            node_map[packet.transmitter_address].node_id = node.network_node_id;
-            node_map[packet.transmitter_address].connected = true;
-            node_map[packet.transmitter_address].spec = false;
-
-            BroadcastNodeMap();
-        } else if (eapol_start.connection_type == ConnectionType::Spectator) {
-            node_map[packet.transmitter_address].node_id = NodeIDSpec;
-            node_map[packet.transmitter_address].connected = true;
-            node_map[packet.transmitter_address].spec = true;
-        } else {
-            LOG_ERROR(Service_NWM, "Client tried connecting with unknown connection type: 0x{:x}",
-                      static_cast<u32>(eapol_start.connection_type));
-        }
-
-        // Send the EAPoL-Logoff packet.
-        using Network::WifiPacket;
-        WifiPacket eapol_logoff;
-        eapol_logoff.channel = network_channel;
-        eapol_logoff.data =
-            GenerateEAPoLLogoffFrame(packet.transmitter_address, node.network_node_id, node_info,
-                                     network_info.max_nodes, network_info.total_nodes);
-        // TODO(Subv): Encrypt the packet.
-
-        // TODO(B3N30): send the eapol packet just to the new client and implement a proper
-        // broadcast packet for all other clients
-        // On a 3ds the eapol packet is only sent to packet.transmitter_address
-        // while a packet containing the node information is broadcasted
-        // For now we will broadcast the eapol packet instead
-        eapol_logoff.destination_address = Network::BroadcastMac;
-        eapol_logoff.type = WifiPacket::PacketType::Data;
-
-        SendPacket(eapol_logoff);
-
-        connection_status_event->Signal();
-    } else if (connection_status.status == NetworkStatus::Connecting) {
-        auto logoff = ParseEAPoLLogoffFrame(packet.data);
-
-        network_info.host_mac_address = packet.transmitter_address;
-        network_info.total_nodes = logoff.connected_nodes;
-        network_info.max_nodes = logoff.max_nodes;
-
-        connection_status.network_node_id = logoff.assigned_node_id;
-        connection_status.total_nodes = logoff.connected_nodes;
-        connection_status.max_nodes = logoff.max_nodes;
-
-        node_info.clear();
-        node_info.resize(network_info.max_nodes);
-        for (const auto& node : logoff.nodes) {
-            const u16 index = node.network_node_id;
-            if (!index) {
-                continue;
-            }
-
-            connection_status.node_bitmask |= 1 << (index - 1);
-            connection_status.changed_nodes |= 1 << (index - 1);
-            connection_status.nodes[index - 1] = index;
-
-            node_info[index - 1] = DeserializeNodeInfo(node);
-        }
-
-        if (conn_type == ConnectionType::Client) {
-            connection_status.status = NetworkStatus::ConnectedAsClient;
-        } else if (conn_type == ConnectionType::Spectator) {
-            connection_status.status = NetworkStatus::ConnectedAsSpectator;
-        } else {
-            LOG_ERROR(Service_NWM, "Unknown connection type: 0x{:x}", static_cast<u32>(conn_type));
-        }
-
-        // We're now connected, signal the application
-        connection_status.status_change_reason = NetworkStatusChangeReason::ConnectionEstablished;
-        // Some games require ConnectToNetwork to block, for now it doesn't
-        // If blocking is implemented this lock needs to be changed,
-        // otherwise it might cause deadlocks
-        connection_status_event->Signal();
-        connection_event->Signal();
-    } else if (connection_status.status == NetworkStatus::ConnectedAsClient ||
-               connection_status.status == NetworkStatus::ConnectedAsSpectator) {
-        // TODO(B3N30): Remove that section and send/receive a proper connection_status packet
-        // On a 3ds this packet wouldn't be addressed to already connected clients
-        // We use this information because in the current implementation the host
-        // isn't broadcasting the node information
-        auto logoff = ParseEAPoLLogoffFrame(packet.data);
-
-        network_info.total_nodes = logoff.connected_nodes;
-        connection_status.total_nodes = logoff.connected_nodes;
-        std::memset(connection_status.nodes, 0, sizeof(connection_status.nodes));
-
-        const auto old_bitmask = connection_status.node_bitmask;
-        connection_status.node_bitmask = 0;
-
-        node_info.clear();
-        node_info.resize(network_info.max_nodes);
-        for (const auto& node : logoff.nodes) {
-            const u16 index = node.network_node_id;
-            if (!index) {
-                continue;
-            }
-
-            connection_status.node_bitmask |= 1 << (index - 1);
-            connection_status.nodes[index - 1] = index;
-
-            node_info[index - 1] = DeserializeNodeInfo(node);
-        }
-        connection_status.changed_nodes = old_bitmask ^ connection_status.node_bitmask;
-
-        connection_status_event->Signal();
-    }
-}
-
-void NWM_UDS::HandleEAPoLPacket(const Network::WifiPacket& packet) {
-    std::scoped_lock lock{connection_status_mutex, system.Kernel().GetHLELock()};
-
-    if (GetEAPoLFrameType(packet.data) == EAPoLStartMagic) {
-        if (connection_status.status != NetworkStatus::ConnectedAsHost) {
-            LOG_DEBUG(Service_NWM, "Connection sequence aborted, because connection status is {}",
-                      static_cast<u32>(connection_status.status));
-            return;
-        }
-
-        auto node_it = node_map.find(packet.transmitter_address);
-        if (node_it == node_map.end()) {
-            LOG_DEBUG(Service_NWM, "Connection sequence aborted, because the AuthenticationFrame "
-                                   "of the client wasn't recieved");
-            return;
-        }
-        if (node_it->second.connected) {
-            LOG_DEBUG(Service_NWM,
-                      "Connection sequence aborted, because the client is already connected");
-            return;
-        }
-
-        ASSERT(connection_status.max_nodes != connection_status.total_nodes);
-
         auto node = DeserializeNodeInfoFromFrame(packet.data);
 
         // Get an unused network node id
@@ -474,6 +326,69 @@ void NWM_UDS::HandleEAPoLPacket(const Network::WifiPacket& packet) {
 
         connection_status_event->Signal();
     }
+}
+
+void NWM_UDS::HandleSecureDataPacket(const Network::WifiPacket& packet) {
+    const auto secure_data = ParseSecureDataHeader(packet.data);
+    std::scoped_lock lock{connection_status_mutex, system.Kernel().GetHLELock()};
+
+    if (connection_status.status != NetworkStatus::ConnectedAsHost &&
+        connection_status.status != NetworkStatus::ConnectedAsClient &&
+        connection_status.status != NetworkStatus::ConnectedAsSpectator) {
+        LOG_TRACE(Service_NWM, "Ignored SecureDataPacket because connection status is {}",
+                  static_cast<u32>(connection_status.status));
+        return;
+    }
+
+    if (secure_data.src_node_id == connection_status.network_node_id) {
+        // Ignore packets that came from ourselves.
+        return;
+    }
+
+    if (secure_data.dest_node_id != connection_status.network_node_id &&
+        secure_data.dest_node_id != BroadcastNetworkNodeId) {
+        // The packet wasn't addressed to us, we can only act as a router if we're the host.
+        // However, we might have received this packet due to a broadcast from the host, in that
+        // case just ignore it.
+        if (packet.destination_address != Network::BroadcastMac &&
+            connection_status.status != NetworkStatus::ConnectedAsHost) {
+            LOG_ERROR(Service_NWM, "Received packet addressed to others but we're not a host");
+            return;
+        }
+
+        if (connection_status.status == NetworkStatus::ConnectedAsHost &&
+            secure_data.dest_node_id != BroadcastNetworkNodeId) {
+            // Broadcast the packet so the right receiver can get it.
+            // TODO(B3N30): Is there a flag that makes this kind of routing be unicast instead of
+            // multicast? Perhaps this is a way to allow spectators to see some of the packets.
+            Network::WifiPacket out_packet = packet;
+            out_packet.destination_address = Network::BroadcastMac;
+            SendPacket(out_packet);
+        }
+        return;
+    }
+
+    // The packet is addressed to us (or to everyone using the broadcast node id), handle it.
+    // TODO(B3N30): We don't currently send nor handle management frames.
+    ASSERT(!secure_data.is_management);
+
+    // TODO(B3N30): Allow more than one bind node per channel.
+    auto channel_info = channel_data.find(secure_data.data_channel);
+    // Ignore packets from channels we're not interested in.
+    if (channel_info == channel_data.end()) {
+        return;
+    }
+
+    if (channel_info->second.network_node_id != BroadcastNetworkNodeId &&
+        channel_info->second.network_node_id != secure_data.src_node_id) {
+        return;
+    }
+
+    // Add the received packet to the data queue.
+    channel_info->second.received_packets.emplace_back(packet.data);
+
+    // Signal the data event. We can do this directly because we locked hle_lock
+    channel_info->second.event->Signal();
 }
 
 void NWM_UDS::StartConnectionSequence(const MacAddress& server) {
