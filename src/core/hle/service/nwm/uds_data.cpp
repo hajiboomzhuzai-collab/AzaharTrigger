@@ -286,9 +286,11 @@ SecureDataHeader ParseSecureDataHeader(std::span<const u8> data) {
     return header;
 }
 
-std::vector<u8> GenerateEAPoLStartFrame(u16 association_id, const NodeInfo& node_info) {
+std::vector<u8> GenerateEAPoLStartFrame(u16 association_id, ConnectionType conn_type,
+                                        const NodeInfo& node_info) {
     EAPoLStartPacket eapol_start{};
     eapol_start.association_id = association_id;
+    eapol_start.connection_type = conn_type;
     eapol_start.node.friend_code_seed = node_info.friend_code_seed;
 
     std::copy(node_info.username.begin(), node_info.username.end(),
@@ -372,6 +374,28 @@ EAPoLLogoffPacket ParseEAPoLLogoffFrame(std::span<const u8> frame) {
     // Skip the LLC header
     std::memcpy(&eapol_logoff, frame.data() + sizeof(LLCHeader), sizeof(eapol_logoff));
     return eapol_logoff;
+}
+
+EAPoLStartPacket DeserializeEAPolStartPacket(std::span<const u8> frame) {
+    EAPoLStartPacket eapol_start{};
+
+    const u8* data = frame.data() + sizeof(LLCHeader);
+    const size_t size = frame.size() - sizeof(LLCHeader);
+
+    if (size == sizeof(EAPoLStartPacket)) {
+        // Azahar packet
+        std::memcpy(&eapol_start, data, sizeof(EAPoLStartPacket));
+    } else {
+        // Legacy MMJ / Mandarine packet
+        LegacyEAPoLStartPacket legacy{};
+        std::memcpy(&legacy, data, sizeof(legacy));
+
+        eapol_start.association_id = legacy.association_id;
+        eapol_start.connection_type = ConnectionType::Client;
+        eapol_start.node = legacy.node;
+    }
+
+    return eapol_start;
 }
 
 } // namespace Service::NWM
