@@ -157,9 +157,9 @@ struct ParsedEAPoLStart {
     bool legacy = false;
 };
 
-ParsedEAPoLStart ParseCompatibleEAPoLStart(std::span<const u8> frame);
-
 EAPoLStartPacket DeserializeEAPolStartPacket(std::span<const u8> frame);
+
+ParsedEAPoLStart ParseCompatibleEAPoLStart(std::span<const u8> frame);
 
 /*
  * Returns a NodeInfo constructed from the data in the specified EAPoLNodeInfo.
