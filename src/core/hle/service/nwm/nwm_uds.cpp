@@ -223,11 +223,11 @@ void NWM_UDS::HandleEAPoLPacket(const Network::WifiPacket& packet) {
 
         ASSERT(connection_status.max_nodes != connection_status.total_nodes);
 
-        auto eapol_start = DeserializeEAPolStartPacket(packet.data);
+        auto eapol_start = ParseCompatibleEAPoLStart(packet.data);
 
         auto node = DeserializeNodeInfo(eapol_start.node);
 
-        if (eapol_start.connection_type == ConnectionType::Client) {
+        if (eapol_start.packet.connection_type == ConnectionType::Client) {
             // Get an unused network node id
             u16 node_id = GetNextAvailableNodeId();
             node.network_node_id = node_id;
@@ -245,7 +245,7 @@ void NWM_UDS::HandleEAPoLPacket(const Network::WifiPacket& packet) {
             node_map[packet.transmitter_address].spec = false;
 
             BroadcastNodeMap();
-        } else if (eapol_start.connection_type == ConnectionType::Spectator) {
+        } else if (eapol_start.packet.connection_type == ConnectionType::Spectator) {
             node_map[packet.transmitter_address].node_id = NodeIDSpec;
             node_map[packet.transmitter_address].connected = true;
             node_map[packet.transmitter_address].spec = true;
