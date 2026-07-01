@@ -376,12 +376,6 @@ EAPoLLogoffPacket ParseEAPoLLogoffFrame(std::span<const u8> frame) {
     return eapol_logoff;
 }
 
-struct LegacyEAPoLStartPacket {
-    u16_be magic;
-    u16_be association_id;
-    EAPoLNodeInfo node;
-};
-
 EAPoLStartPacket DeserializeEAPolStartPacket(std::span<const u8> frame) {
     EAPoLStartPacket eapol_start;
 
@@ -392,29 +386,31 @@ EAPoLStartPacket DeserializeEAPolStartPacket(std::span<const u8> frame) {
 ParsedEAPoLStart ParseCompatibleEAPoLStart(std::span<const u8> frame) {
     ParsedEAPoLStart result{};
 
-    // Try modern Azahar packet first.
+    // Read the packet normally first (Azahar format)
     result.packet = DeserializeEAPolStartPacket(frame);
 
-    const auto type = static_cast<u32>(result.packet.connection_type);
+    // Detect an invalid connection type.
+    // Valid values are Client (0) and Spectator (1).
+    const auto conn = static_cast<u32>(result.packet.connection_type);
 
-    if (type == static_cast<u32>(ConnectionType::Client) ||
-        type == static_cast<u32>(ConnectionType::Spectator)) {
+    if (conn <= static_cast<u32>(ConnectionType::Spectator)) {
         result.legacy = false;
         return result;
     }
 
-    // Fall back to legacy MMJ / Mandarine format.
-    LegacyEAPoLStartPacket legacy{};
-
-    std::memcpy(&legacy,
-                frame.data() + sizeof(LLCHeader),
-                sizeof(legacy));
-
-    result.packet.magic = legacy.magic;
-    result.packet.association_id = legacy.association_id;
-    result.packet.connection_type = ConnectionType::Client;
-    result.packet.node = legacy.node;
+    // Legacy (Mandarine / Citra MMJ) packet.
     result.legacy = true;
+
+    // Read the node directly from the frame, since the legacy packet
+    // doesn't contain the connection_type field.
+    NodeInfo node = DeserializeNodeInfoFromFrame(frame);
+
+    result.packet.connection_type = ConnectionType::Client;
+    result.packet.node.friend_code_seed = node.friend_code_seed;
+    result.packet.node.network_node_id = node.network_node_id;
+
+    std::copy(node.username.begin(), node.username.end(),
+              result.packet.node.username.begin());
 
     return result;
 }
