@@ -251,7 +251,7 @@ void NWM_UDS::HandleEAPoLPacket(const Network::WifiPacket& packet) {
             node_map[packet.transmitter_address].spec = true;
         } else {
             LOG_ERROR(Service_NWM, "Client tried connecting with unknown connection type: 0x{:x}",
-                      static_cast<u32>(eapol_start.connection_type));
+                      static_cast<u32>(eapol_start.packet.connection_type));
         }
 
         // Send the EAPoL-Logoff packet.
