@@ -190,7 +190,8 @@ void NWM_UDS::HandleAssociationResponseFrame(const Network::WifiPacket& packet) 
     using Network::WifiPacket;
     WifiPacket eapol_start;
     eapol_start.channel = network_channel;
-    eapol_start.data = GenerateEAPoLStartFrame(std::get<u16>(assoc_result), current_node);
+    eapol_start.data =
+        GenerateEAPoLStartFrame(std::get<u16>(assoc_result), conn_type, current_node);
     // TODO(B3N30): Encrypt the packet.
     eapol_start.destination_address = packet.transmitter_address;
     eapol_start.type = WifiPacket::PacketType::Data;
@@ -222,24 +223,36 @@ void NWM_UDS::HandleEAPoLPacket(const Network::WifiPacket& packet) {
 
         ASSERT(connection_status.max_nodes != connection_status.total_nodes);
 
-        auto node = DeserializeNodeInfoFromFrame(packet.data);
+        auto eapol_start = DeserializeEAPolStartPacket(packet.data);
 
-        // Get an unused network node id
-        u16 node_id = GetNextAvailableNodeId();
-        node.network_node_id = node_id;
+        auto node = DeserializeNodeInfo(eapol_start.node);
 
-        connection_status.node_bitmask |= 1 << (node_id - 1);
-        connection_status.changed_nodes |= 1 << (node_id - 1);
-        connection_status.nodes[node_id - 1] = node.network_node_id;
-        connection_status.total_nodes++;
+        if (eapol_start.connection_type == ConnectionType::Client) {
+            // Get an unused network node id
+            u16 node_id = GetNextAvailableNodeId();
+            node.network_node_id = node_id;
 
-        node_info[node_id - 1] = node;
-        network_info.total_nodes++;
+            connection_status.node_bitmask |= 1 << (node_id - 1);
+            connection_status.changed_nodes |= 1 << (node_id - 1);
+            connection_status.nodes[node_id - 1] = node.network_node_id;
+            connection_status.total_nodes++;
 
-        node_map[packet.transmitter_address].node_id = node.network_node_id;
-        node_map[packet.transmitter_address].connected = true;
+            node_info[node_id - 1] = node;
+            network_info.total_nodes++;
 
-        BroadcastNodeMap();
+            node_map[packet.transmitter_address].node_id = node.network_node_id;
+            node_map[packet.transmitter_address].connected = true;
+            node_map[packet.transmitter_address].spec = false;
+
+            BroadcastNodeMap();
+        } else if (eapol_start.connection_type == ConnectionType::Spectator) {
+            node_map[packet.transmitter_address].node_id = NodeIDSpec;
+            node_map[packet.transmitter_address].connected = true;
+            node_map[packet.transmitter_address].spec = true;
+        } else {
+            LOG_ERROR(Service_NWM, "Client tried connecting with unknown connection type: 0x{:x}",
+                      static_cast<u32>(eapol_start.connection_type));
+        }
 
         // Send the EAPoL-Logoff packet.
         using Network::WifiPacket;
@@ -287,15 +300,23 @@ void NWM_UDS::HandleEAPoLPacket(const Network::WifiPacket& packet) {
             node_info[index - 1] = DeserializeNodeInfo(node);
         }
 
+        if (conn_type == ConnectionType::Client) {
+            connection_status.status = NetworkStatus::ConnectedAsClient;
+        } else if (conn_type == ConnectionType::Spectator) {
+            connection_status.status = NetworkStatus::ConnectedAsSpectator;
+        } else {
+            LOG_ERROR(Service_NWM, "Unknown connection type: 0x{:x}", static_cast<u32>(conn_type));
+        }
+
         // We're now connected, signal the application
-        connection_status.status = NetworkStatus::ConnectedAsClient;
         connection_status.status_change_reason = NetworkStatusChangeReason::ConnectionEstablished;
         // Some games require ConnectToNetwork to block, for now it doesn't
         // If blocking is implemented this lock needs to be changed,
         // otherwise it might cause deadlocks
         connection_status_event->Signal();
         connection_event->Signal();
-    } else if (connection_status.status == NetworkStatus::ConnectedAsClient) {
+    } else if (connection_status.status == NetworkStatus::ConnectedAsClient ||
+               connection_status.status == NetworkStatus::ConnectedAsSpectator) {
         // TODO(B3N30): Remove that section and send/receive a proper connection_status packet
         // On a 3ds this packet wouldn't be addressed to already connected clients
         // We use this information because in the current implementation the host
