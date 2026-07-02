@@ -1064,6 +1064,70 @@ class EmulationFragment : Fragment(), SurfaceHolder.Callback, Choreographer.Fram
         popupMenu.show()
     }
 
+    private fun showComboButtonsDialog() {
+        val combos = arrayOf(
+            "Combo 1",
+            "Combo 2",
+            "Combo 3",
+            "Combo 4",
+            "Combo 5"
+        )
+
+        MaterialAlertDialogBuilder(requireContext())
+            .setTitle("Combo Buttons")
+            .setItems(combos) { _, which ->
+                showComboEditor(which + 1)
+            }
+            .show()
+    }
+
+    private fun showComboEditor(comboIndex: Int) {
+
+        val names = arrayOf(
+            "A",
+            "B",
+            "X",
+            "Y",
+            "Up",
+            "Down",
+            "Left",
+            "Right",
+            "L",
+            "R",
+            "ZL",
+            "ZR"
+        )
+
+        val checked = BooleanArray(names.size)
+
+        val prefs = PreferenceManager.getDefaultSharedPreferences(requireContext())
+
+        for (i in names.indices) {
+            checked[i] =
+                prefs.getBoolean("combo_${comboIndex}_${names[i]}", false)
+        }
+
+        MaterialAlertDialogBuilder(requireContext())
+            .setTitle("Combo $comboIndex")
+            .setMultiChoiceItems(names, checked) { _, which, isChecked ->
+                checked[which] = isChecked
+            }
+            .setPositiveButton("Save") { _, _ ->
+
+                for (i in names.indices) {
+                    prefs.edit()
+                        .putBoolean(
+                            "combo_${comboIndex}_${names[i]}",
+                            checked[i]
+                        )
+                        .apply()
+                }
+
+            }
+            .setNegativeButton("Cancel", null)
+            .show()
+        }
+
     private fun toggleCombo(combo: String) {
         val prefs = PreferenceManager.getDefaultSharedPreferences(requireContext())
 
