@@ -1348,15 +1348,20 @@ class EmulationFragment : Fragment(), SurfaceHolder.Callback, Choreographer.Fram
 
     private fun showToggleControlsDialog() {
         val editor = preferences.edit()
-        val enabledButtons = BooleanArray(16)
+        val enabledButtons = BooleanArray(21)
         enabledButtons.forEachIndexed { i: Int, _: Boolean ->
             // Buttons that are disabled by default
             var defaultValue = true
             when (i) {
-                // TODO: Remove these magic numbers
-                6, 7, 12, 13, 14, 15 -> defaultValue = false
+                6, 7, 12, 13, 14, 15,
+                16, 17, 18, 19, 20 -> defaultValue = false
             }
-            enabledButtons[i] = preferences.getBoolean("buttonToggle$i", defaultValue)
+            enabledButtons[i] =
+                if (i < 16) {
+                    preferences.getBoolean("buttonToggle$i", defaultValue)
+                } else {
+                    preferences.getBoolean("comboToggle${i - 15}", defaultValue)
+                }
         }
 
         val dialog = MaterialAlertDialogBuilder(requireContext())
@@ -1364,7 +1369,11 @@ class EmulationFragment : Fragment(), SurfaceHolder.Callback, Choreographer.Fram
             .setMultiChoiceItems(
                 R.array.n3dsButtons, enabledButtons
             ) { _: DialogInterface?, indexSelected: Int, isChecked: Boolean ->
-                editor.putBoolean("buttonToggle$indexSelected", isChecked)
+                if (indexSelected < 16) {
+                    editor.putBoolean("buttonToggle$indexSelected", isChecked)
+                } else {
+                    editor.putBoolean("comboToggle${indexSelected - 15}", isChecked)
+                }
             }
             .setPositiveButton(android.R.string.ok) { _: DialogInterface?, _: Int ->
                 editor.apply()
