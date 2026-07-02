@@ -991,6 +991,31 @@ class EmulationFragment : Fragment(), SurfaceHolder.Callback, Choreographer.Fram
                     true
                 }
 
+                R.id.menu_emulation_adjust_scale_combo1 -> {
+                    showAdjustScaleDialog("controlScale-" + NativeLibrary.ButtonType.COMBO_1)
+                    true
+                }
+
+                R.id.menu_emulation_adjust_scale_combo2 -> {
+                    showAdjustScaleDialog("controlScale-" + NativeLibrary.ButtonType.COMBO_2)
+                    true
+                }
+
+                R.id.menu_emulation_adjust_scale_combo3 -> {
+                    showAdjustScaleDialog("controlScale-" + NativeLibrary.ButtonType.COMBO_3)
+                    true
+                }
+
+                R.id.menu_emulation_adjust_scale_combo4 -> {
+                    showAdjustScaleDialog("controlScale-" + NativeLibrary.ButtonType.COMBO_4)
+                    true
+                }
+
+                R.id.menu_emulation_adjust_scale_combo5 -> {
+                    showAdjustScaleDialog("controlScale-" + NativeLibrary.ButtonType.COMBO_5)
+                    true
+                }
+
                 R.id.menu_emulation_adjust_opacity -> {
                     showAdjustOpacityDialog()
                     true
