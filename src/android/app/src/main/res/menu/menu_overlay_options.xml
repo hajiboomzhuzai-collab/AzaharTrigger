@@ -79,7 +79,22 @@
             <item
                 android:id="@+id/menu_emulation_adjust_scale_button_swap"
                 android:title="@string/button_swap" />
-        </menu>
+            <item
+                android:id="@+id/menu_emulation_adjust_scale_combo1"
+                android:title="Combo 1"/>
+            <item
+                android:id="@+id/menu_emulation_adjust_scale_combo2"
+                android:title="Combo 2"/>
+            <item
+                android:id="@+id/menu_emulation_adjust_scale_combo3"
+                android:title="Combo 3"/>
+            <item
+                android:id="@+id/menu_emulation_adjust_scale_combo4"
+                android:title="Combo 4"/>
+            <item
+                android:id="@+id/menu_emulation_adjust_scale_combo5"
+                android:title="Combo 5"/>
+            </menu>
     </item>
 
     <item
