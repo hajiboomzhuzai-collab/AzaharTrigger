@@ -66,4 +66,9 @@ object EmulationMenuSettings {
                 .putInt("EmulationMenuSettings_DrawerLockMode", value)
                 .apply()
         }
+    fun saveBool(key: String, value: Boolean) {
+        preferences.edit()
+            .putBoolean(key, value)
+            .apply()
+    }
 }
