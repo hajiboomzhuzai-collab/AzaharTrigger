@@ -39,7 +39,6 @@ import kotlin.math.min
 class InputOverlay(context: Context?, attrs: AttributeSet?) : SurfaceView(context, attrs),
     OnTouchListener {
     private val overlayButtons: MutableSet<InputOverlayDrawableButton> = HashSet()
-    private val overlayComboButtons: MutableSet<InputOverlayDrawableButton> = HashSet()
     private val overlayDpads: MutableSet<InputOverlayDrawableDpad> = HashSet()
     private val overlayJoysticks: MutableSet<InputOverlayDrawableJoystick> = HashSet()
     private var isInEditMode = false
@@ -177,23 +176,23 @@ class InputOverlay(context: Context?, attrs: AttributeSet?) : SurfaceView(contex
                         TurboHelper.toggleTurbo(true)
                     }
 
-                    if (button.id in NativeLibrary.ButtonType.COMBO_1..NativeLibrary.ButtonType.COMBO_5) {
+                    when (button.id) {
 
-                        val comboIndex = button.id - NativeLibrary.ButtonType.COMBO_1 + 1
+                        NativeLibrary.ButtonType.COMBO_1,
+                        NativeLibrary.ButtonType.COMBO_2,
+                        NativeLibrary.ButtonType.COMBO_3,
+                        NativeLibrary.ButtonType.COMBO_4,
+                        NativeLibrary.ButtonType.COMBO_5 -> {
+                            handleComboButton(button)
+                        }
 
-                        triggerCombo(
-                            comboIndex,
-                            button.status == NativeLibrary.ButtonState.PRESSED
-                        )
-
-                    } else {
-
-                        NativeLibrary.onGamePadEvent(
-                            NativeLibrary.TouchScreenDevice,
-                            button.id,
-                            button.status
-                        )
-
+                        else -> {
+                            NativeLibrary.onGamePadEvent(
+                                NativeLibrary.TouchScreenDevice,
+                                button.id,
+                                button.status
+                            )
+                        }
                     }
 
                     shouldUpdateView = true
@@ -582,7 +581,7 @@ class InputOverlay(context: Context?, attrs: AttributeSet?) : SurfaceView(contex
                 )
             )
         }
-    
+
         // COMBO 1
         if (preferences.getBoolean("comboToggle1", false)) {
             overlayButtons.add(
@@ -600,7 +599,7 @@ class InputOverlay(context: Context?, attrs: AttributeSet?) : SurfaceView(contex
         if (preferences.getBoolean("comboToggle2", false)) {
             overlayButtons.add(
                 initializeOverlayButton(
-                   context,
+                    context,
                     R.drawable.combo_2,
                     R.drawable.combo_2_pressed,
                     NativeLibrary.ButtonType.COMBO_2,
@@ -636,57 +635,19 @@ class InputOverlay(context: Context?, attrs: AttributeSet?) : SurfaceView(contex
         }
 
         // COMBO 5
-        if (preferences.getBoolean("comboToggle5", false)) {
+        if (preferences.getBoolean("comboToggle4", false)) {
             overlayButtons.add(
                 initializeOverlayButton(
                     context,
-                    R.drawable.combo_5,
-                    R.drawable.combo_5_pressed,
-                    NativeLibrary.ButtonType.COMBO_5,
+                    R.drawable.combo_4,
+                    R.drawable.combo_4_pressed,
+                    NativeLibrary.ButtonType.COMBO_4,
                     orientation
                 )
             )
         }
     }
 
-    private fun triggerCombo(comboIndex: Int, pressed: Boolean) {
-
-        val prefs = PreferenceManager.getDefaultSharedPreferences(context)
-
-        val buttons = mapOf(
-            "A" to NativeLibrary.ButtonType.BUTTON_A,
-            "B" to NativeLibrary.ButtonType.BUTTON_B,
-            "X" to NativeLibrary.ButtonType.BUTTON_X,
-            "Y" to NativeLibrary.ButtonType.BUTTON_Y,
-            "Up" to NativeLibrary.ButtonType.DPAD_UP,
-            "Down" to NativeLibrary.ButtonType.DPAD_DOWN,
-            "Left" to NativeLibrary.ButtonType.DPAD_LEFT,
-            "Right" to NativeLibrary.ButtonType.DPAD_RIGHT,
-            "L" to NativeLibrary.ButtonType.TRIGGER_L,
-            "R" to NativeLibrary.ButtonType.TRIGGER_R,
-            "ZL" to NativeLibrary.ButtonType.BUTTON_ZL,
-            "ZR" to NativeLibrary.ButtonType.BUTTON_ZR
-        )
-
-        buttons.forEach { (name, id) ->
-
-            if (prefs.getBoolean("combo_${comboIndex}_$name", false)) {
-
-                NativeLibrary.onGamePadEvent(
-                    NativeLibrary.TouchScreenDevice,
-                    id,
-                    if (pressed)
-                        NativeLibrary.ButtonState.PRESSED
-                    else
-                        NativeLibrary.ButtonState.RELEASED
-                )
-
-            }
-        }
-    }
-
-fun refreshControls() {
-    
     fun refreshControls() {
         // Remove all the overlay buttons from the HashSet.
         overlayButtons.clear()
@@ -706,6 +667,47 @@ fun refreshControls() {
         invalidate()
     }
 
+    private fun handleComboButton(button: InputOverlayDrawableButton) {
+
+        val comboIndex = when (button.id) {
+            NativeLibrary.ButtonType.COMBO_1 -> 1
+            NativeLibrary.ButtonType.COMBO_2 -> 2
+            NativeLibrary.ButtonType.COMBO_3 -> 3
+            NativeLibrary.ButtonType.COMBO_4 -> 4
+            NativeLibrary.ButtonType.COMBO_5 -> 5
+            else -> return
+        }
+
+        val prefs = PreferenceManager.getDefaultSharedPreferences(context)
+
+        val mapping = mapOf(
+            "A" to NativeLibrary.ButtonType.BUTTON_A,
+            "B" to NativeLibrary.ButtonType.BUTTON_B,
+            "X" to NativeLibrary.ButtonType.BUTTON_X,
+            "Y" to NativeLibrary.ButtonType.BUTTON_Y,
+            "Up" to NativeLibrary.ButtonType.DPAD_UP,
+            "Down" to NativeLibrary.ButtonType.DPAD_DOWN,
+            "Left" to NativeLibrary.ButtonType.DPAD_LEFT,
+            "Right" to NativeLibrary.ButtonType.DPAD_RIGHT,
+            "L" to NativeLibrary.ButtonType.TRIGGER_L,
+            "R" to NativeLibrary.ButtonType.TRIGGER_R,
+            "ZL" to NativeLibrary.ButtonType.BUTTON_ZL,
+            "ZR" to NativeLibrary.ButtonType.BUTTON_ZR
+        )
+
+        val state = button.status
+
+        for ((name, id) in mapping) {
+            if (!prefs.getBoolean("combo_${comboIndex}_$name", false)) continue
+
+            NativeLibrary.onGamePadEvent(
+                NativeLibrary.TouchScreenDevice,
+                id,
+                state
+            )
+        }
+    }
+    
     private fun saveControlPosition(sharedPrefsId: Int, x: Int, y: Int, orientation: String) {
         preferences.edit()
             .putFloat("$sharedPrefsId$orientation-X", x.toFloat())
