@@ -568,6 +568,66 @@ class InputOverlay(context: Context?, attrs: AttributeSet?) : SurfaceView(contex
                 )
             )
         }
+    
+        if (preferences.getBoolean("overlay_combo_1", false)) {
+            overlayButtons.add(
+                initializeOverlayButton(
+                    context,
+                    R.drawable.combo_1,
+                    R.drawable.combo_1_pressed,
+                    9001,
+                    orientation
+                )
+            )
+        }
+
+        if (preferences.getBoolean("overlay_combo_2", false)) {
+            overlayButtons.add(
+                initializeOverlayButton(
+                    context,
+                    R.drawable.combo_2,
+                    R.drawable.combo_2_pressed,
+                    9002,
+                    orientation
+                )
+            )
+        }
+
+        if (preferences.getBoolean("overlay_combo_3", false)) {
+            overlayButtons.add(
+                initializeOverlayButton(
+                    context,
+                    R.drawable.combo_3,
+                    R.drawable.combo_3_pressed,
+                    9003,
+                    orientation
+                )
+            )
+        }
+
+        if (preferences.getBoolean("overlay_combo_4", false)) {
+            overlayButtons.add(
+                initializeOverlayButton(
+                    context,
+                    R.drawable.combo_4,
+                    R.drawable.combo_4_pressed,
+                    9004,
+                    orientation
+                )
+            )
+        }
+
+        if (preferences.getBoolean("overlay_combo_5", false)) {
+            overlayButtons.add(
+                initializeOverlayButton(
+                    context,
+                    R.drawable.combo_5,
+                    R.drawable.combo_5_pressed,
+                    9005,
+                    orientation
+                )
+            )
+        }
     }
 
     fun refreshControls() {
