@@ -1644,8 +1644,6 @@ void NWM_UDS::BeaconBroadcastCallback(std::uintptr_t user_data, s64 cycles_late)
 
     std::vector<u8> frame = GenerateBeaconFrame(network_info, node_info);
 
-    std::vector<u8> frame = GenerateBeaconFrame(network_info, node_info);
-
     using Network::WifiPacket;
     WifiPacket packet;
     packet.type = WifiPacket::PacketType::Beacon;
