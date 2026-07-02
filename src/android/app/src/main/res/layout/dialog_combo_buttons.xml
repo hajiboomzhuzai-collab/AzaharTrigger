@@ -1,4 +1,58 @@
-<androidx.recyclerview.widget.RecyclerView
-    android:id="@+id/comboList"
+<?xml version="1.0" encoding="utf-8"?>
+
+<GridLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/comboGrid"
     android:layout_width="match_parent"
-    android:layout_height="match_parent"/>
+    android:layout_height="wrap_content"
+    android:columnCount="4"
+    android:padding="20dp">
+
+    <com.google.android.material.checkbox.MaterialCheckBox
+        android:id="@+id/checkA"
+        android:text="A"/>
+
+    <com.google.android.material.checkbox.MaterialCheckBox
+        android:id="@+id/checkB"
+        android:text="B"/>
+
+    <com.google.android.material.checkbox.MaterialCheckBox
+        android:id="@+id/checkX"
+        android:text="X"/>
+
+    <com.google.android.material.checkbox.MaterialCheckBox
+        android:id="@+id/checkY"
+        android:text="Y"/>
+
+    <com.google.android.material.checkbox.MaterialCheckBox
+        android:id="@+id/checkUp"
+        android:text="Up"/>
+
+    <com.google.android.material.checkbox.MaterialCheckBox
+        android:id="@+id/checkDown"
+        android:text="Down"/>
+
+    <com.google.android.material.checkbox.MaterialCheckBox
+        android:id="@+id/checkLeft"
+        android:text="Left"/>
+
+    <com.google.android.material.checkbox.MaterialCheckBox
+        android:id="@+id/checkRight"
+        android:text="Right"/>
+
+    <com.google.android.material.checkbox.MaterialCheckBox
+        android:id="@+id/checkL"
+        android:text="L"/>
+
+    <com.google.android.material.checkbox.MaterialCheckBox
+        android:id="@+id/checkR"
+        android:text="R"/>
+
+    <com.google.android.material.checkbox.MaterialCheckBox
+        android:id="@+id/checkZL"
+        android:text="ZL"/>
+
+    <com.google.android.material.checkbox.MaterialCheckBox
+        android:id="@+id/checkZR"
+        android:text="ZR"/>
+
+</GridLayout>
