@@ -1052,6 +1052,11 @@ object NativeLibrary {
         const val BUTTON_GPIO14 = 782
         const val BUTTON_SWAP = 800
         const val BUTTON_TURBO = 801
+        const val COMBO_1 = 9001
+        const val COMBO_2 = 9002
+        const val COMBO_3 = 9003
+        const val COMBO_4 = 9004
+        const val COMBO_5 = 9005
     }
 
     /**
