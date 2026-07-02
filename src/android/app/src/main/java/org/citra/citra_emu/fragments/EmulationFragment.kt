@@ -121,6 +121,7 @@ class EmulationFragment : Fragment(), SurfaceHolder.Callback, Choreographer.Fram
 
     private val onPause = Runnable{ togglePause() }
     private val onShutdown = Runnable{ emulationState.stop() }
+    private val overlayComboButtons: MutableSet<InputOverlayDrawableButton> = HashSet()
 
     // Only used if a game is passed through intent on google play variant
     private var gameFd: Int? = null
@@ -1083,50 +1084,70 @@ class EmulationFragment : Fragment(), SurfaceHolder.Callback, Choreographer.Fram
 
     private fun showComboEditor(comboIndex: Int) {
 
-        val names = arrayOf(
-            "A",
-            "B",
-            "X",
-            "Y",
-            "Up",
-            "Down",
-            "Left",
-            "Right",
-            "L",
-            "R",
-            "ZL",
-            "ZR"
-        )
-
-        val checked = BooleanArray(names.size)
-
         val prefs = PreferenceManager.getDefaultSharedPreferences(requireContext())
 
-        for (i in names.indices) {
-            checked[i] =
-                prefs.getBoolean("combo_${comboIndex}_${names[i]}", false)
+        val buttons = listOf(
+            Pair("A", NativeLibrary.ButtonType.BUTTON_A),
+            Pair("B", NativeLibrary.ButtonType.BUTTON_B),
+            Pair("X", NativeLibrary.ButtonType.BUTTON_X),
+            Pair("Y", NativeLibrary.ButtonType.BUTTON_Y),
+
+            Pair("Up", NativeLibrary.ButtonType.DPAD_UP),
+            Pair("Down", NativeLibrary.ButtonType.DPAD_DOWN),
+            Pair("Left", NativeLibrary.ButtonType.DPAD_LEFT),
+            Pair("Right", NativeLibrary.ButtonType.DPAD_RIGHT),
+
+            Pair("L", NativeLibrary.ButtonType.TRIGGER_L),
+            Pair("R", NativeLibrary.ButtonType.TRIGGER_R),
+
+            Pair("ZL", NativeLibrary.ButtonType.BUTTON_ZL),
+            Pair("ZR", NativeLibrary.ButtonType.BUTTON_ZR)
+        )
+
+        val grid = GridLayout(requireContext()).apply {
+            columnCount = 4
+            useDefaultMargins = true
+            setPadding(40, 40, 40, 40)
+        }
+
+        val checkBoxes = mutableMapOf<Int, MaterialCheckBox>()
+
+        buttons.forEach { (name, id) ->
+
+            val check = MaterialCheckBox(requireContext()).apply {
+                text = name
+
+                isChecked = prefs.getBoolean(
+                    "combo_${comboIndex}_$id",
+                    false
+                )
+            }
+
+            checkBoxes[id] = check
+            grid.addView(check)
         }
 
         MaterialAlertDialogBuilder(requireContext())
             .setTitle("Combo $comboIndex")
-            .setMultiChoiceItems(names, checked) { _, which, isChecked ->
-                checked[which] = isChecked
-            }
+            .setView(grid)
+
             .setPositiveButton("Save") { _, _ ->
 
-                for (i in names.indices) {
-                    prefs.edit()
-                        .putBoolean(
-                            "combo_${comboIndex}_${names[i]}",
-                            checked[i]
-                        )
-                        .apply()
+                val editor = prefs.edit()
+
+                checkBoxes.forEach { (id, checkBox) ->
+                    editor.putBoolean(
+                        "combo_${comboIndex}_$id",
+                        checkBox.isChecked
+                    )
                 }
 
+                editor.apply()
             }
+
             .setNegativeButton("Cancel", null)
             .show()
-        }
+    }
 
     private fun toggleCombo(combo: String) {
         val prefs = PreferenceManager.getDefaultSharedPreferences(requireContext())
