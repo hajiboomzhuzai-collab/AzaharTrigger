@@ -900,6 +900,46 @@ class InputOverlay(context: Context?, attrs: AttributeSet?) : SurfaceView(contex
                 NativeLibrary.ButtonType.BUTTON_TURBO.toString() + "-Y",
                 resources.getInteger(R.integer.N3DS_BUTTON_TURBO_Y).toFloat() / 1000 * maxY
             )
+            .putFloat(
+                NativeLibrary.ButtonType.COMBO_1.toString() + "-X",
+                resources.getInteger(R.integer.N3DS_COMBO_1_X).toFloat() / 1000 * maxX
+            )
+            .putFloat(
+                NativeLibrary.ButtonType.COMBO_1.toString() + "-Y",
+                resources.getInteger(R.integer.N3DS_COMBO_1_Y).toFloat() / 1000 * maxY
+            )
+            .putFloat(
+                NativeLibrary.ButtonType.COMBO_2.toString() + "-X",
+                resources.getInteger(R.integer.N3DS_COMBO_2_X).toFloat() / 1000 * maxX
+            )
+            .putFloat(
+                NativeLibrary.ButtonType.COMBO_2.toString() + "-Y",
+                resources.getInteger(R.integer.N3DS_COMBO_2_Y).toFloat() / 1000 * maxY
+            )
+            .putFloat(
+                NativeLibrary.ButtonType.COMBO_3.toString() + "-X",
+                resources.getInteger(R.integer.N3DS_COMBO_3_X).toFloat() / 1000 * maxX
+            )
+            .putFloat(
+                NativeLibrary.ButtonType.COMBO_3.toString() + "-Y",
+                resources.getInteger(R.integer.N3DS_COMBO_3_Y).toFloat() / 1000 * maxY
+            )
+            .putFloat(
+                NativeLibrary.ButtonType.COMBO_4.toString() + "-X",
+                resources.getInteger(R.integer.N3DS_COMBO_4_X).toFloat() / 1000 * maxX
+            )
+            .putFloat(
+                NativeLibrary.ButtonType.COMBO_4.toString() + "-Y",
+                resources.getInteger(R.integer.N3DS_COMBO_4_Y).toFloat() / 1000 * maxY
+            )
+            .putFloat(
+                NativeLibrary.ButtonType.COMBO_5.toString() + "-X",
+                resources.getInteger(R.integer.N3DS_COMBO_5_X).toFloat() / 1000 * maxX
+            )
+            .putFloat(
+                NativeLibrary.ButtonType.COMBO_5.toString() + "-Y",
+                resources.getInteger(R.integer.N3DS_COMBO_5_Y).toFloat() / 1000 * maxY
+            )
             .apply()
     }
 
@@ -1050,6 +1090,46 @@ class InputOverlay(context: Context?, attrs: AttributeSet?) : SurfaceView(contex
             .putFloat(
                 NativeLibrary.ButtonType.BUTTON_TURBO.toString() + portrait + "-Y",
                 resources.getInteger(R.integer.N3DS_BUTTON_TURBO_PORTRAIT_Y).toFloat() / 1000 * maxY
+            )
+            .putFloat(
+                NativeLibrary.ButtonType.COMBO_1.toString() + portrait + "-X",
+                resources.getInteger(R.integer.N3DS_COMBO_1_PORTRAIT_X).toFloat() / 1000 * maxX
+            )
+            .putFloat(
+                NativeLibrary.ButtonType.COMBO_1.toString() + portrait + "-Y",
+                resources.getInteger(R.integer.N3DS_COMBO_1_PORTRAIT_Y).toFloat() / 1000 * maxY
+            )
+            .putFloat(
+                NativeLibrary.ButtonType.COMBO_2.toString() + portrait + "-X",
+                resources.getInteger(R.integer.N3DS_COMBO_2_PORTRAIT_X).toFloat() / 1000 * maxX
+            )
+            .putFloat(
+                NativeLibrary.ButtonType.COMBO_2.toString() + portrait + "-Y",
+                resources.getInteger(R.integer.N3DS_COMBO_2_PORTRAIT_Y).toFloat() / 1000 * maxY
+            )
+            .putFloat(
+                NativeLibrary.ButtonType.COMBO_3.toString() + portrait + "-X",
+                resources.getInteger(R.integer.N3DS_COMBO_3_PORTRAIT_X).toFloat() / 1000 * maxX
+            )
+            .putFloat(
+                NativeLibrary.ButtonType.COMBO_3.toString() + portrait + "-Y",
+                resources.getInteger(R.integer.N3DS_COMBO_3_PORTRAIT_Y).toFloat() / 1000 * maxY
+            )
+            .putFloat(
+                NativeLibrary.ButtonType.COMBO_4.toString() + portrait + "-X",
+                resources.getInteger(R.integer.N3DS_COMBO_4_PORTRAIT_X).toFloat() / 1000 * maxX
+            )
+            .putFloat(
+                NativeLibrary.ButtonType.COMBO_4.toString() + portrait + "-Y",
+                resources.getInteger(R.integer.N3DS_COMBO_4_PORTRAIT_Y).toFloat() / 1000 * maxY
+            )
+            .putFloat(
+                NativeLibrary.ButtonType.COMBO_5.toString() + portrait + "-X",
+                resources.getInteger(R.integer.N3DS_COMBO_1_PORTRAIT_X).toFloat() / 1000 * maxX
+            )
+            .putFloat(
+                NativeLibrary.ButtonType.COMBO_5.toString() + portrait + "-Y",
+                resources.getInteger(R.integer.N3DS_COMBO_1_PORTRAIT_Y).toFloat() / 1000 * maxY
             )
             .apply()
     }
