@@ -87,6 +87,35 @@
         android:title="@string/emulation_control_opacity" />
 
     <item
+        android:id="@+id/menu_emulation_combo_buttons"
+        android:title="Combo Buttons">
+        <menu>
+            <group android:checkableBehavior="all">
+                <item
+                    android:id="@+id/menu_combo_1"
+                    android:title="Combo 1"
+                    android:checkable="true"/>
+                <item
+                    android:id="@+id/menu_combo_2"
+                    android:title="Combo 2"
+                    android:checkable="true"/>
+                <item
+                    android:id="@+id/menu_combo_3"
+                    android:title="Combo 3"
+                    android:checkable="true"/>
+                <item
+                    android:id="@+id/menu_combo_4"
+                    android:title="Combo 4"
+                    android:checkable="true"/>
+                <item
+                    android:id="@+id/menu_combo_5"
+                    android:title="Combo 5"
+                    android:checkable="true"/>
+            </group>
+        </menu>
+    </item>
+
+    <item
         android:id="@+id/menu_emulation_button_sliding"
         android:title="@string/emulation_button_sliding">
     </item>
