@@ -996,6 +996,36 @@ class EmulationFragment : Fragment(), SurfaceHolder.Callback, Choreographer.Fram
                     true
                 }
 
+                R.id.menu_combo_1 -> {
+                    toggleCombo("combo_1")
+                    it.isChecked = !it.isChecked
+                    true
+                }
+
+                R.id.menu_combo_2 -> {
+                    toggleCombo("combo_2")
+                    it.isChecked = !it.isChecked
+                    true
+                }
+                
+                R.id.menu_combo_3 -> {
+                    toggleCombo("combo_3")
+                    it.isChecked = !it.isChecked
+                    true
+                }
+                
+                R.id.menu_combo_4 -> {
+                    toggleCombo("combo_4")
+                    it.isChecked = !it.isChecked
+                    true
+                }
+                
+                R.id.menu_combo_5 -> {
+                    toggleCombo("combo_5")
+                    it.isChecked = !it.isChecked
+                    true
+                }
+
                 R.id.menu_emulation_joystick_rel_center -> {
                     EmulationMenuSettings.joystickRelCenter =
                         !EmulationMenuSettings.joystickRelCenter
@@ -1022,6 +1052,17 @@ class EmulationFragment : Fragment(), SurfaceHolder.Callback, Choreographer.Fram
         }
 
         popupMenu.show()
+    }
+
+    private fun toggleCombo(combo: String) {
+        val prefs = PreferenceManager.getDefaultSharedPreferences(requireContext())
+
+        val key = "overlay_$combo"
+        val current = prefs.getBoolean(key, false)
+
+        prefs.edit()
+            .putBoolean(key, !current)
+            .apply()
     }
 
     private fun showAmiiboMenu() {
