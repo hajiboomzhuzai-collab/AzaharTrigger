@@ -997,33 +997,43 @@ class EmulationFragment : Fragment(), SurfaceHolder.Callback, Choreographer.Fram
                 }
 
                 R.id.menu_combo_1 -> {
-                    toggleCombo("combo_1")
-                    it.isChecked = !it.isChecked
+                    val enabled = !it.isChecked
+                    it.isChecked = enabled
+                    EmulationMenuSettings.saveBool("comboToggle1", enabled)
+                    binding.surfaceInputOverlay.refreshControls()
                     true
                 }
 
                 R.id.menu_combo_2 -> {
-                    toggleCombo("combo_2")
-                    it.isChecked = !it.isChecked
+                    val enabled = !it.isChecked
+                    it.isChecked = enabled
+                    EmulationMenuSettings.saveBool("comboToggle2", enabled)
+                    binding.surfaceInputOverlay.refreshControls()
                     true
                 }
-                
+
                 R.id.menu_combo_3 -> {
-                    toggleCombo("combo_3")
-                    it.isChecked = !it.isChecked
+                    val enabled = !it.isChecked
+                    it.isChecked = enabled
+                    EmulationMenuSettings.saveBool("comboToggle3", enabled)
+                    binding.surfaceInputOverlay.refreshControls()
                     true
                 }
-                
+
                 R.id.menu_combo_4 -> {
-                    toggleCombo("combo_4")
-                    it.isChecked = !it.isChecked
+                    val enabled = !it.isChecked
+                    it.isChecked = enabled
+                    EmulationMenuSettings.saveBool("comboToggle4", enabled)
+                    binding.surfaceInputOverlay.refreshControls()
                     true
                 }
-                
+
                 R.id.menu_combo_5 -> {
-                    toggleCombo("combo_5")
-                    it.isChecked = !it.isChecked
-                    true
+                val enabled = !it.isChecked
+                it.isChecked = enabled
+                EmulationMenuSettings.saveBool("comboToggle5", enabled)
+                binding.surfaceInputOverlay.refreshControls()
+                true
                 }
 
                 R.id.menu_emulation_joystick_rel_center -> {
