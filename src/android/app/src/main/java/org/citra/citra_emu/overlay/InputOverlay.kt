@@ -569,61 +569,66 @@ class InputOverlay(context: Context?, attrs: AttributeSet?) : SurfaceView(contex
             )
         }
     
-        if (preferences.getBoolean("overlay_combo_1", false)) {
+        // COMBO 1
+        if (preferences.getBoolean("comboToggle1", false)) {
             overlayButtons.add(
                 initializeOverlayButton(
                     context,
                     R.drawable.combo_1,
                     R.drawable.combo_1_pressed,
-                    9001,
+                    NativeLibrary.ButtonType.COMBO_1,
                     orientation
                 )
             )
         }
 
-        if (preferences.getBoolean("overlay_combo_2", false)) {
+        // COMBO 2
+        if (preferences.getBoolean("comboToggle2", false)) {
             overlayButtons.add(
                 initializeOverlayButton(
-                    context,
+                   context,
                     R.drawable.combo_2,
                     R.drawable.combo_2_pressed,
-                    9002,
+                    NativeLibrary.ButtonType.COMBO_2,
                     orientation
                 )
             )
         }
 
-        if (preferences.getBoolean("overlay_combo_3", false)) {
+        // COMBO 3
+        if (preferences.getBoolean("comboToggle3", false)) {
             overlayButtons.add(
                 initializeOverlayButton(
                     context,
                     R.drawable.combo_3,
                     R.drawable.combo_3_pressed,
-                    9003,
+                    NativeLibrary.ButtonType.COMBO_3,
                     orientation
                 )
             )
         }
 
-        if (preferences.getBoolean("overlay_combo_4", false)) {
+        // COMBO 4
+        if (preferences.getBoolean("comboToggle4", false)) {
             overlayButtons.add(
                 initializeOverlayButton(
                     context,
                     R.drawable.combo_4,
                     R.drawable.combo_4_pressed,
-                    9004,
+                    NativeLibrary.ButtonType.COMBO_4,
                     orientation
                 )
             )
         }
 
-        if (preferences.getBoolean("overlay_combo_5", false)) {
+        // COMBO 5
+        if (preferences.getBoolean("comboToggle5", false)) {
             overlayButtons.add(
                 initializeOverlayButton(
                     context,
                     R.drawable.combo_5,
                     R.drawable.combo_5_pressed,
-                    9005,
+                    NativeLibrary.ButtonType.COMBO_5,
                     orientation
                 )
             )
