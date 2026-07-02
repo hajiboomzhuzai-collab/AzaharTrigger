@@ -2,7 +2,7 @@ name: citra-builds
 
 on:
   push:
-    branches: [ "Rework-Net-4" ]
+    branches: [ "Rework-Combo-Buttons" ]
     tags: [ "1.0.0" ]
   pull_request:
     branches: [ "*" ]
