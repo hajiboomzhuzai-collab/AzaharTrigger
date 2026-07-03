@@ -761,10 +761,18 @@ class InputOverlay(context: Context?, attrs: AttributeSet?) : SurfaceView(contex
     }
     
     private fun saveControlPosition(sharedPrefsId: Int, x: Int, y: Int, orientation: String) {
+
+        val xKey = "$sharedPrefsId$orientation-X"
+        val yKey = "$sharedPrefsId$orientation-Y"
+
         preferences.edit()
-            .putFloat("$sharedPrefsId$orientation-X", x.toFloat())
-            .putFloat("$sharedPrefsId$orientation-Y", y.toFloat())
+            .putFloat(xKey, x.toFloat())
+            .putFloat(yKey, y.toFloat())
             .apply()
+
+        OverlayLayoutConfig.putFloat(xKey, x.toFloat())
+        OverlayLayoutConfig.putFloat(yKey, y.toFloat())
+        OverlayLayoutConfig.save()
     }
 
     fun setIsInEditMode(isInEditMode: Boolean) {
