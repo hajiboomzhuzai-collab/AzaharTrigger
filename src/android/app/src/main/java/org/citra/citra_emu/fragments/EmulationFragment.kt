@@ -1076,7 +1076,7 @@ class EmulationFragment : Fragment(), SurfaceHolder.Callback, Choreographer.Fram
             "L", "R", "ZL", "ZR",
             "◯↑", "◯↓", "◯←", "◯→",
             "◉↑", "◉↓", "◉←", "◉→",
-            "START", "SELECT"
+            "Start", "Select"
         )
 
         val prefs = PreferenceManager.getDefaultSharedPreferences(requireContext())
@@ -1085,6 +1085,16 @@ class EmulationFragment : Fragment(), SurfaceHolder.Callback, Choreographer.Fram
             columnCount = 4
             useDefaultMargins = true
             setPadding(40, 20, 40, 20)
+        }
+
+        val scrollView = ScrollView(requireContext()).apply {
+            addView(
+                grid,
+                ViewGroup.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT,
+                    ViewGroup.LayoutParams.WRAP_CONTENT
+                )
+            )
         }
 
         val checkBoxes = mutableMapOf<String, MaterialCheckBox>()
@@ -1102,7 +1112,7 @@ class EmulationFragment : Fragment(), SurfaceHolder.Callback, Choreographer.Fram
 
         MaterialAlertDialogBuilder(requireContext())
             .setTitle("Combo $comboIndex")
-            .setView(grid)
+            .setView(scrollView)
             .setPositiveButton("Save") { _, _ ->
 
                 checkBoxes.forEach { (name, checkBox) ->

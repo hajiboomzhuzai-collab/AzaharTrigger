@@ -693,8 +693,8 @@ class InputOverlay(context: Context?, attrs: AttributeSet?) : SurfaceView(contex
             "R" to NativeLibrary.ButtonType.TRIGGER_R,
             "ZL" to NativeLibrary.ButtonType.BUTTON_ZL,
             "ZR" to NativeLibrary.ButtonType.BUTTON_ZR,
-            "START" to NativeLibrary.ButtonType.BUTTON_START,
-            "SELECT" to NativeLibrary.ButtonType.BUTTON_SELECT,
+            "Start" to NativeLibrary.ButtonType.BUTTON_START,
+            "Select" to NativeLibrary.ButtonType.BUTTON_SELECT,
         )
 
         val state = button.status
