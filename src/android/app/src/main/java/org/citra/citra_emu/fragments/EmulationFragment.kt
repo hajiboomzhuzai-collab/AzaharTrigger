@@ -1073,7 +1073,10 @@ class EmulationFragment : Fragment(), SurfaceHolder.Callback, Choreographer.Fram
         val buttons = listOf(
             "A", "B", "X", "Y",
             "Up", "Down", "Left", "Right",
-            "L", "R", "ZL", "ZR"
+            "L", "R", "ZL", "ZR",
+            "◯↑", "◯↓", "◯←", "◯→",
+            "◉↑", "◉↓", "◉←", "◉→",
+            "START", "SELECT"
         )
 
         val prefs = PreferenceManager.getDefaultSharedPreferences(requireContext())
@@ -1527,6 +1530,11 @@ class EmulationFragment : Fragment(), SurfaceHolder.Callback, Choreographer.Fram
         resetScale("controlScale-" + NativeLibrary.ButtonType.STICK_C)
         resetScale("controlScale-" + NativeLibrary.ButtonType.BUTTON_HOME)
         resetScale("controlScale-" + NativeLibrary.ButtonType.BUTTON_SWAP)
+        resetScale("controlScale-" + NativeLibrary.ButtonType.COMBO_1)
+        resetScale("controlScale-" + NativeLibrary.ButtonType.COMBO_2)
+        resetScale("controlScale-" + NativeLibrary.ButtonType.COMBO_3)
+        resetScale("controlScale-" + NativeLibrary.ButtonType.COMBO_4)
+        resetScale("controlScale-" + NativeLibrary.ButtonType.COMBO_5)
         binding.surfaceInputOverlay.refreshControls()
     }
 
