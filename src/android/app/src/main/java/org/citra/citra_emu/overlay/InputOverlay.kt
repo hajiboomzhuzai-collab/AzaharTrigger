@@ -1333,8 +1333,8 @@ class InputOverlay(context: Context?, attrs: AttributeSet?) : SurfaceView(contex
             val yKey = "$buttonId$orientation-Y"
             val prefX = preferences.getFloat(xKey, 0f)
             val prefY = preferences.getFloat(yKey, 0f)
-            val drawableX = OverlayLayoutConfig.getOrDefault(xKey, prefX).toInt()
-            val drawableY = OverlayLayoutConfig.getOrDefault(yKey, prefY).toInt()
+            val drawableX = OverlayLayoutConfig.getFloat(xKey, prefX).toInt()
+            val drawableY = OverlayLayoutConfig.getFloat(yKey, prefY).toInt()
             val width = overlayDrawable.width
             val height = overlayDrawable.height
 
@@ -1410,8 +1410,8 @@ class InputOverlay(context: Context?, attrs: AttributeSet?) : SurfaceView(contex
             val yKey = "$buttonUp$orientation-Y"
             val prefX = preferences.getFloat(xKey, 0f)
             val prefY = preferences.getFloat(yKey, 0f)
-            val drawableX = OverlayLayoutConfig.getOrDefault(xKey, prefX).toInt()
-            val drawableY = OverlayLayoutConfig.getOrDefault(yKey, prefY).toInt()
+            val drawableX = OverlayLayoutConfig.getFloat(xKey, prefX).toInt()
+            val drawableY = OverlayLayoutConfig.getFloat(yKey, prefY).toInt()
             val width = overlayDrawable.width
             val height = overlayDrawable.height
 
@@ -1466,8 +1466,8 @@ class InputOverlay(context: Context?, attrs: AttributeSet?) : SurfaceView(contex
             val yKey = "$joystick$orientation-Y"
             val prefX = preferences.getFloat(xKey, 0f)
             val prefY = preferences.getFloat(yKey, 0f)
-            val drawableX = OverlayLayoutConfig.getOrDefault(xKey, prefX).toInt()
-            val drawableY = OverlayLayoutConfig.getOrDefault(yKey, prefY).toInt()
+            val drawableX = OverlayLayoutConfig.getFloat(xKey, prefX).toInt()
+            val drawableY = OverlayLayoutConfig.getFloat(yKey, prefY).toInt()
 
             // Decide inner scale based on joystick ID
             var outerScale = 1f
