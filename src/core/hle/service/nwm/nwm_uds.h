@@ -639,6 +639,8 @@ private:
     // Host-side heartbeat counter
     u32 keepalive_tick = 0;
 
+    u8 missed_keepalive = 0;
+
     // Keepalive interval (host sends every ~1s)
     static constexpr s64 KEEPALIVE_INTERVAL_MS = 1000;
 
