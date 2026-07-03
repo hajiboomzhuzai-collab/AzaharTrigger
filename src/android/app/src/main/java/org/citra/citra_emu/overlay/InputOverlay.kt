@@ -1141,6 +1141,9 @@ class InputOverlay(context: Context?, attrs: AttributeSet?) : SurfaceView(contex
         }
 
         editor.apply()
+        
+        // Write defaults to azahar_input_layout.ini
+        OverlayLayoutConfig.saveFromPreferences(preferences)
     }
 
     private fun defaultOverlayPortrait() {
@@ -1179,6 +1182,9 @@ class InputOverlay(context: Context?, attrs: AttributeSet?) : SurfaceView(contex
         }
 
         editor.apply()
+
+        // Write defaults to azahar_input_layout.ini
+        OverlayLayoutConfig.saveFromPreferences(preferences)
     }    
 
     private fun getOverlayValue(
@@ -1326,8 +1332,10 @@ class InputOverlay(context: Context?, attrs: AttributeSet?) : SurfaceView(contex
             // These were set in the input overlay configuration menu.
             val xKey = "$buttonId$orientation-X"
             val yKey = "$buttonId$orientation-Y"
-            val drawableX = preferences.getFloat(xKey, 0f).toInt()
-            val drawableY = preferences.getFloat(yKey, 0f).toInt()
+            val prefX = preferences.getFloat(xKey, 0f)
+            val prefY = preferences.getFloat(yKey, 0f)
+            val drawableX = OverlayLayoutConfig.getOrDefault(xKey, prefX).toInt()
+            val drawableY = OverlayLayoutConfig.getOrDefault(yKey, prefY).toInt()
             val width = overlayDrawable.width
             val height = overlayDrawable.height
 
@@ -1399,8 +1407,12 @@ class InputOverlay(context: Context?, attrs: AttributeSet?) : SurfaceView(contex
 
             // The X and Y coordinates of the InputOverlayDrawableDpad on the InputOverlay.
             // These were set in the input overlay configuration menu.
-            val drawableX = preferences.getFloat("$buttonUp$orientation-X", 0f).toInt()
-            val drawableY = preferences.getFloat("$buttonUp$orientation-Y", 0f).toInt()
+            val xKey = "$buttonUp$orientation-X"
+            val yKey = "$buttonUp$orientation-Y"
+            val prefX = preferences.getFloat(xKey, 0f)
+            val prefY = preferences.getFloat(yKey, 0f)
+            val drawableX = OverlayLayoutConfig.getOrDefault(xKey, prefX).toInt()
+            val drawableY = OverlayLayoutConfig.getOrDefault(yKey, prefY).toInt()
             val width = overlayDrawable.width
             val height = overlayDrawable.height
 
@@ -1451,8 +1463,12 @@ class InputOverlay(context: Context?, attrs: AttributeSet?) : SurfaceView(contex
 
             // The X and Y coordinates of the InputOverlayDrawableButton on the InputOverlay.
             // These were set in the input overlay configuration menu.
-            val drawableX = preferences.getFloat("$joystick$orientation-X", 0f).toInt()
-            val drawableY = preferences.getFloat("$joystick$orientation-Y", 0f).toInt()
+            val xKey = "$joystick$orientation-X"
+            val yKey = "$joystick$orientation-Y"
+            val prefX = preferences.getFloat(xKey, 0f)
+            val prefY = preferences.getFloat(yKey, 0f)
+            val drawableX = OverlayLayoutConfig.getOrDefault(xKey, prefX).toInt()
+            val drawableY = OverlayLayoutConfig.getOrDefault(yKey, prefY).toInt()
 
             // Decide inner scale based on joystick ID
             var outerScale = 1f
