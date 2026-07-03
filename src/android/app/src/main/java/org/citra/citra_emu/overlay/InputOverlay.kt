@@ -817,7 +817,7 @@ class InputOverlay(context: Context?, attrs: AttributeSet?) : SurfaceView(contex
 
     private data class OverlayControl(
         val buttonId: Int,
-        val key: String,
+        val iniKey: String,
         val xRes: Int,
         val yRes: Int
     )
