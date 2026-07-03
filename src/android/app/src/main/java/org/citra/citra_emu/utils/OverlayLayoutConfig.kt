@@ -39,4 +39,12 @@ object OverlayLayoutConfig {
             properties.store(it, "Azahar Overlay Layout")
         }
     }
+    
+    fun has(key: String): Boolean {
+        return properties.containsKey(key)
+    }
+
+    fun getOrDefault(key: String, default: Float): Float {
+        return properties.getProperty(key)?.toFloatOrNull() ?: default
+    }
 }
