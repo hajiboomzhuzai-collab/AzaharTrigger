@@ -1137,21 +1137,16 @@ class InputOverlay(context: Context?, attrs: AttributeSet?) : SurfaceView(contex
             val x = resources.getInteger(control.xRes).toFloat() / 1000f * maxX
             val y = resources.getInteger(control.yRes).toFloat() / 1000f * maxY
 
-            editor.putFloat(
-                "${control.buttonId}-X",
-                x
-            )
-
-            editor.putFloat(
-                "${control.buttonId}-Y",
-                y
-            )
+            editor.putFloat("${control.buttonId}-X", x)
+            editor.putFloat("${control.buttonId}-Y", y)
+            OverlayLayoutConfig.putFloat("${control.iniKey}_X", x)
+            OverlayLayoutConfig.putFloat("${control.iniKey}_Y", y)        
         }
 
         editor.apply()
         
         // Write defaults to azahar_input_layout.ini
-        OverlayLayoutConfig.saveFromPreferences(preferences)
+        OverlayLayoutConfig.save()
     }
 
     private fun defaultOverlayPortrait() {
@@ -1176,23 +1171,18 @@ class InputOverlay(context: Context?, attrs: AttributeSet?) : SurfaceView(contex
         portraitControls.forEach { control ->
 
             val x = resources.getInteger(control.xRes).toFloat() / 1000f * maxX
-          ccval y = resources.getInteger(control.yRes).toFloat() / 1000f * maxY
+            val y = resources.getInteger(control.yRes).toFloat() / 1000f * maxY
 
-            editor.putFloat(
-                "${control.buttonId}$portrait-X",
-                x
-            )
-
-            editor.putFloat(
-                "${control.buttonId}$portrait-Y",
-                y
-            )
+            editor.putFloat("${control.buttonId}-X", x)
+            editor.putFloat("${control.buttonId}-Y", y)
+            OverlayLayoutConfig.putFloat("${control.iniKey}_X", x)
+            OverlayLayoutConfig.putFloat("${control.iniKey}_Y", y)        
         }
 
         editor.apply()
 
         // Write defaults to azahar_input_layout.ini
-        OverlayLayoutConfig.saveFromPreferences(preferences)
+        OverlayLayoutConfig.save()
     }    
 
     private fun getOverlayValue(
@@ -1201,6 +1191,7 @@ class InputOverlay(context: Context?, attrs: AttributeSet?) : SurfaceView(contex
     ): Float {
         // 1. Try reading azahar_input_layout.ini
         // 2. If missing, use resources.getInteger(defaultRes)
+        return resources.getInteger(defaultRes).toFloat()
     }
 
     override fun isInEditMode(): Boolean {
