@@ -308,6 +308,17 @@ void NWM_UDS::HandleEAPoLPacket(const Network::WifiPacket& packet) {
             LOG_ERROR(Service_NWM, "Unknown connection type: 0x{:x}", static_cast<u32>(conn_type));
         }
 
+        // Start keepalive timeout monitoring
+        last_keepalive_timestamp =
+            std::chrono::duration_cast<std::chrono::milliseconds>(
+            std::chrono::steady_clock::now().time_since_epoch())
+            .count();
+
+        system.CoreTiming().ScheduleEvent(
+            msToCycles(1000),
+            keepalive_event,
+            0);
+        
         // We're now connected, signal the application
         connection_status.status_change_reason = NetworkStatusChangeReason::ConnectionEstablished;
         // Some games require ConnectToNetwork to block, for now it doesn't
@@ -992,8 +1003,20 @@ Result NWM_UDS::BeginHostingNetwork(std::span<const u8> network_info_buffer,
     connection_status_event->Signal();
 
     // Start broadcasting the network, send a beacon frame every 102.4ms.
-    system.CoreTiming().ScheduleEvent(msToCycles(DefaultBeaconInterval * MillisecondsPerTU),
-                                      beacon_broadcast_event, 0);
+    system.CoreTiming().ScheduleEvent(
+        msToCycles(DefaultBeaconInterval * MillisecondsPerTU),
+        beacon_broadcast_event,
+        0);
+    
+    last_keepalive_timestamp =
+        std::chrono::duration_cast<std::chrono::milliseconds>(
+            std::chrono::steady_clock::now().time_since_epoch())
+            .count();
+
+    system.CoreTiming().ScheduleEvent(
+        msToCycles(1000),
+        keepalive_event,
+        0);
 
     return ResultSuccess;
 }
@@ -1660,25 +1683,27 @@ void NWM_UDS::BeaconBroadcastCallback(std::uintptr_t user_data, s64 cycles_late)
 }
 
 void NWM_UDS::KeepaliveCallback(std::uintptr_t user_data, s64 cycles_late) {
-    // Only clients need to detect host timeout
-    if (connection_status.status == NetworkStatus::Connected) {
+    if (connection_status.status == NetworkStatus::ConnectedAsClient) {
 
         const auto now =
             std::chrono::duration_cast<std::chrono::milliseconds>(
                 std::chrono::steady_clock::now().time_since_epoch())
                 .count();
 
+        const auto elapsed = now - last_keepalive_timestamp;
+
         if (last_keepalive_timestamp != 0 &&
-            now - last_keepalive_timestamp > KEEPALIVE_TIMEOUT_MS) {
+            elapsed > KEEPALIVE_TIMEOUT_MS) {
 
-            LOG_WARNING(Service_NWM, "Host timed out.");
+            LOG_WARNING(Service_NWM,
+                        "Host timed out after {} ms",
+                        elapsed);
 
-            DisconnectNetwork();
+            DisconnectNetworkHLE();
             return;
         }
     }
 
-    // Run again after 1 second
     system.CoreTiming().ScheduleEvent(
         msToCycles(1000),
         keepalive_event,
