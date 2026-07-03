@@ -36,6 +36,7 @@ import android.widget.EditText
 import android.widget.GridLayout
 import android.widget.ImageView
 import android.widget.PopupMenu
+import android.widget.ScrollView
 import android.widget.TextView
 import android.widget.Toast
 import android.widget.Toast.LENGTH_LONG
@@ -1087,15 +1088,15 @@ class EmulationFragment : Fragment(), SurfaceHolder.Callback, Choreographer.Fram
             setPadding(40, 20, 40, 20)
         }
 
-        val scrollView = ScrollView(requireContext()).apply {
-            addView(
-                grid,
-                ViewGroup.LayoutParams(
-                    ViewGroup.LayoutParams.MATCH_PARENT,
-                    ViewGroup.LayoutParams.WRAP_CONTENT
-                )
+        val scrollView = ScrollView(requireContext())
+
+        scrollView.addView(
+            grid,
+            ViewGroup.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT
             )
-        }
+        )
 
         val checkBoxes = mutableMapOf<String, MaterialCheckBox>()
 
