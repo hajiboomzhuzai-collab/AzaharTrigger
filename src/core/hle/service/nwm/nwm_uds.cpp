@@ -1659,6 +1659,32 @@ void NWM_UDS::BeaconBroadcastCallback(std::uintptr_t user_data, s64 cycles_late)
                                       beacon_broadcast_event, 0);
 }
 
+void NWM_UDS::KeepaliveCallback(std::uintptr_t user_data, s64 cycles_late) {
+    // Only clients need to detect host timeout
+    if (connection_status.status == NetworkStatus::Connected) {
+
+        const auto now =
+            std::chrono::duration_cast<std::chrono::milliseconds>(
+                std::chrono::steady_clock::now().time_since_epoch())
+                .count();
+
+        if (last_keepalive_timestamp != 0 &&
+            now - last_keepalive_timestamp > KEEPALIVE_TIMEOUT_MS) {
+
+            LOG_WARNING(Service_NWM, "Host timed out.");
+
+            DisconnectNetwork();
+            return;
+        }
+    }
+
+    // Run again after 1 second
+    system.CoreTiming().ScheduleEvent(
+        msToCycles(1000),
+        keepalive_event,
+        0);
+}
+
 Network::MacAddress NWM_UDS::GetMacAddress() {
     MacAddress mac;
 
