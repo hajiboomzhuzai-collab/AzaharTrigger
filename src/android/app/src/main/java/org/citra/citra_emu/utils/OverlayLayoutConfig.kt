@@ -8,7 +8,7 @@ import java.util.Properties
 
 object OverlayLayoutConfig {
 
-    private const val FILE_NAME = "Azahar_input_layout.ini"
+    private const val FILE_NAME = "azahar_input_layout.ini"
 
     private lateinit var file: File
     private val properties = Properties()
