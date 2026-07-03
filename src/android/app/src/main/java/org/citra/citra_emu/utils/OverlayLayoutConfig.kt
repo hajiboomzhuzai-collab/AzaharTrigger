@@ -44,7 +44,4 @@ object OverlayLayoutConfig {
         return properties.containsKey(key)
     }
 
-    fun getOrDefault(key: String, default: Float): Float {
-        return properties.getProperty(key)?.toFloatOrNull() ?: default
-    }
 }
