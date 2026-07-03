@@ -1722,6 +1722,12 @@ NWM_UDS::NWM_UDS(Core::System& system) : ServiceFramework("nwm::UDS"), system(sy
             BeaconBroadcastCallback(user_data, cycles_late);
         });
 
+    keepalive_event = system.CoreTiming().RegisterEvent(
+        "UDS::KeepaliveCallback",
+        [this](std::uintptr_t user_data, s64 cycles_late) {
+            KeepaliveCallback(user_data, cycles_late);
+        });
+
     system.Kernel().GetSharedPageHandler().SetMacAddress(GetMacAddress());
 
     if (auto room_member = Network::GetRoomMember().lock()) {
