@@ -79,15 +79,15 @@
     <integer name="N3DS_BUTTON_SWAP_PORTRAIT_Y">675</integer>
     <integer name="N3DS_BUTTON_TURBO_PORTRAIT_X">453</integer>
     <integer name="N3DS_BUTTON_TURBO_PORTRAIT_Y">720</integer>
-    <integer name="N3DS_COMBO_1_PORTRAIT_X">350</integer>
+    <integer name="N3DS_COMBO_1_PORTRAIT_X">340</integer>
     <integer name="N3DS_COMBO_1_PORTRAIT_Y">50</integer>
     <integer name="N3DS_COMBO_2_PORTRAIT_X">450</integer>
     <integer name="N3DS_COMBO_2_PORTRAIT_Y">50</integer>
-    <integer name="N3DS_COMBO_3_PORTRAIT_X">550</integer>
+    <integer name="N3DS_COMBO_3_PORTRAIT_X">560</integer>
     <integer name="N3DS_COMBO_3_PORTRAIT_Y">50</integer>
-    <integer name="N3DS_COMBO_4_PORTRAIT_X">650</integer>
+    <integer name="N3DS_COMBO_4_PORTRAIT_X">670</integer>
     <integer name="N3DS_COMBO_4_PORTRAIT_Y">50</integer>
-    <integer name="N3DS_COMBO_5_PORTRAIT_X">750</integer>
+    <integer name="N3DS_COMBO_5_PORTRAIT_X">780</integer>
     <integer name="N3DS_COMBO_5_PORTRAIT_Y">50</integer>    
 
 </resources>
