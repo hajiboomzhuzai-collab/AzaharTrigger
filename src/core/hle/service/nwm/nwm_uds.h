@@ -516,6 +516,8 @@ private:
 
     void BeaconBroadcastCallback(std::uintptr_t user_data, s64 cycles_late);
 
+    void KeepaliveCallback(std::uintptr_t user_data, s64 cycles_late);
+
     /**
      * Returns a list of received 802.11 beacon frames from the specified sender since the last
      * call.
@@ -626,6 +628,8 @@ private:
 
     // Event that will generate and send the 802.11 beacon frames.
     Core::TimingEventType* beacon_broadcast_event;
+
+    Core::TimingEventType* keepalive_event;
 
     // ================= KEEPALIVE SYSTEM =================
 
