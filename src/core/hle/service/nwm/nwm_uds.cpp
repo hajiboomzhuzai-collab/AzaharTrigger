@@ -1695,15 +1695,23 @@ void NWM_UDS::KeepaliveCallback(std::uintptr_t user_data, s64 cycles_late) {
         if (last_keepalive_timestamp != 0 &&
             elapsed > KEEPALIVE_TIMEOUT_MS) {
 
+            missed_keepalive++;
+
             LOG_WARNING(Service_NWM,
-                        "Host timed out after {} ms",
+                    "Missed keepalive {} ({} ms)",
+                        missed_keepalive,
                         elapsed);
 
-            DisconnectNetworkHLE();
-            return;
+            if (missed_keepalive >= 3) {
+                LOG_ERROR(Service_NWM, "Host timed out. Disconnecting.");
+                DisconnectNetworkHLE();
+                return;
+            }
+        } else {
+            // Connection is healthy again
+            missed_keepalive = 0;
         }
     }
-
     system.CoreTiming().ScheduleEvent(
         msToCycles(1000),
         keepalive_event,
