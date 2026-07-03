@@ -1,4 +1,4 @@
-// Copyright Citra Emulator Project / Azahar Emulator Project
+9// Copyright Citra Emulator Project / Azahar Emulator Project
 // Licensed under GPLv2 or any later version
 // Refer to the license.txt file included.
 
@@ -635,13 +635,13 @@ class InputOverlay(context: Context?, attrs: AttributeSet?) : SurfaceView(contex
         }
 
         // COMBO 5
-        if (preferences.getBoolean("comboToggle4", false)) {
+        if (preferences.getBoolean("comboToggle5", false)) {
             overlayButtons.add(
                 initializeOverlayButton(
                     context,
-                    R.drawable.combo_4,
-                    R.drawable.combo_4_pressed,
-                    NativeLibrary.ButtonType.COMBO_4,
+                    R.drawable.combo_5,
+                    R.drawable.combo_5_pressed,
+                    NativeLibrary.ButtonType.COMBO_5,
                     orientation
                 )
             )
