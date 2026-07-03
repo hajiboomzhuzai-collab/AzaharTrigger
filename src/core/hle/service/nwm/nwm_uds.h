@@ -516,7 +516,9 @@ private:
 
     void BeaconBroadcastCallback(std::uintptr_t user_data, s64 cycles_late);
 
-    void KeepaliveCallback(std::uintptr_t user_data, s64 cycles_late);
+    void StartReconnect();
+
+    void ReconnectCallback(std::uintptr_t user_data, s64 cycles_late);
 
     /**
      * Returns a list of received 802.11 beacon frames from the specified sender since the last
@@ -629,26 +631,14 @@ private:
     // Event that will generate and send the 802.11 beacon frames.
     Core::TimingEventType* beacon_broadcast_event;
 
-    Core::TimingEventType* keepalive_event;
+    // Reconnect timer
+    Core::TimingEventType* reconnect_event = nullptr;
 
-    // ================= KEEPALIVE SYSTEM =================
-
-    // Last time we received ANY valid network beacon/logoff/traffic
-    s64 last_keepalive_timestamp = 0;
-
-    // Host-side heartbeat counter
-    u32 keepalive_tick = 0;
-
+    // Number of consecutive missed packets
     u8 missed_keepalive = 0;
 
-    // Keepalive interval (host sends every ~1s)
-    static constexpr s64 KEEPALIVE_INTERVAL_MS = 1000;
-
-    // Disconnect timeout (client side)
-    static constexpr s64 KEEPALIVE_TIMEOUT_MS = 6000;
-
-    // Enable toggle (safe rollback)
-    bool keepalive_enabled = true;
+    // True while reconnecting
+    bool reconnecting = false;
 
     // Callback identifier for the OnWifiPacketReceived event.
     Network::RoomMember::CallbackHandle<Network::WifiPacket> wifi_packet_received;
