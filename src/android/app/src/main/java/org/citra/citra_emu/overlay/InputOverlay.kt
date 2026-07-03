@@ -692,7 +692,9 @@ class InputOverlay(context: Context?, attrs: AttributeSet?) : SurfaceView(contex
             "L" to NativeLibrary.ButtonType.TRIGGER_L,
             "R" to NativeLibrary.ButtonType.TRIGGER_R,
             "ZL" to NativeLibrary.ButtonType.BUTTON_ZL,
-            "ZR" to NativeLibrary.ButtonType.BUTTON_ZR
+            "ZR" to NativeLibrary.ButtonType.BUTTON_ZR,
+            "START" to NativeLibrary.ButtonType.BUTTON_START,
+            "SELECT" to NativeLibrary.ButtonType.BUTTON_SELECT,
         )
 
         val state = button.status
@@ -706,6 +708,52 @@ class InputOverlay(context: Context?, attrs: AttributeSet?) : SurfaceView(contex
                 state
             )
         }
+
+        val pressed = state == NativeLibrary.ButtonState.PRESSED
+
+        var circleX = 0f
+        var circleY = 0f
+
+        if (prefs.getBoolean("combo_${comboIndex}_◯↑", false))
+            circleY = -1f
+
+        if (prefs.getBoolean("combo_${comboIndex}_◯↓", false))
+            circleY = 1f
+
+        if (prefs.getBoolean("combo_${comboIndex}_◯←", false))
+            circleX = -1f
+
+        if (prefs.getBoolean("combo_${comboIndex}_◯→", false))
+            circleX = 1f
+
+        NativeLibrary.onGamePadMoveEvent(
+            NativeLibrary.TouchScreenDevice,
+            NativeLibrary.ButtonType.STICK_LEFT,
+            if (pressed) circleX else 0f,
+            if (pressed) circleY else 0f
+        )
+
+        var cX = 0f
+        var cY = 0f
+
+        if (prefs.getBoolean("combo_${comboIndex}_◉↑", false))
+            cY = -1f
+
+        if (prefs.getBoolean("combo_${comboIndex}_◉↓", false))
+            cY = 1f
+
+        if (prefs.getBoolean("combo_${comboIndex}_◉←", false))
+            cX = -1f
+
+        if (prefs.getBoolean("combo_${comboIndex}_◉→", false))
+            cX = 1f
+
+        NativeLibrary.onGamePadMoveEvent(
+            NativeLibrary.TouchScreenDevice,
+            NativeLibrary.ButtonType.STICK_C,
+            if (pressed) cX else 0f,
+            if (pressed) cY else 0f
+        )
     }
     
     private fun saveControlPosition(sharedPrefsId: Int, x: Int, y: Int, orientation: String) {
