@@ -934,35 +934,35 @@ class InputOverlay(context: Context?, attrs: AttributeSet?) : SurfaceView(contex
             "BUTTON_TURBO",
             R.integer.N3DS_BUTTON_TURBO_X,
             R.integer.N3DS_BUTTON_TURBO_Y
-        )
+        ),
         
         OverlayControl(
             NativeLibrary.ButtonType.COMBO_1,
             "COMBO_1",
             R.integer.N3DS_COMBO_1_X,
             R.integer.N3DS_COMBO_1_Y
-        )
+        ),
 
         OverlayControl(
             NativeLibrary.ButtonType.COMBO_2,
             "COMBO_2",
             R.integer.N3DS_COMBO_2_X,
             R.integer.N3DS_COMBO_2_Y
-        )
+        ),
 
         OverlayControl(
             NativeLibrary.ButtonType.COMBO_3,
             "COMBO_3",
             R.integer.N3DS_COMBO_3_X,
             R.integer.N3DS_COMBO_3_Y
-        )
+        ),
 
         OverlayControl(
             NativeLibrary.ButtonType.COMBO_4,
             "COMBO_4",
             R.integer.N3DS_COMBO_4_X,
             R.integer.N3DS_COMBO_4_Y
-        )
+        ),
 
         OverlayControl(
             NativeLibrary.ButtonType.COMBO_5,
@@ -1084,28 +1084,28 @@ class InputOverlay(context: Context?, attrs: AttributeSet?) : SurfaceView(contex
             "COMBO_1",
             R.integer.N3DS_COMBO_1_PORTRAIT_X,
             R.integer.N3DS_COMBO_1_PORTRAIT_Y
-        )
+        ),
 
         OverlayControl(
             NativeLibrary.ButtonType.COMBO_2,
             "COMBO_2",
             R.integer.N3DS_COMBO_2_PORTRAIT_X,
             R.integer.N3DS_COMBO_2_PORTRAIT_Y
-        )
+        ),
 
         OverlayControl(
             NativeLibrary.ButtonType.COMBO_3,
             "COMBO_3",
             R.integer.N3DS_COMBO_3_PORTRAIT_X,
             R.integer.N3DS_COMBO_3_PORTRAIT_Y
-        )
+        ),
 
         OverlayControl(
             NativeLibrary.ButtonType.COMBO_4,
             "COMBO_4",
             R.integer.N3DS_COMBO_4_PORTRAIT_X,
             R.integer.N3DS_COMBO_4_PORTRAIT_Y
-        )
+        ),
 
         OverlayControl(
             NativeLibrary.ButtonType.COMBO_5,
