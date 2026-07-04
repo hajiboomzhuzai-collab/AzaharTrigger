@@ -937,6 +937,18 @@ void Java_org_citra_citra_1emu_NativeLibrary_createConfigFile([[maybe_unused]] J
     Config{};
 }
 
+extern "C"
+JNIEXPORT jstring JNICALL
+Java_org_citra_citra_1emu_NativeLibrary_getConfigDirectory(
+    JNIEnv* env,
+    jclass
+) {
+    std::string path =
+        FileUtil::GetUserPath(FileUtil::UserPath::ConfigDir);
+
+    return env->NewStringUTF(path.c_str());
+}
+
 void Java_org_citra_citra_1emu_NativeLibrary_createLogFile([[maybe_unused]] JNIEnv* env,
                                                            [[maybe_unused]] jobject obj) {
     Common::Log::Initialize();
