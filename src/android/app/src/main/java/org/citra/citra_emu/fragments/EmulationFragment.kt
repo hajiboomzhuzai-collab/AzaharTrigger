@@ -241,29 +241,13 @@ class EmulationFragment : Fragment(), SurfaceHolder.Callback, Choreographer.Fram
 
         makeChatButtonDraggable(binding.chatButton)
 
-        binding.chatButton.visibility =
-            if (NetPlayManager.netPlayIsJoined()) View.VISIBLE
-            else View.GONE
+        setupNetplayOverlay()
         
         // Show/hide the "Stats" overlay
         updateShowPerformanceOverlay()
 
         val position = IntSetting.PERFORMANCE_OVERLAY_POSITION.int
         updateStatsPosition(position)
-
-        NetPlayManager.setOverlayListener { type, message ->
-            requireActivity().runOnUiThread {
-
-                if (!NetPlayManager.netPlayIsJoined()) {
-                    clearChatOverlay()
-                    updateChatButtonVisibility()
-                    return@runOnUiThread
-                }
-
-                addChatOverlayMessage(type, message)
-                updateChatButtonVisibility()
-            }
-        }
 
         binding.drawerLayout.setDrawerLockMode(DrawerLayout.LOCK_MODE_LOCKED_CLOSED)
         binding.drawerLayout.addDrawerListener(object : DrawerListener {
@@ -576,6 +560,27 @@ class EmulationFragment : Fragment(), SurfaceHolder.Callback, Choreographer.Fram
         }
     }
 
+    private fun setupNetplayOverlay() {
+
+        // 1. initial visibility state
+        binding.chatButton.visibility =
+            if (NetPlayManager.netPlayIsJoined()) View.VISIBLE else View.GONE
+
+        // 2. listener
+        NetPlayManager.setOverlayListener { type, message ->
+            requireActivity().runOnUiThread {
+
+                if (!NetPlayManager.netPlayIsJoined()) {
+                    clearChatOverlay()
+                    binding.chatButton.visibility = View.GONE
+                    return@runOnUiThread
+                }
+
+                addChatOverlayMessage(type, message)
+            }
+        }
+    }
+    
     private fun addChatOverlayMessage(type: Int, msg: String) {
         val text = when (type) {
             NetPlayManager.NetPlayStatus.CHAT_MESSAGE -> msg
