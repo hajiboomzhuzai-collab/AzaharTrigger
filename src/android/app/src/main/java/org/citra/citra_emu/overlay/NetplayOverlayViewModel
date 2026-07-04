@@ -1,0 +1,28 @@
+package org.citra.citra_emu.overlay
+
+import androidx.lifecycle.ViewModel
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+
+class NetplayOverlayViewModel : ViewModel() {
+
+    private val _messages = MutableStateFlow<List<Pair<Int, String>>>(emptyList())
+    val messages: StateFlow<List<Pair<Int, String>>> = _messages
+
+    private val _connected = MutableStateFlow(false)
+    val connected: StateFlow<Boolean> = _connected
+
+    fun onMessage(type: Int, message: String) {
+        val updated = _messages.value.toMutableList()
+        updated.add(type to message)
+        _messages.value = updated
+    }
+
+    fun setConnected(state: Boolean) {
+        _connected.value = state
+    }
+
+    fun clearMessages() {
+        _messages.value = emptyList()
+    }
+}
