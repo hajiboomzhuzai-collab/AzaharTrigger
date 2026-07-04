@@ -1,4 +1,4 @@
-name: citra-builds
+name: citra-build
 
 on:
   push:
