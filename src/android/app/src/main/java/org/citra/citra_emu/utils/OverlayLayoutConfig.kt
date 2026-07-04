@@ -1,11 +1,3 @@
-package org.citra.citra_emu.utils
-
-import org.citra.citra_emu.NativeLibrary
-import java.io.File
-import java.io.FileInputStream
-import java.io.FileOutputStream
-import java.util.Properties
-
 object OverlayLayoutConfig {
 
     private const val FILE_NAME = "azahar_input_layout.ini"
@@ -15,23 +7,25 @@ object OverlayLayoutConfig {
 
     fun initialize() {
 
-        // STEP 1: get SAME directory used by config.ini
-        val baseDir = NativeLibrary.getUserDirectory()
+        // SAME EXACT DIRECTORY as config.ini
+        val baseDir = NativeLibrary.getConfigDirectory()
 
-        // STEP 2: build path next to config.ini
+        // build file path
         file = File(baseDir, FILE_NAME)
 
-        // STEP 3: ensure folder exists
+        // ensure folder exists (IMPORTANT)
         file.parentFile?.mkdirs()
 
-        // STEP 4: create file if missing (same pattern as C++)
+        // create file if missing
         if (!file.exists()) {
             file.createNewFile()
         }
 
-        // STEP 5: load existing values if any
-        FileInputStream(file).use { stream ->
-            properties.load(stream)
+        // load existing values
+        if (file.length() > 0) {
+            FileInputStream(file).use {
+                properties.load(it)
+            }
         }
     }
 
