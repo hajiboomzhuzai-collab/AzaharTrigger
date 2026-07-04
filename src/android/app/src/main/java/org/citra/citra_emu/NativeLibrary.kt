@@ -164,7 +164,9 @@ object NativeLibrary {
     external fun createConfigFile()
     external fun createLogFile()
     external fun logUserDirectory(directory: String)
-
+    // Read config directory.
+    external fun getConfigDirectory(): String
+    
     /**
      * Set the inserted cartridge that will appear
      * in the home menu. Empty string to clear.
@@ -224,7 +226,7 @@ object NativeLibrary {
      * Swaps the top and bottom screens.
      */
     external fun swapScreens(swapScreens: Boolean, rotation: Int)
-
+    
     external fun initializeGpuDriver(
         hookLibDir: String?,
         customDriverDir: String?,
