@@ -113,9 +113,6 @@ class EmulationFragment : Fragment(), SurfaceHolder.Callback, Choreographer.Fram
     private val chatMessages = ArrayDeque<String>()
     private val chatHandler = Handler(Looper.getMainLooper())
 
-    // Prevent multiple listener registrations (VERY IMPORTANT)
-    private var netplayListenerInstalled = false
-
     private val args by navArgs<EmulationFragmentArgs>()
 
     private lateinit var game: Game
@@ -131,6 +128,9 @@ class EmulationFragment : Fragment(), SurfaceHolder.Callback, Choreographer.Fram
     // Only used if a game is passed through intent on google play variant
     private var gameFd: Int? = null
 
+    // Prevent multiple listener registrations (VERY IMPORTANT)
+    private var netplayListenerInstalled = false
+
     /**
      * Registers NetPlay overlay listener only once.
      * Prevents duplicate callbacks and lag.
@@ -140,19 +140,15 @@ class EmulationFragment : Fragment(), SurfaceHolder.Callback, Choreographer.Fram
         if (netplayListenerInstalled) return
 
         NetPlayManager.setOverlayListener { type, message ->
-            requireActivity().runOnUiThread {
+            activity?.runOnUiThread {
 
-                // If disconnected → cleanup UI
                 if (!NetPlayManager.netPlayIsJoined()) {
                     clearChatOverlay()
                     refreshNetplayUI()
                     return@runOnUiThread
                 }
 
-                // Add message normally
                 addChatOverlayMessage(type, message)
-
-                // Ensure UI stays correct
                 refreshNetplayUI()
             }
         }
@@ -171,6 +167,13 @@ class EmulationFragment : Fragment(), SurfaceHolder.Callback, Choreographer.Fram
         }
     }
 
+    override fun onStart() {
+        super.onStart()
+
+        setupNetplayOverlayListener()
+        refreshNetplayUI()
+    }
+    
     override fun onAttach(context: Context) {
         super.onAttach(context)
         if (context is EmulationActivity) {
@@ -278,17 +281,7 @@ class EmulationFragment : Fragment(), SurfaceHolder.Callback, Choreographer.Fram
             binding.surfaceInputOverlay.setIsInEditMode(false)
         }
 
-        binding.chatButton.setOnClickListener {
-            ChatDialog(requireContext()).show()
-        }
-
         makeChatButtonDraggable(binding.chatButton)
-
-        // 1. setup listener once
-        setupNetplayOverlayListener()
-
-        // 2. update UI state
-        refreshNetplayUI()
         
         // Show/hide the "Stats" overlay
         updateShowPerformanceOverlay()
