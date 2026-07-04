@@ -1,3 +1,11 @@
+package org.citra.citra_emu.utils
+
+import org.citra.citra_emu.NativeLibrary
+import java.io.File
+import java.io.FileInputStream
+import java.io.FileOutputStream
+import java.util.Properties
+
 object OverlayLayoutConfig {
 
     private const val FILE_NAME = "azahar_input_layout.ini"
