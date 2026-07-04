@@ -137,8 +137,6 @@ class EmulationFragment : Fragment(), SurfaceHolder.Callback, Choreographer.Fram
      * Registers NetPlay overlay listener only once.
      * Prevents duplicate callbacks and lag.
      */
-    private var netplayListenerInstalled = false
-
     private fun setupNetplayListener() {
 
         if (netplayListenerInstalled) return
