@@ -48,6 +48,305 @@ class InputOverlay(context: Context?, attrs: AttributeSet?) : SurfaceView(contex
     private var joystickBeingConfigured: InputOverlayDrawableJoystick? = null
     private val settingsViewModel = NativeLibrary.sEmulationActivity.get()!!.settingsViewModel
 
+    private data class OverlayControl(
+        val buttonId: Int,
+        val iniKey: String,
+        val xRes: Int,
+        val yRes: Int
+    )
+
+    private val landscapeControls = listOf(
+
+        OverlayControl(
+            NativeLibrary.ButtonType.BUTTON_A,
+            "BUTTON_A",
+            R.integer.N3DS_BUTTON_A_X,
+            R.integer.N3DS_BUTTON_A_Y
+        ),
+
+        OverlayControl(
+            NativeLibrary.ButtonType.BUTTON_B,
+            "BUTTON_B",
+            R.integer.N3DS_BUTTON_B_X,
+            R.integer.N3DS_BUTTON_B_Y
+        ),
+
+        OverlayControl(
+            NativeLibrary.ButtonType.BUTTON_X,
+            "BUTTON_X",
+            R.integer.N3DS_BUTTON_X_X,
+            R.integer.N3DS_BUTTON_X_Y
+        ),
+
+        OverlayControl(
+            NativeLibrary.ButtonType.BUTTON_Y,
+            "BUTTON_Y",
+            R.integer.N3DS_BUTTON_Y_X,
+            R.integer.N3DS_BUTTON_Y_Y
+        ),
+
+        OverlayControl(
+            NativeLibrary.ButtonType.BUTTON_ZL,
+            "BUTTON_ZL",
+            R.integer.N3DS_BUTTON_ZL_X,
+            R.integer.N3DS_BUTTON_ZL_Y
+        ),
+
+        OverlayControl(
+            NativeLibrary.ButtonType.BUTTON_ZR,
+            "BUTTON_ZR",
+            R.integer.N3DS_BUTTON_ZR_X,
+            R.integer.N3DS_BUTTON_ZR_Y
+        ),
+
+        OverlayControl(
+            NativeLibrary.ButtonType.DPAD_UP,
+            "DPAD",
+            R.integer.N3DS_BUTTON_UP_X,
+            R.integer.N3DS_BUTTON_UP_Y
+        ),
+
+        OverlayControl(
+            NativeLibrary.ButtonType.TRIGGER_L,
+            "TRIGGER_L",
+            R.integer.N3DS_TRIGGER_L_X,
+            R.integer.N3DS_TRIGGER_L_Y
+        ),
+
+        OverlayControl(
+            NativeLibrary.ButtonType.TRIGGER_R,
+            "TRIGGER_R",
+            R.integer.N3DS_TRIGGER_R_X,
+            R.integer.N3DS_TRIGGER_R_Y
+        ),
+
+        OverlayControl(
+            NativeLibrary.ButtonType.BUTTON_START,
+            "BUTTON_START",
+            R.integer.N3DS_BUTTON_START_X,
+            R.integer.N3DS_BUTTON_START_Y
+        ),
+
+        OverlayControl(
+            NativeLibrary.ButtonType.BUTTON_SELECT,
+            "BUTTON_SELECT",
+            R.integer.N3DS_BUTTON_SELECT_X,
+            R.integer.N3DS_BUTTON_SELECT_Y
+        ),
+
+        OverlayControl(
+            NativeLibrary.ButtonType.BUTTON_HOME,
+            "BUTTON_HOME",
+            R.integer.N3DS_BUTTON_HOME_X,
+            R.integer.N3DS_BUTTON_HOME_Y
+        ),
+
+        OverlayControl(
+            NativeLibrary.ButtonType.STICK_C,
+            "STICK_C",
+            R.integer.N3DS_STICK_C_X,
+            R.integer.N3DS_STICK_C_Y
+        ),
+
+        OverlayControl(
+            NativeLibrary.ButtonType.STICK_LEFT,
+            "STICK_LEFT",
+            R.integer.N3DS_STICK_MAIN_X,
+            R.integer.N3DS_STICK_MAIN_Y
+        ),
+
+        OverlayControl(
+            NativeLibrary.ButtonType.BUTTON_SWAP,
+            "BUTTON_SWAP",
+            R.integer.N3DS_BUTTON_SWAP_X,
+            R.integer.N3DS_BUTTON_SWAP_Y
+        ),
+
+        OverlayControl(
+            NativeLibrary.ButtonType.BUTTON_TURBO,
+            "BUTTON_TURBO",
+            R.integer.N3DS_BUTTON_TURBO_X,
+            R.integer.N3DS_BUTTON_TURBO_Y
+        ),
+        
+        OverlayControl(
+            NativeLibrary.ButtonType.COMBO_1,
+            "COMBO_1",
+            R.integer.N3DS_COMBO_1_X,
+            R.integer.N3DS_COMBO_1_Y
+        ),
+
+        OverlayControl(
+            NativeLibrary.ButtonType.COMBO_2,
+            "COMBO_2",
+            R.integer.N3DS_COMBO_2_X,
+            R.integer.N3DS_COMBO_2_Y
+        ),
+
+        OverlayControl(
+            NativeLibrary.ButtonType.COMBO_3,
+            "COMBO_3",
+            R.integer.N3DS_COMBO_3_X,
+            R.integer.N3DS_COMBO_3_Y
+        ),
+
+        OverlayControl(
+            NativeLibrary.ButtonType.COMBO_4,
+            "COMBO_4",
+            R.integer.N3DS_COMBO_4_X,
+            R.integer.N3DS_COMBO_4_Y
+        ),
+
+        OverlayControl(
+            NativeLibrary.ButtonType.COMBO_5,
+            "COMBO_5",
+            R.integer.N3DS_COMBO_5_X,
+            R.integer.N3DS_COMBO_5_Y
+        )
+    )
+
+    private val portraitControls = listOf(
+
+        OverlayControl(
+            NativeLibrary.ButtonType.BUTTON_A,
+            "BUTTON_A",
+            R.integer.N3DS_BUTTON_A_PORTRAIT_X,
+            R.integer.N3DS_BUTTON_A_PORTRAIT_Y
+        ),
+
+        OverlayControl(
+            NativeLibrary.ButtonType.BUTTON_B,
+            "BUTTON_B",
+            R.integer.N3DS_BUTTON_B_PORTRAIT_X,
+            R.integer.N3DS_BUTTON_B_PORTRAIT_Y
+        ),
+
+        OverlayControl(
+            NativeLibrary.ButtonType.BUTTON_X,
+            "BUTTON_X",
+            R.integer.N3DS_BUTTON_X_PORTRAIT_X,
+            R.integer.N3DS_BUTTON_X_PORTRAIT_Y
+        ),
+
+        OverlayControl(
+            NativeLibrary.ButtonType.BUTTON_Y,
+            "BUTTON_Y",
+            R.integer.N3DS_BUTTON_Y_PORTRAIT_X,
+            R.integer.N3DS_BUTTON_Y_PORTRAIT_Y
+        ),
+
+        OverlayControl(
+            NativeLibrary.ButtonType.BUTTON_ZL,
+            "BUTTON_ZL",
+            R.integer.N3DS_BUTTON_ZL_PORTRAIT_X,
+            R.integer.N3DS_BUTTON_ZL_PORTRAIT_Y
+        ),
+
+        OverlayControl(
+            NativeLibrary.ButtonType.BUTTON_ZR,
+            "BUTTON_ZR",
+            R.integer.N3DS_BUTTON_ZR_PORTRAIT_X,
+            R.integer.N3DS_BUTTON_ZR_PORTRAIT_Y
+        ),
+
+        OverlayControl(
+            NativeLibrary.ButtonType.DPAD_UP,
+            "DPAD",
+            R.integer.N3DS_BUTTON_UP_PORTRAIT_X,
+            R.integer.N3DS_BUTTON_UP_PORTRAIT_Y
+        ),
+
+        OverlayControl(
+            NativeLibrary.ButtonType.TRIGGER_L,
+            "TRIGGER_L",
+            R.integer.N3DS_TRIGGER_L_PORTRAIT_X,
+            R.integer.N3DS_TRIGGER_L_PORTRAIT_Y
+        ),
+
+        OverlayControl(
+            NativeLibrary.ButtonType.TRIGGER_R,
+            "TRIGGER_R",
+            R.integer.N3DS_TRIGGER_R_PORTRAIT_X,
+            R.integer.N3DS_TRIGGER_R_PORTRAIT_Y
+        ),
+
+        OverlayControl(
+            NativeLibrary.ButtonType.BUTTON_START,
+            "BUTTON_START",
+            R.integer.N3DS_BUTTON_START_PORTRAIT_X,
+            R.integer.N3DS_BUTTON_START_PORTRAIT_Y
+        ),
+
+        OverlayControl(
+            NativeLibrary.ButtonType.BUTTON_SELECT,
+            "BUTTON_SELECT",
+            R.integer.N3DS_BUTTON_SELECT_PORTRAIT_X,
+            R.integer.N3DS_BUTTON_SELECT_PORTRAIT_Y
+        ),
+
+        OverlayControl(
+            NativeLibrary.ButtonType.BUTTON_HOME,
+            "BUTTON_HOME",
+            R.integer.N3DS_BUTTON_HOME_PORTRAIT_X,
+            R.integer.N3DS_BUTTON_HOME_PORTRAIT_Y
+        ),
+
+        OverlayControl(
+            NativeLibrary.ButtonType.STICK_C,
+            "STICK_C",
+            R.integer.N3DS_STICK_C_PORTRAIT_X,
+            R.integer.N3DS_STICK_C_PORTRAIT_Y
+        ),
+
+        OverlayControl(
+            NativeLibrary.ButtonType.STICK_LEFT,
+            "STICK_LEFT",
+            R.integer.N3DS_STICK_MAIN_PORTRAIT_X,
+            R.integer.N3DS_STICK_MAIN_PORTRAIT_Y
+        ),
+
+        OverlayControl(
+            NativeLibrary.ButtonType.BUTTON_SWAP,
+            "BUTTON_SWAP",
+            R.integer.N3DS_BUTTON_SWAP_PORTRAIT_X,
+            R.integer.N3DS_BUTTON_SWAP_PORTRAIT_Y
+        ),
+
+        OverlayControl(
+            NativeLibrary.ButtonType.COMBO_1,
+            "COMBO_1",
+            R.integer.N3DS_COMBO_1_PORTRAIT_X,
+            R.integer.N3DS_COMBO_1_PORTRAIT_Y
+        ),
+
+        OverlayControl(
+            NativeLibrary.ButtonType.COMBO_2,
+            "COMBO_2",
+            R.integer.N3DS_COMBO_2_PORTRAIT_X,
+            R.integer.N3DS_COMBO_2_PORTRAIT_Y
+        ),
+
+        OverlayControl(
+            NativeLibrary.ButtonType.COMBO_3,
+            "COMBO_3",
+            R.integer.N3DS_COMBO_3_PORTRAIT_X,
+            R.integer.N3DS_COMBO_3_PORTRAIT_Y
+        ),
+
+        OverlayControl(
+            NativeLibrary.ButtonType.COMBO_4,
+            "COMBO_4",
+            R.integer.N3DS_COMBO_4_PORTRAIT_X,
+            R.integer.N3DS_COMBO_4_PORTRAIT_Y
+        ),
+
+        OverlayControl(
+            NativeLibrary.ButtonType.COMBO_5,
+            "COMBO_5",
+            R.integer.N3DS_COMBO_5_PORTRAIT_X,
+            R.integer.N3DS_COMBO_5_PORTRAIT_Y
+        )
+    )
     // Stores the ID of the pointer that interacted with the 3DS touchscreen.
     private var touchscreenPointerId = -1
 
@@ -814,306 +1113,6 @@ class InputOverlay(context: Context?, attrs: AttributeSet?) : SurfaceView(contex
         }
         refreshControls()
     }
-
-    private data class OverlayControl(
-        val buttonId: Int,
-        val iniKey: String,
-        val xRes: Int,
-        val yRes: Int
-    )
-
-    private val landscapeControls = listOf(
-
-        OverlayControl(
-            NativeLibrary.ButtonType.BUTTON_A,
-            "BUTTON_A",
-            R.integer.N3DS_BUTTON_A_X,
-            R.integer.N3DS_BUTTON_A_Y
-        ),
-
-        OverlayControl(
-            NativeLibrary.ButtonType.BUTTON_B,
-            "BUTTON_B",
-            R.integer.N3DS_BUTTON_B_X,
-            R.integer.N3DS_BUTTON_B_Y
-        ),
-
-        OverlayControl(
-            NativeLibrary.ButtonType.BUTTON_X,
-            "BUTTON_X",
-            R.integer.N3DS_BUTTON_X_X,
-            R.integer.N3DS_BUTTON_X_Y
-        ),
-
-        OverlayControl(
-            NativeLibrary.ButtonType.BUTTON_Y,
-            "BUTTON_Y",
-            R.integer.N3DS_BUTTON_Y_X,
-            R.integer.N3DS_BUTTON_Y_Y
-        ),
-
-        OverlayControl(
-            NativeLibrary.ButtonType.BUTTON_ZL,
-            "BUTTON_ZL",
-            R.integer.N3DS_BUTTON_ZL_X,
-            R.integer.N3DS_BUTTON_ZL_Y
-        ),
-
-        OverlayControl(
-            NativeLibrary.ButtonType.BUTTON_ZR,
-            "BUTTON_ZR",
-            R.integer.N3DS_BUTTON_ZR_X,
-            R.integer.N3DS_BUTTON_ZR_Y
-        ),
-
-        OverlayControl(
-            NativeLibrary.ButtonType.DPAD_UP,
-            "DPAD",
-            R.integer.N3DS_BUTTON_UP_X,
-            R.integer.N3DS_BUTTON_UP_Y
-        ),
-
-        OverlayControl(
-            NativeLibrary.ButtonType.TRIGGER_L,
-            "TRIGGER_L",
-            R.integer.N3DS_TRIGGER_L_X,
-            R.integer.N3DS_TRIGGER_L_Y
-        ),
-
-        OverlayControl(
-            NativeLibrary.ButtonType.TRIGGER_R,
-            "TRIGGER_R",
-            R.integer.N3DS_TRIGGER_R_X,
-            R.integer.N3DS_TRIGGER_R_Y
-        ),
-
-        OverlayControl(
-            NativeLibrary.ButtonType.BUTTON_START,
-            "BUTTON_START",
-            R.integer.N3DS_BUTTON_START_X,
-            R.integer.N3DS_BUTTON_START_Y
-        ),
-
-        OverlayControl(
-            NativeLibrary.ButtonType.BUTTON_SELECT,
-            "BUTTON_SELECT",
-            R.integer.N3DS_BUTTON_SELECT_X,
-            R.integer.N3DS_BUTTON_SELECT_Y
-        ),
-
-        OverlayControl(
-            NativeLibrary.ButtonType.BUTTON_HOME,
-            "BUTTON_HOME",
-            R.integer.N3DS_BUTTON_HOME_X,
-            R.integer.N3DS_BUTTON_HOME_Y
-        ),
-
-        OverlayControl(
-            NativeLibrary.ButtonType.STICK_C,
-            "STICK_C",
-            R.integer.N3DS_STICK_C_X,
-            R.integer.N3DS_STICK_C_Y
-        ),
-
-        OverlayControl(
-            NativeLibrary.ButtonType.STICK_LEFT,
-            "STICK_LEFT",
-            R.integer.N3DS_STICK_MAIN_X,
-            R.integer.N3DS_STICK_MAIN_Y
-        ),
-
-        OverlayControl(
-            NativeLibrary.ButtonType.BUTTON_SWAP,
-            "BUTTON_SWAP",
-            R.integer.N3DS_BUTTON_SWAP_X,
-            R.integer.N3DS_BUTTON_SWAP_Y
-        ),
-
-        OverlayControl(
-            NativeLibrary.ButtonType.BUTTON_TURBO,
-            "BUTTON_TURBO",
-            R.integer.N3DS_BUTTON_TURBO_X,
-            R.integer.N3DS_BUTTON_TURBO_Y
-        ),
-        
-        OverlayControl(
-            NativeLibrary.ButtonType.COMBO_1,
-            "COMBO_1",
-            R.integer.N3DS_COMBO_1_X,
-            R.integer.N3DS_COMBO_1_Y
-        ),
-
-        OverlayControl(
-            NativeLibrary.ButtonType.COMBO_2,
-            "COMBO_2",
-            R.integer.N3DS_COMBO_2_X,
-            R.integer.N3DS_COMBO_2_Y
-        ),
-
-        OverlayControl(
-            NativeLibrary.ButtonType.COMBO_3,
-            "COMBO_3",
-            R.integer.N3DS_COMBO_3_X,
-            R.integer.N3DS_COMBO_3_Y
-        ),
-
-        OverlayControl(
-            NativeLibrary.ButtonType.COMBO_4,
-            "COMBO_4",
-            R.integer.N3DS_COMBO_4_X,
-            R.integer.N3DS_COMBO_4_Y
-        ),
-
-        OverlayControl(
-            NativeLibrary.ButtonType.COMBO_5,
-            "COMBO_5",
-            R.integer.N3DS_COMBO_5_X,
-            R.integer.N3DS_COMBO_5_Y
-        )
-    )
-
-    private val portraitControls = listOf(
-
-        OverlayControl(
-            NativeLibrary.ButtonType.BUTTON_A,
-            "BUTTON_A",
-            R.integer.N3DS_BUTTON_A_PORTRAIT_X,
-            R.integer.N3DS_BUTTON_A_PORTRAIT_Y
-        ),
-
-        OverlayControl(
-            NativeLibrary.ButtonType.BUTTON_B,
-            "BUTTON_B",
-            R.integer.N3DS_BUTTON_B_PORTRAIT_X,
-            R.integer.N3DS_BUTTON_B_PORTRAIT_Y
-        ),
-
-        OverlayControl(
-            NativeLibrary.ButtonType.BUTTON_X,
-            "BUTTON_X",
-            R.integer.N3DS_BUTTON_X_PORTRAIT_X,
-            R.integer.N3DS_BUTTON_X_PORTRAIT_Y
-        ),
-
-        OverlayControl(
-            NativeLibrary.ButtonType.BUTTON_Y,
-            "BUTTON_Y",
-            R.integer.N3DS_BUTTON_Y_PORTRAIT_X,
-            R.integer.N3DS_BUTTON_Y_PORTRAIT_Y
-        ),
-
-        OverlayControl(
-            NativeLibrary.ButtonType.BUTTON_ZL,
-            "BUTTON_ZL",
-            R.integer.N3DS_BUTTON_ZL_PORTRAIT_X,
-            R.integer.N3DS_BUTTON_ZL_PORTRAIT_Y
-        ),
-
-        OverlayControl(
-            NativeLibrary.ButtonType.BUTTON_ZR,
-            "BUTTON_ZR",
-            R.integer.N3DS_BUTTON_ZR_PORTRAIT_X,
-            R.integer.N3DS_BUTTON_ZR_PORTRAIT_Y
-        ),
-
-        OverlayControl(
-            NativeLibrary.ButtonType.DPAD_UP,
-            "DPAD",
-            R.integer.N3DS_BUTTON_UP_PORTRAIT_X,
-            R.integer.N3DS_BUTTON_UP_PORTRAIT_Y
-        ),
-
-        OverlayControl(
-            NativeLibrary.ButtonType.TRIGGER_L,
-            "TRIGGER_L",
-            R.integer.N3DS_TRIGGER_L_PORTRAIT_X,
-            R.integer.N3DS_TRIGGER_L_PORTRAIT_Y
-        ),
-
-        OverlayControl(
-            NativeLibrary.ButtonType.TRIGGER_R,
-            "TRIGGER_R",
-            R.integer.N3DS_TRIGGER_R_PORTRAIT_X,
-            R.integer.N3DS_TRIGGER_R_PORTRAIT_Y
-        ),
-
-        OverlayControl(
-            NativeLibrary.ButtonType.BUTTON_START,
-            "BUTTON_START",
-            R.integer.N3DS_BUTTON_START_PORTRAIT_X,
-            R.integer.N3DS_BUTTON_START_PORTRAIT_Y
-        ),
-
-        OverlayControl(
-            NativeLibrary.ButtonType.BUTTON_SELECT,
-            "BUTTON_SELECT",
-            R.integer.N3DS_BUTTON_SELECT_PORTRAIT_X,
-            R.integer.N3DS_BUTTON_SELECT_PORTRAIT_Y
-        ),
-
-        OverlayControl(
-            NativeLibrary.ButtonType.BUTTON_HOME,
-            "BUTTON_HOME",
-            R.integer.N3DS_BUTTON_HOME_PORTRAIT_X,
-            R.integer.N3DS_BUTTON_HOME_PORTRAIT_Y
-        ),
-
-        OverlayControl(
-            NativeLibrary.ButtonType.STICK_C,
-            "STICK_C",
-            R.integer.N3DS_STICK_C_PORTRAIT_X,
-            R.integer.N3DS_STICK_C_PORTRAIT_Y
-        ),
-
-        OverlayControl(
-            NativeLibrary.ButtonType.STICK_LEFT,
-            "STICK_LEFT",
-            R.integer.N3DS_STICK_MAIN_PORTRAIT_X,
-            R.integer.N3DS_STICK_MAIN_PORTRAIT_Y
-        ),
-
-        OverlayControl(
-            NativeLibrary.ButtonType.BUTTON_SWAP,
-            "BUTTON_SWAP",
-            R.integer.N3DS_BUTTON_SWAP_PORTRAIT_X,
-            R.integer.N3DS_BUTTON_SWAP_PORTRAIT_Y
-        ),
-
-        OverlayControl(
-            NativeLibrary.ButtonType.COMBO_1,
-            "COMBO_1",
-            R.integer.N3DS_COMBO_1_PORTRAIT_X,
-            R.integer.N3DS_COMBO_1_PORTRAIT_Y
-        ),
-
-        OverlayControl(
-            NativeLibrary.ButtonType.COMBO_2,
-            "COMBO_2",
-            R.integer.N3DS_COMBO_2_PORTRAIT_X,
-            R.integer.N3DS_COMBO_2_PORTRAIT_Y
-        ),
-
-        OverlayControl(
-            NativeLibrary.ButtonType.COMBO_3,
-            "COMBO_3",
-            R.integer.N3DS_COMBO_3_PORTRAIT_X,
-            R.integer.N3DS_COMBO_3_PORTRAIT_Y
-        ),
-
-        OverlayControl(
-            NativeLibrary.ButtonType.COMBO_4,
-            "COMBO_4",
-            R.integer.N3DS_COMBO_4_PORTRAIT_X,
-            R.integer.N3DS_COMBO_4_PORTRAIT_Y
-        ),
-
-        OverlayControl(
-            NativeLibrary.ButtonType.COMBO_5,
-            "COMBO_5",
-            R.integer.N3DS_COMBO_5_PORTRAIT_X,
-            R.integer.N3DS_COMBO_5_PORTRAIT_Y
-        )
-    )
 
     private fun defaultOverlayLandscape() {
 
