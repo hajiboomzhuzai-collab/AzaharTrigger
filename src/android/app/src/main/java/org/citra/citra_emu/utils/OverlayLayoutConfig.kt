@@ -1,6 +1,6 @@
 package org.citra.citra_emu.utils
 
-import android.content.Context
+import org.citra.citra_emu.NativeLibrary
 import java.io.File
 import java.io.FileInputStream
 import java.io.FileOutputStream
