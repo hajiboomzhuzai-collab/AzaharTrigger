@@ -1175,8 +1175,8 @@ class InputOverlay(context: Context?, attrs: AttributeSet?) : SurfaceView(contex
 
             editor.putFloat("${control.buttonId}$portrait-X", x)
             editor.putFloat("${control.buttonId}$portrait-Y", y)
-            OverlayLayoutConfig.putFloat("${control.iniKey}$portrait_X", x)
-            OverlayLayoutConfig.putFloat("${control.iniKey}$portrait_Y", y)        
+            OverlayLayoutConfig.putFloat("${control.iniKey}_PORTRAIT_X", x)
+            OverlayLayoutConfig.putFloat("${control.iniKey}_PORTRAIT_Y", y)            
         }
 
         editor.apply()
