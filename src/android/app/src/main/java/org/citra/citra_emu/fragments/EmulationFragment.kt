@@ -128,6 +128,8 @@ class EmulationFragment : Fragment(), SurfaceHolder.Callback, Choreographer.Fram
     // Only used if a game is passed through intent on google play variant
     private var gameFd: Int? = null
 
+    private val displayedMessages = mutableListOf<Pair<Int, String>>()
+    
     private val netplayOverlayViewModel: NetplayOverlayViewModel by viewModels()
     
     // Prevent multiple listener registrations (VERY IMPORTANT)
@@ -143,20 +145,8 @@ class EmulationFragment : Fragment(), SurfaceHolder.Callback, Choreographer.Fram
 
         NetPlayManager.setOverlayListener { type, message ->
 
-            requireActivity().runOnUiThread {
-
-                val connected = NetPlayManager.netPlayIsJoined()
-
-                netplayOverlayViewModel.setConnected(connected)
-
-                if (!connected) {
-                    netplayOverlayViewModel.clear()
-                    clearChatOverlay()
-                    return@runOnUiThread
-                }
-
-                netplayOverlayViewModel.addMessage(type, message)
-            }
+            // ONLY forward data to ViewModel (NO UI WORK HERE)
+            netplayOverlayViewModel.addMessage(type, message)
         }
 
         netplayListenerInstalled = true
@@ -168,19 +158,49 @@ class EmulationFragment : Fragment(), SurfaceHolder.Callback, Choreographer.Fram
             viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
 
                 netplayOverlayViewModel.messages.collect { list ->
-                    clearChatOverlay()
 
-                    list.forEach { (type, msg) ->
-                        addChatOverlayMessage(type, msg)
+                    if (displayedMessages.isEmpty()) {
+                        // FIRST TIME LOAD
+                        renderFullChat(list)
+                    } else {
+                        // ONLY NEW MESSAGES
+                        appendNewMessages(list)
                     }
                 }
 
                 netplayOverlayViewModel.connected.collect { connected ->
+
                     binding.chatButton.visibility =
                         if (connected) View.VISIBLE else View.GONE
+
+                    if (!connected) {
+                        clearChatOverlay()
+                        displayedMessages.clear()
+                    }
                 }
             }
         }
+    }
+
+    private fun appendNewMessages(messages: List<Pair<Int, String>>) {
+
+        val newMessages = messages.drop(displayedMessages.size)
+
+        newMessages.forEach { (type, msg) ->
+            addChatOverlayMessage(type, msg)
+            displayedMessages.add(type to msg)
+        }
+    }
+
+    private fun renderFullChat(messages: List<Pair<Int, String>>) {
+        clearChatOverlay()
+
+        messages.forEach { (type, msg) ->
+            addChatOverlayMessage(type, msg)
+        }
+
+        displayedMessages.clear()
+        displayedMessages.addAll(messages)
     }
     
     override fun onAttach(context: Context) {
