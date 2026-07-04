@@ -352,7 +352,7 @@ class InputOverlay(context: Context?, attrs: AttributeSet?) : SurfaceView(contex
 
     init {
 
-        OverlayLayoutConfig.initialize(context!!)
+        OverlayLayoutConfig.initialize()
 
         if (!preferences.getBoolean("OverlayInit", false)) {
             defaultOverlay()
