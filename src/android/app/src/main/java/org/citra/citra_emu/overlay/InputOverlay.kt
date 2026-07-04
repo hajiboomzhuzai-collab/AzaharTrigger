@@ -25,7 +25,6 @@ import org.citra.citra_emu.CitraApplication
 import org.citra.citra_emu.NativeLibrary
 import org.citra.citra_emu.R
 import org.citra.citra_emu.utils.EmulationMenuSettings
-import org.citra.citra_emu.utils.OverlayLayoutConfig
 import org.citra.citra_emu.utils.TurboHelper
 import java.lang.NullPointerException
 import kotlin.math.min
@@ -52,9 +51,6 @@ class InputOverlay(context: Context?, attrs: AttributeSet?) : SurfaceView(contex
     private var touchscreenPointerId = -1
 
     init {
-
-        OverlayLayoutConfig.initialize(context!!)
-
         if (!preferences.getBoolean("OverlayInit", false)) {
             defaultOverlay()
         }
@@ -807,386 +803,383 @@ class InputOverlay(context: Context?, attrs: AttributeSet?) : SurfaceView(contex
         refreshControls()
     }
 
-    private data class OverlayControl(
-        val buttonId: Int,
-        val key: String,
-        val xRes: Int,
-        val yRes: Int
-    )
-
-    private val landscapeControls = listOf(
-
-        OverlayControl(
-            NativeLibrary.ButtonType.BUTTON_A,
-            "BUTTON_A",
-            R.integer.N3DS_BUTTON_A_X,
-            R.integer.N3DS_BUTTON_A_Y
-        ),
-
-        OverlayControl(
-            NativeLibrary.ButtonType.BUTTON_B,
-            "BUTTON_B",
-            R.integer.N3DS_BUTTON_B_X,
-            R.integer.N3DS_BUTTON_B_Y
-        ),
-
-        OverlayControl(
-            NativeLibrary.ButtonType.BUTTON_X,
-            "BUTTON_X",
-            R.integer.N3DS_BUTTON_X_X,
-            R.integer.N3DS_BUTTON_X_Y
-        ),
-
-        OverlayControl(
-            NativeLibrary.ButtonType.BUTTON_Y,
-            "BUTTON_Y",
-            R.integer.N3DS_BUTTON_Y_X,
-            R.integer.N3DS_BUTTON_Y_Y
-        ),
-
-        OverlayControl(
-            NativeLibrary.ButtonType.BUTTON_ZL,
-            "BUTTON_ZL",
-            R.integer.N3DS_BUTTON_ZL_X,
-            R.integer.N3DS_BUTTON_ZL_Y
-        ),
-
-        OverlayControl(
-            NativeLibrary.ButtonType.BUTTON_ZR,
-            "BUTTON_ZR",
-            R.integer.N3DS_BUTTON_ZR_X,
-            R.integer.N3DS_BUTTON_ZR_Y
-        ),
-
-        OverlayControl(
-            NativeLibrary.ButtonType.DPAD_UP,
-            "DPAD",
-            R.integer.N3DS_BUTTON_UP_X,
-            R.integer.N3DS_BUTTON_UP_Y
-        ),
-
-        OverlayControl(
-            NativeLibrary.ButtonType.TRIGGER_L,
-            "TRIGGER_L",
-            R.integer.N3DS_TRIGGER_L_X,
-            R.integer.N3DS_TRIGGER_L_Y
-        ),
-
-        OverlayControl(
-            NativeLibrary.ButtonType.TRIGGER_R,
-            "TRIGGER_R",
-            R.integer.N3DS_TRIGGER_R_X,
-            R.integer.N3DS_TRIGGER_R_Y
-        ),
-
-        OverlayControl(
-            NativeLibrary.ButtonType.BUTTON_START,
-            "BUTTON_START",
-            R.integer.N3DS_BUTTON_START_X,
-            R.integer.N3DS_BUTTON_START_Y
-        ),
-
-        OverlayControl(
-            NativeLibrary.ButtonType.BUTTON_SELECT,
-            "BUTTON_SELECT",
-            R.integer.N3DS_BUTTON_SELECT_X,
-            R.integer.N3DS_BUTTON_SELECT_Y
-        ),
-
-        OverlayControl(
-            NativeLibrary.ButtonType.BUTTON_HOME,
-            "BUTTON_HOME",
-            R.integer.N3DS_BUTTON_HOME_X,
-            R.integer.N3DS_BUTTON_HOME_Y
-        ),
-
-        OverlayControl(
-            NativeLibrary.ButtonType.STICK_C,
-            "STICK_C",
-            R.integer.N3DS_STICK_C_X,
-            R.integer.N3DS_STICK_C_Y
-        ),
-
-        OverlayControl(
-            NativeLibrary.ButtonType.STICK_LEFT,
-            "STICK_LEFT",
-            R.integer.N3DS_STICK_MAIN_X,
-            R.integer.N3DS_STICK_MAIN_Y
-        ),
-
-        OverlayControl(
-            NativeLibrary.ButtonType.BUTTON_SWAP,
-            "BUTTON_SWAP",
-            R.integer.N3DS_BUTTON_SWAP_X,
-            R.integer.N3DS_BUTTON_SWAP_Y
-        ),
-
-        OverlayControl(
-            NativeLibrary.ButtonType.BUTTON_TURBO,
-            "BUTTON_TURBO",
-            R.integer.N3DS_BUTTON_TURBO_X,
-            R.integer.N3DS_BUTTON_TURBO_Y
-        )
-        
-        OverlayControl(
-            NativeLibrary.ButtonType.COMBO_1,
-            "COMBO_1",
-            R.integer.N3DS_COMBO_1_X,
-            R.integer.N3DS_COMBO_1_Y
-        )
-
-        OverlayControl(
-            NativeLibrary.ButtonType.COMBO_2,
-            "COMBO_2",
-            R.integer.N3DS_COMBO_2_X,
-            R.integer.N3DS_COMBO_2_Y
-        )
-
-        OverlayControl(
-            NativeLibrary.ButtonType.COMBO_3,
-            "COMBO_3",
-            R.integer.N3DS_COMBO_3_X,
-            R.integer.N3DS_COMBO_3_Y
-        )
-
-        OverlayControl(
-            NativeLibrary.ButtonType.COMBO_4,
-            "COMBO_4",
-            R.integer.N3DS_COMBO_4_X,
-            R.integer.N3DS_COMBO_4_Y
-        )
-
-        OverlayControl(
-            NativeLibrary.ButtonType.COMBO_5,
-            "COMBO_5",
-            R.integer.N3DS_COMBO_5_X,
-            R.integer.N3DS_COMBO_5_Y
-        )
-    )
-
-    private val portraitControls = listOf(
-
-        OverlayControl(
-            NativeLibrary.ButtonType.BUTTON_A,
-            "BUTTON_A",
-            R.integer.N3DS_BUTTON_A_PORTRAIT_X,
-            R.integer.N3DS_BUTTON_A_PORTRAIT_Y
-        ),
-
-        OverlayControl(
-            NativeLibrary.ButtonType.BUTTON_B,
-            "BUTTON_B",
-            R.integer.N3DS_BUTTON_B_PORTRAIT_X,
-            R.integer.N3DS_BUTTON_B_PORTRAIT_Y
-        ),
-
-        OverlayControl(
-            NativeLibrary.ButtonType.BUTTON_X,
-            "BUTTON_X",
-            R.integer.N3DS_BUTTON_X_PORTRAIT_X,
-            R.integer.N3DS_BUTTON_X_PORTRAIT_Y
-        ),
-
-        OverlayControl(
-            NativeLibrary.ButtonType.BUTTON_Y,
-            "BUTTON_Y",
-            R.integer.N3DS_BUTTON_Y_PORTRAIT_X,
-            R.integer.N3DS_BUTTON_Y_PORTRAIT_Y
-        ),
-
-        OverlayControl(
-            NativeLibrary.ButtonType.BUTTON_ZL,
-            "BUTTON_ZL",
-            R.integer.N3DS_BUTTON_ZL_PORTRAIT_X,
-            R.integer.N3DS_BUTTON_ZL_PORTRAIT_Y
-        ),
-
-        OverlayControl(
-            NativeLibrary.ButtonType.BUTTON_ZR,
-            "BUTTON_ZR",
-            R.integer.N3DS_BUTTON_ZR_PORTRAIT_X,
-            R.integer.N3DS_BUTTON_ZR_PORTRAIT_Y
-        ),
-
-        OverlayControl(
-            NativeLibrary.ButtonType.DPAD_UP,
-            "DPAD",
-            R.integer.N3DS_BUTTON_UP_PORTRAIT_X,
-            R.integer.N3DS_BUTTON_UP_PORTRAIT_Y
-        ),
-
-        OverlayControl(
-            NativeLibrary.ButtonType.TRIGGER_L,
-            "TRIGGER_L",
-            R.integer.N3DS_TRIGGER_L_PORTRAIT_X,
-            R.integer.N3DS_TRIGGER_L_PORTRAIT_Y
-        ),
-
-        OverlayControl(
-            NativeLibrary.ButtonType.TRIGGER_R,
-            "TRIGGER_R",
-            R.integer.N3DS_TRIGGER_R_PORTRAIT_X,
-            R.integer.N3DS_TRIGGER_R_PORTRAIT_Y
-        ),
-
-        OverlayControl(
-            NativeLibrary.ButtonType.BUTTON_START,
-            "BUTTON_START",
-            R.integer.N3DS_BUTTON_START_PORTRAIT_X,
-            R.integer.N3DS_BUTTON_START_PORTRAIT_Y
-        ),
-
-        OverlayControl(
-            NativeLibrary.ButtonType.BUTTON_SELECT,
-            "BUTTON_SELECT",
-            R.integer.N3DS_BUTTON_SELECT_PORTRAIT_X,
-            R.integer.N3DS_BUTTON_SELECT_PORTRAIT_Y
-        ),
-
-        OverlayControl(
-            NativeLibrary.ButtonType.BUTTON_HOME,
-            "BUTTON_HOME",
-            R.integer.N3DS_BUTTON_HOME_PORTRAIT_X,
-            R.integer.N3DS_BUTTON_HOME_PORTRAIT_Y
-        ),
-
-        OverlayControl(
-            NativeLibrary.ButtonType.STICK_C,
-            "STICK_C",
-            R.integer.N3DS_STICK_C_PORTRAIT_X,
-            R.integer.N3DS_STICK_C_PORTRAIT_Y
-        ),
-
-        OverlayControl(
-            NativeLibrary.ButtonType.STICK_LEFT,
-            "STICK_LEFT",
-            R.integer.N3DS_STICK_MAIN_PORTRAIT_X,
-            R.integer.N3DS_STICK_MAIN_PORTRAIT_Y
-        ),
-
-        OverlayControl(
-            NativeLibrary.ButtonType.BUTTON_SWAP,
-            "BUTTON_SWAP",
-            R.integer.N3DS_BUTTON_SWAP_PORTRAIT_X,
-            R.integer.N3DS_BUTTON_SWAP_PORTRAIT_Y
-        ),
-
-        OverlayControl(
-            NativeLibrary.ButtonType.COMBO_1,
-            "COMBO_1",
-            R.integer.N3DS_COMBO_1_PORTRAIT_X,
-            R.integer.N3DS_COMBO_1_PORTRAIT_Y
-        )
-
-        OverlayControl(
-            NativeLibrary.ButtonType.COMBO_2,
-            "COMBO_2",
-            R.integer.N3DS_COMBO_2_PORTRAIT_X,
-            R.integer.N3DS_COMBO_2_PORTRAIT_Y
-        )
-
-        OverlayControl(
-            NativeLibrary.ButtonType.COMBO_3,
-            "COMBO_3",
-            R.integer.N3DS_COMBO_3_PORTRAIT_X,
-            R.integer.N3DS_COMBO_3_PORTRAIT_Y
-        )
-
-        OverlayControl(
-            NativeLibrary.ButtonType.COMBO_4,
-            "COMBO_4",
-            R.integer.N3DS_COMBO_4_PORTRAIT_X,
-            R.integer.N3DS_COMBO_4_PORTRAIT_Y
-        )
-
-        OverlayControl(
-            NativeLibrary.ButtonType.COMBO_5,
-            "COMBO_5",
-            R.integer.N3DS_COMBO_5_PORTRAIT_X,
-            R.integer.N3DS_COMBO_5_PORTRAIT_Y
-        )
-    )
-
     private fun defaultOverlayLandscape() {
-
+        // Get screen size
         val display = (context as Activity).windowManager.defaultDisplay
         val outMetrics = DisplayMetrics()
         display.getMetrics(outMetrics)
-
         var maxX = outMetrics.heightPixels.toFloat()
         var maxY = outMetrics.widthPixels.toFloat()
-
+        // Height and width changes depending on orientation. Use the larger value for height.
         if (maxY > maxX) {
             val tmp = maxX
             maxX = maxY
             maxY = tmp
         }
 
-        val editor = preferences.edit()
-
-        landscapeControls.forEach { control ->
-
-            val x = resources.getInteger(control.xRes).toFloat() / 1000f * maxX
-            val y = resources.getInteger(control.yRes).toFloat() / 1000f * maxY
-
-            editor.putFloat(
-                "${control.buttonId}-X",
-                x
+        // Each value is a percent from max X/Y stored as an int. Have to bring that value down
+        // to a decimal before multiplying by MAX X/Y.
+        preferences.edit()
+            .putFloat(
+                NativeLibrary.ButtonType.BUTTON_A.toString() + "-X",
+                resources.getInteger(R.integer.N3DS_BUTTON_A_X).toFloat() / 1000 * maxX
             )
-
-            editor.putFloat(
-                "${control.buttonId}-Y",
-                y
+            .putFloat(
+                NativeLibrary.ButtonType.BUTTON_A.toString() + "-Y",
+                resources.getInteger(R.integer.N3DS_BUTTON_A_Y).toFloat() / 1000 * maxY
             )
-        }
-
-        editor.apply()
+            .putFloat(
+                NativeLibrary.ButtonType.BUTTON_B.toString() + "-X",
+                resources.getInteger(R.integer.N3DS_BUTTON_B_X).toFloat() / 1000 * maxX
+            )
+            .putFloat(
+                NativeLibrary.ButtonType.BUTTON_B.toString() + "-Y",
+                resources.getInteger(R.integer.N3DS_BUTTON_B_Y).toFloat() / 1000 * maxY
+            )
+            .putFloat(
+                NativeLibrary.ButtonType.BUTTON_X.toString() + "-X",
+                resources.getInteger(R.integer.N3DS_BUTTON_X_X).toFloat() / 1000 * maxX
+            )
+            .putFloat(
+                NativeLibrary.ButtonType.BUTTON_X.toString() + "-Y",
+                resources.getInteger(R.integer.N3DS_BUTTON_X_Y).toFloat() / 1000 * maxY
+            )
+            .putFloat(
+                NativeLibrary.ButtonType.BUTTON_Y.toString() + "-X",
+                resources.getInteger(R.integer.N3DS_BUTTON_Y_X).toFloat() / 1000 * maxX
+            )
+            .putFloat(
+                NativeLibrary.ButtonType.BUTTON_Y.toString() + "-Y",
+                resources.getInteger(R.integer.N3DS_BUTTON_Y_Y).toFloat() / 1000 * maxY
+            )
+            .putFloat(
+                NativeLibrary.ButtonType.BUTTON_ZL.toString() + "-X",
+                resources.getInteger(R.integer.N3DS_BUTTON_ZL_X).toFloat() / 1000 * maxX
+            )
+            .putFloat(
+                NativeLibrary.ButtonType.BUTTON_ZL.toString() + "-Y",
+                resources.getInteger(R.integer.N3DS_BUTTON_ZL_Y).toFloat() / 1000 * maxY
+            )
+            .putFloat(
+                NativeLibrary.ButtonType.BUTTON_ZR.toString() + "-X",
+                resources.getInteger(R.integer.N3DS_BUTTON_ZR_X).toFloat() / 1000 * maxX
+            )
+            .putFloat(
+                NativeLibrary.ButtonType.BUTTON_ZR.toString() + "-Y",
+                resources.getInteger(R.integer.N3DS_BUTTON_ZR_Y).toFloat() / 1000 * maxY
+            )
+            .putFloat(
+                NativeLibrary.ButtonType.DPAD_UP.toString() + "-X",
+                resources.getInteger(R.integer.N3DS_BUTTON_UP_X).toFloat() / 1000 * maxX
+            )
+            .putFloat(
+                NativeLibrary.ButtonType.DPAD_UP.toString() + "-Y",
+                resources.getInteger(R.integer.N3DS_BUTTON_UP_Y).toFloat() / 1000 * maxY
+            )
+            .putFloat(
+                NativeLibrary.ButtonType.TRIGGER_L.toString() + "-X",
+                resources.getInteger(R.integer.N3DS_TRIGGER_L_X).toFloat() / 1000 * maxX
+            )
+            .putFloat(
+                NativeLibrary.ButtonType.TRIGGER_L.toString() + "-Y",
+                resources.getInteger(R.integer.N3DS_TRIGGER_L_Y).toFloat() / 1000 * maxY
+            )
+            .putFloat(
+                NativeLibrary.ButtonType.TRIGGER_R.toString() + "-X",
+                resources.getInteger(R.integer.N3DS_TRIGGER_R_X).toFloat() / 1000 * maxX
+            )
+            .putFloat(
+                NativeLibrary.ButtonType.TRIGGER_R.toString() + "-Y",
+                resources.getInteger(R.integer.N3DS_TRIGGER_R_Y).toFloat() / 1000 * maxY
+            )
+            .putFloat(
+                NativeLibrary.ButtonType.BUTTON_START.toString() + "-X",
+                resources.getInteger(R.integer.N3DS_BUTTON_START_X).toFloat() / 1000 * maxX
+            )
+            .putFloat(
+                NativeLibrary.ButtonType.BUTTON_START.toString() + "-Y",
+                resources.getInteger(R.integer.N3DS_BUTTON_START_Y).toFloat() / 1000 * maxY
+            )
+            .putFloat(
+                NativeLibrary.ButtonType.BUTTON_SELECT.toString() + "-X",
+                resources.getInteger(R.integer.N3DS_BUTTON_SELECT_X).toFloat() / 1000 * maxX
+            )
+            .putFloat(
+                NativeLibrary.ButtonType.BUTTON_SELECT.toString() + "-Y",
+                resources.getInteger(R.integer.N3DS_BUTTON_SELECT_Y).toFloat() / 1000 * maxY
+            )
+            .putFloat(
+                NativeLibrary.ButtonType.BUTTON_HOME.toString() + "-X",
+                resources.getInteger(R.integer.N3DS_BUTTON_HOME_X).toFloat() / 1000 * maxX
+            )
+            .putFloat(
+                NativeLibrary.ButtonType.BUTTON_HOME.toString() + "-Y",
+                resources.getInteger(R.integer.N3DS_BUTTON_HOME_Y).toFloat() / 1000 * maxY
+            )
+            .putFloat(
+                NativeLibrary.ButtonType.STICK_C.toString() + "-X",
+                resources.getInteger(R.integer.N3DS_STICK_C_X).toFloat() / 1000 * maxX
+            )
+            .putFloat(
+                NativeLibrary.ButtonType.STICK_C.toString() + "-Y",
+                resources.getInteger(R.integer.N3DS_STICK_C_Y).toFloat() / 1000 * maxY
+            )
+            .putFloat(
+                NativeLibrary.ButtonType.STICK_LEFT.toString() + "-X",
+                resources.getInteger(R.integer.N3DS_STICK_MAIN_X).toFloat() / 1000 * maxX
+            )
+            .putFloat(
+                NativeLibrary.ButtonType.STICK_LEFT.toString() + "-Y",
+                resources.getInteger(R.integer.N3DS_STICK_MAIN_Y).toFloat() / 1000 * maxY
+            )
+            .putFloat(
+                NativeLibrary.ButtonType.BUTTON_SWAP.toString() + "-X",
+                resources.getInteger(R.integer.N3DS_BUTTON_SWAP_X).toFloat() / 1000 * maxX
+            )
+            .putFloat(
+                NativeLibrary.ButtonType.BUTTON_SWAP.toString() + "-Y",
+                resources.getInteger(R.integer.N3DS_BUTTON_SWAP_Y).toFloat() / 1000 * maxY
+            )
+            .putFloat(
+                NativeLibrary.ButtonType.BUTTON_TURBO.toString() + "-X",
+                resources.getInteger(R.integer.N3DS_BUTTON_TURBO_X).toFloat() / 1000 * maxX
+            )
+            .putFloat(
+                NativeLibrary.ButtonType.BUTTON_TURBO.toString() + "-Y",
+                resources.getInteger(R.integer.N3DS_BUTTON_TURBO_Y).toFloat() / 1000 * maxY
+            )
+            .putFloat(
+                NativeLibrary.ButtonType.COMBO_1.toString() + "-X",
+                resources.getInteger(R.integer.N3DS_COMBO_1_X).toFloat() / 1000 * maxX
+            )
+            .putFloat(
+                NativeLibrary.ButtonType.COMBO_1.toString() + "-Y",
+                resources.getInteger(R.integer.N3DS_COMBO_1_Y).toFloat() / 1000 * maxY
+            )
+            .putFloat(
+                NativeLibrary.ButtonType.COMBO_2.toString() + "-X",
+                resources.getInteger(R.integer.N3DS_COMBO_2_X).toFloat() / 1000 * maxX
+            )
+            .putFloat(
+                NativeLibrary.ButtonType.COMBO_2.toString() + "-Y",
+                resources.getInteger(R.integer.N3DS_COMBO_2_Y).toFloat() / 1000 * maxY
+            )
+            .putFloat(
+                NativeLibrary.ButtonType.COMBO_3.toString() + "-X",
+                resources.getInteger(R.integer.N3DS_COMBO_3_X).toFloat() / 1000 * maxX
+            )
+            .putFloat(
+                NativeLibrary.ButtonType.COMBO_3.toString() + "-Y",
+                resources.getInteger(R.integer.N3DS_COMBO_3_Y).toFloat() / 1000 * maxY
+            )
+            .putFloat(
+                NativeLibrary.ButtonType.COMBO_4.toString() + "-X",
+                resources.getInteger(R.integer.N3DS_COMBO_4_X).toFloat() / 1000 * maxX
+            )
+            .putFloat(
+                NativeLibrary.ButtonType.COMBO_4.toString() + "-Y",
+                resources.getInteger(R.integer.N3DS_COMBO_4_Y).toFloat() / 1000 * maxY
+            )
+            .putFloat(
+                NativeLibrary.ButtonType.COMBO_5.toString() + "-X",
+                resources.getInteger(R.integer.N3DS_COMBO_5_X).toFloat() / 1000 * maxX
+            )
+            .putFloat(
+                NativeLibrary.ButtonType.COMBO_5.toString() + "-Y",
+                resources.getInteger(R.integer.N3DS_COMBO_5_Y).toFloat() / 1000 * maxY
+            )
+            .apply()
     }
 
     private fun defaultOverlayPortrait() {
-
+        // Get screen size
         val display = (context as Activity).windowManager.defaultDisplay
         val outMetrics = DisplayMetrics()
         display.getMetrics(outMetrics)
-
         var maxX = outMetrics.heightPixels.toFloat()
         var maxY = outMetrics.widthPixels.toFloat()
-
+        // Height and width changes depending on orientation. Use the larger value for height.
         if (maxY < maxX) {
             val tmp = maxX
             maxX = maxY
             maxY = tmp
         }
-
         val portrait = "-Portrait"
 
-        val editor = preferences.edit()
-
-        portraitControls.forEach { control ->
-
-            val x = resources.getInteger(control.xRes).toFloat() / 1000f * maxX
-          ccval y = resources.getInteger(control.yRes).toFloat() / 1000f * maxY
-
-            editor.putFloat(
-                "${control.buttonId}$portrait-X",
-                x
+        // Each value is a percent from max X/Y stored as an int. Have to bring that value down
+        // to a decimal before multiplying by MAX X/Y.
+        preferences.edit()
+            .putFloat(
+                NativeLibrary.ButtonType.BUTTON_A.toString() + portrait + "-X",
+                resources.getInteger(R.integer.N3DS_BUTTON_A_PORTRAIT_X).toFloat() / 1000 * maxX
             )
-
-            editor.putFloat(
-                "${control.buttonId}$portrait-Y",
-                y
+            .putFloat(
+                NativeLibrary.ButtonType.BUTTON_A.toString() + portrait + "-Y",
+                resources.getInteger(R.integer.N3DS_BUTTON_A_PORTRAIT_Y).toFloat() / 1000 * maxY
             )
-        }
-
-        editor.apply()
-    }    
-
-    private fun getOverlayValue(
-        key: String,
-        defaultRes: Int
-    ): Float {
-        // 1. Try reading azahar_input_layout.ini
-        // 2. If missing, use resources.getInteger(defaultRes)
+            .putFloat(
+                NativeLibrary.ButtonType.BUTTON_B.toString() + portrait + "-X",
+                resources.getInteger(R.integer.N3DS_BUTTON_B_PORTRAIT_X).toFloat() / 1000 * maxX
+            )
+            .putFloat(
+                NativeLibrary.ButtonType.BUTTON_B.toString() + portrait + "-Y",
+                resources.getInteger(R.integer.N3DS_BUTTON_B_PORTRAIT_Y).toFloat() / 1000 * maxY
+            )
+            .putFloat(
+                NativeLibrary.ButtonType.BUTTON_X.toString() + portrait + "-X",
+                resources.getInteger(R.integer.N3DS_BUTTON_X_PORTRAIT_X).toFloat() / 1000 * maxX
+            )
+            .putFloat(
+                NativeLibrary.ButtonType.BUTTON_X.toString() + portrait + "-Y",
+                resources.getInteger(R.integer.N3DS_BUTTON_X_PORTRAIT_Y).toFloat() / 1000 * maxY
+            )
+            .putFloat(
+                NativeLibrary.ButtonType.BUTTON_Y.toString() + portrait + "-X",
+                resources.getInteger(R.integer.N3DS_BUTTON_Y_PORTRAIT_X).toFloat() / 1000 * maxX
+            )
+            .putFloat(
+                NativeLibrary.ButtonType.BUTTON_Y.toString() + portrait + "-Y",
+                resources.getInteger(R.integer.N3DS_BUTTON_Y_PORTRAIT_Y).toFloat() / 1000 * maxY
+            )
+            .putFloat(
+                NativeLibrary.ButtonType.BUTTON_ZL.toString() + portrait + "-X",
+                resources.getInteger(R.integer.N3DS_BUTTON_ZL_PORTRAIT_X).toFloat() / 1000 * maxX
+            )
+            .putFloat(
+                NativeLibrary.ButtonType.BUTTON_ZL.toString() + portrait + "-Y",
+                resources.getInteger(R.integer.N3DS_BUTTON_ZL_PORTRAIT_Y).toFloat() / 1000 * maxY
+            )
+            .putFloat(
+                NativeLibrary.ButtonType.BUTTON_ZR.toString() + portrait + "-X",
+                resources.getInteger(R.integer.N3DS_BUTTON_ZR_PORTRAIT_X).toFloat() / 1000 * maxX
+            )
+            .putFloat(
+                NativeLibrary.ButtonType.BUTTON_ZR.toString() + portrait + "-Y",
+                resources.getInteger(R.integer.N3DS_BUTTON_ZR_PORTRAIT_Y).toFloat() / 1000 * maxY
+            )
+            .putFloat(
+                NativeLibrary.ButtonType.DPAD_UP.toString() + portrait + "-X",
+                resources.getInteger(R.integer.N3DS_BUTTON_UP_PORTRAIT_X).toFloat() / 1000 * maxX
+            )
+            .putFloat(
+                NativeLibrary.ButtonType.DPAD_UP.toString() + portrait + "-Y",
+                resources.getInteger(R.integer.N3DS_BUTTON_UP_PORTRAIT_Y).toFloat() / 1000 * maxY
+            )
+            .putFloat(
+                NativeLibrary.ButtonType.TRIGGER_L.toString() + portrait + "-X",
+                resources.getInteger(R.integer.N3DS_TRIGGER_L_PORTRAIT_X).toFloat() / 1000 * maxX
+            )
+            .putFloat(
+                NativeLibrary.ButtonType.TRIGGER_L.toString() + portrait + "-Y",
+                resources.getInteger(R.integer.N3DS_TRIGGER_L_PORTRAIT_Y).toFloat() / 1000 * maxY
+            )
+            .putFloat(
+                NativeLibrary.ButtonType.TRIGGER_R.toString() + portrait + "-X",
+                resources.getInteger(R.integer.N3DS_TRIGGER_R_PORTRAIT_X).toFloat() / 1000 * maxX
+            )
+            .putFloat(
+                NativeLibrary.ButtonType.TRIGGER_R.toString() + portrait + "-Y",
+                resources.getInteger(R.integer.N3DS_TRIGGER_R_PORTRAIT_Y).toFloat() / 1000 * maxY
+            )
+            .putFloat(
+                NativeLibrary.ButtonType.BUTTON_START.toString() + portrait + "-X",
+                resources.getInteger(R.integer.N3DS_BUTTON_START_PORTRAIT_X).toFloat() / 1000 * maxX
+            )
+            .putFloat(
+                NativeLibrary.ButtonType.BUTTON_START.toString() + portrait + "-Y",
+                resources.getInteger(R.integer.N3DS_BUTTON_START_PORTRAIT_Y).toFloat() / 1000 * maxY
+            )
+            .putFloat(
+                NativeLibrary.ButtonType.BUTTON_SELECT.toString() + portrait + "-X",
+                resources.getInteger(R.integer.N3DS_BUTTON_SELECT_PORTRAIT_X)
+                    .toFloat() / 1000 * maxX
+            )
+            .putFloat(
+                NativeLibrary.ButtonType.BUTTON_SELECT.toString() + portrait + "-Y",
+                resources.getInteger(R.integer.N3DS_BUTTON_SELECT_PORTRAIT_Y)
+                    .toFloat() / 1000 * maxY
+            )
+            .putFloat(
+                NativeLibrary.ButtonType.BUTTON_HOME.toString() + portrait + "-X",
+                resources.getInteger(R.integer.N3DS_BUTTON_HOME_PORTRAIT_X).toFloat() / 1000 * maxX
+            )
+            .putFloat(
+                NativeLibrary.ButtonType.BUTTON_HOME.toString() + portrait + "-Y",
+                resources.getInteger(R.integer.N3DS_BUTTON_HOME_PORTRAIT_Y).toFloat() / 1000 * maxY
+            )
+            .putFloat(
+                NativeLibrary.ButtonType.STICK_C.toString() + portrait + "-X",
+                resources.getInteger(R.integer.N3DS_STICK_C_PORTRAIT_X).toFloat() / 1000 * maxX
+            )
+            .putFloat(
+                NativeLibrary.ButtonType.STICK_C.toString() + portrait + "-Y",
+                resources.getInteger(R.integer.N3DS_STICK_C_PORTRAIT_Y).toFloat() / 1000 * maxY
+            )
+            .putFloat(
+                NativeLibrary.ButtonType.STICK_LEFT.toString() + portrait + "-X",
+                resources.getInteger(R.integer.N3DS_STICK_MAIN_PORTRAIT_X).toFloat() / 1000 * maxX
+            )
+            .putFloat(
+                NativeLibrary.ButtonType.STICK_LEFT.toString() + portrait + "-Y",
+                resources.getInteger(R.integer.N3DS_STICK_MAIN_PORTRAIT_Y).toFloat() / 1000 * maxY
+            )
+            .putFloat(
+                NativeLibrary.ButtonType.BUTTON_SWAP.toString() + portrait + "-X",
+                resources.getInteger(R.integer.N3DS_BUTTON_SWAP_PORTRAIT_X).toFloat() / 1000 * maxX
+            )
+            .putFloat(
+                NativeLibrary.ButtonType.BUTTON_SWAP.toString() + portrait + "-Y",
+                resources.getInteger(R.integer.N3DS_BUTTON_SWAP_PORTRAIT_Y).toFloat() / 1000 * maxY
+            )
+            .putFloat(
+                NativeLibrary.ButtonType.BUTTON_TURBO.toString() + portrait + "-X",
+                resources.getInteger(R.integer.N3DS_BUTTON_TURBO_PORTRAIT_X).toFloat() / 1000 * maxX
+            )
+            .putFloat(
+                NativeLibrary.ButtonType.BUTTON_TURBO.toString() + portrait + "-Y",
+                resources.getInteger(R.integer.N3DS_BUTTON_TURBO_PORTRAIT_Y).toFloat() / 1000 * maxY
+            )
+            .putFloat(
+                NativeLibrary.ButtonType.COMBO_1.toString() + portrait + "-X",
+                resources.getInteger(R.integer.N3DS_COMBO_1_PORTRAIT_X).toFloat() / 1000 * maxX
+            )
+            .putFloat(
+                NativeLibrary.ButtonType.COMBO_1.toString() + portrait + "-Y",
+                resources.getInteger(R.integer.N3DS_COMBO_1_PORTRAIT_Y).toFloat() / 1000 * maxY
+            )
+            .putFloat(
+                NativeLibrary.ButtonType.COMBO_2.toString() + portrait + "-X",
+                resources.getInteger(R.integer.N3DS_COMBO_2_PORTRAIT_X).toFloat() / 1000 * maxX
+            )
+            .putFloat(
+                NativeLibrary.ButtonType.COMBO_2.toString() + portrait + "-Y",
+                resources.getInteger(R.integer.N3DS_COMBO_2_PORTRAIT_Y).toFloat() / 1000 * maxY
+            )
+            .putFloat(
+                NativeLibrary.ButtonType.COMBO_3.toString() + portrait + "-X",
+                resources.getInteger(R.integer.N3DS_COMBO_3_PORTRAIT_X).toFloat() / 1000 * maxX
+            )
+            .putFloat(
+                NativeLibrary.ButtonType.COMBO_3.toString() + portrait + "-Y",
+                resources.getInteger(R.integer.N3DS_COMBO_3_PORTRAIT_Y).toFloat() / 1000 * maxY
+            )
+            .putFloat(
+                NativeLibrary.ButtonType.COMBO_4.toString() + portrait + "-X",
+                resources.getInteger(R.integer.N3DS_COMBO_4_PORTRAIT_X).toFloat() / 1000 * maxX
+            )
+            .putFloat(
+                NativeLibrary.ButtonType.COMBO_4.toString() + portrait + "-Y",
+                resources.getInteger(R.integer.N3DS_COMBO_4_PORTRAIT_Y).toFloat() / 1000 * maxY
+            )
+            .putFloat(
+                NativeLibrary.ButtonType.COMBO_5.toString() + portrait + "-X",
+                resources.getInteger(R.integer.N3DS_COMBO_5_PORTRAIT_X).toFloat() / 1000 * maxX
+            )
+            .putFloat(
+                NativeLibrary.ButtonType.COMBO_5.toString() + portrait + "-Y",
+                resources.getInteger(R.integer.N3DS_COMBO_5_PORTRAIT_Y).toFloat() / 1000 * maxY
+            )
+            .apply()
     }
 
     override fun isInEditMode(): Boolean {
