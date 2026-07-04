@@ -13,16 +13,25 @@ object OverlayLayoutConfig {
     private lateinit var file: File
     private val properties = Properties()
 
-    fun initialize(context: Context) {
+    fun initialize() {
 
-        file = File(context.filesDir, FILE_NAME)
+        // STEP 1: get SAME directory used by config.ini
+        val baseDir = NativeLibrary.getUserDirectory()
 
+        // STEP 2: build path next to config.ini
+        file = File(baseDir, FILE_NAME)
+
+        // STEP 3: ensure folder exists
+        file.parentFile?.mkdirs()
+
+        // STEP 4: create file if missing (same pattern as C++)
         if (!file.exists()) {
             file.createNewFile()
         }
 
-        FileInputStream(file).use {
-            properties.load(it)
+        // STEP 5: load existing values if any
+        FileInputStream(file).use { stream ->
+            properties.load(stream)
         }
     }
 
@@ -39,9 +48,8 @@ object OverlayLayoutConfig {
             properties.store(it, "Azahar Overlay Layout")
         }
     }
-    
+
     fun has(key: String): Boolean {
         return properties.containsKey(key)
     }
-
 }
