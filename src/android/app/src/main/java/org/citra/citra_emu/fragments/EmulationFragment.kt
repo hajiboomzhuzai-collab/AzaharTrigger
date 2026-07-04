@@ -128,6 +128,8 @@ class EmulationFragment : Fragment(), SurfaceHolder.Callback, Choreographer.Fram
     // Only used if a game is passed through intent on google play variant
     private var gameFd: Int? = null
 
+    private val netplayOverlayViewModel: NetplayOverlayViewModel by viewModels()
+    
     // Prevent multiple listener registrations (VERY IMPORTANT)
     private var netplayListenerInstalled = false
 
@@ -135,43 +137,52 @@ class EmulationFragment : Fragment(), SurfaceHolder.Callback, Choreographer.Fram
      * Registers NetPlay overlay listener only once.
      * Prevents duplicate callbacks and lag.
      */
-    private fun setupNetplayOverlayListener() {
+    private var netplayListenerInstalled = false
+
+    private fun setupNetplayListener() {
 
         if (netplayListenerInstalled) return
 
         NetPlayManager.setOverlayListener { type, message ->
-            activity?.runOnUiThread {
 
-                if (!NetPlayManager.netPlayIsJoined()) {
+            requireActivity().runOnUiThread {
+
+                val connected = NetPlayManager.netPlayIsJoined()
+
+                netplayOverlayViewModel.setConnected(connected)
+
+                if (!connected) {
+                    netplayOverlayViewModel.clear()
                     clearChatOverlay()
-                    refreshNetplayUI()
                     return@runOnUiThread
                 }
 
-                addChatOverlayMessage(type, message)
-                refreshNetplayUI()
+                netplayOverlayViewModel.addMessage(type, message)
             }
         }
 
         netplayListenerInstalled = true
     }
 
-    private fun refreshNetplayUI() {
-        val connected = NetPlayManager.netPlayIsJoined()
+    private fun observeNetplayOverlay() {
 
-        binding.chatButton.visibility =
-            if (connected) View.VISIBLE else View.GONE
+        viewLifecycleOwner.lifecycleScope.launch {
+            viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
 
-        if (!connected) {
-            clearChatOverlay()
+                netplayOverlayViewModel.messages.collect { list ->
+                    clearChatOverlay()
+
+                    list.forEach { (type, msg) ->
+                        addChatOverlayMessage(type, msg)
+                    }
+                }
+
+                netplayOverlayViewModel.connected.collect { connected ->
+                    binding.chatButton.visibility =
+                        if (connected) View.VISIBLE else View.GONE
+                }
+            }
         }
-    }
-
-    override fun onStart() {
-        super.onStart()
-
-        setupNetplayOverlayListener()
-        refreshNetplayUI()
     }
     
     override fun onAttach(context: Context) {
@@ -281,7 +292,17 @@ class EmulationFragment : Fragment(), SurfaceHolder.Callback, Choreographer.Fram
             binding.surfaceInputOverlay.setIsInEditMode(false)
         }
 
+        binding.chatButton.setOnClickListener {
+            ChatDialog(requireContext()).show()
+        }
+
         makeChatButtonDraggable(binding.chatButton)
+
+        // 1. listener (only once)
+        setupNetplayListener()
+
+        // 2. UI observer
+        observeNetplayOverlay()
         
         // Show/hide the "Stats" overlay
         updateShowPerformanceOverlay()
