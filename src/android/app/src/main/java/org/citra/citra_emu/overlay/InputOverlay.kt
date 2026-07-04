@@ -1173,10 +1173,10 @@ class InputOverlay(context: Context?, attrs: AttributeSet?) : SurfaceView(contex
             val x = resources.getInteger(control.xRes).toFloat() / 1000f * maxX
             val y = resources.getInteger(control.yRes).toFloat() / 1000f * maxY
 
-            editor.putFloat("${control.buttonId}-X", x)
-            editor.putFloat("${control.buttonId}-Y", y)
-            OverlayLayoutConfig.putFloat("${control.iniKey}_X", x)
-            OverlayLayoutConfig.putFloat("${control.iniKey}_Y", y)        
+            editor.putFloat("${control.buttonId}$portrait-X", x)
+            editor.putFloat("${control.buttonId}$portrait-Y", y)
+            OverlayLayoutConfig.putFloat("${control.iniKey}$portrait_X", x)
+            OverlayLayoutConfig.putFloat("${control.iniKey}$portrait_Y", y)        
         }
 
         editor.apply()
