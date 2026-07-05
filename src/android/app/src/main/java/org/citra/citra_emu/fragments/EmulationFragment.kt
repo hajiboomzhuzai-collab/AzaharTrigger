@@ -132,7 +132,7 @@ class EmulationFragment : Fragment(), SurfaceHolder.Callback, Choreographer.Fram
 
     private val displayedMessages = mutableListOf<Pair<Int, String>>()
     
-    private val netplayOverlayViewModel: NetplayOverlayViewModel by viewModels()
+    private val netplayOverlayViewModel: NetplayOverlayViewModel by activityViewModels()
     
     // Prevent multiple listener registrations (VERY IMPORTANT)
     private var netplayListenerInstalled = false
@@ -141,25 +141,16 @@ class EmulationFragment : Fragment(), SurfaceHolder.Callback, Choreographer.Fram
      * Registers NetPlay overlay listener only once.
      * Prevents duplicate callbacks and lag.
      */
-    private fun setupNetplayListener() {
+    private fun startNetplayListener() {
 
         if (netplayListenerInstalled) return
 
         NetPlayManager.setOverlayListener { type, message ->
 
-            requireActivity().runOnUiThread {
+            // ONLY WORK WHEN CONNECTED
+            if (!netplayOverlayViewModel.connected.value) return@setOverlayListener
 
-                val connected = NetPlayManager.netPlayIsJoined()
-
-                netplayOverlayViewModel.setConnected(connected)
-
-                if (!connected) {
-                    netplayOverlayViewModel.clear()
-                    return@runOnUiThread
-                }
-
-                netplayOverlayViewModel.addMessage(type, message)
-            }
+            netplayOverlayViewModel.addMessage(type, message)
         }
 
         netplayListenerInstalled = true
@@ -326,10 +317,7 @@ class EmulationFragment : Fragment(), SurfaceHolder.Callback, Choreographer.Fram
 
         makeChatButtonDraggable(binding.chatButton)
 
-        // 1. listener (only once)
-        setupNetplayListener()
-
-        // 2. UI observer
+        // UI observer
         observeNetplayOverlay()
         
         // Show/hide the "Stats" overlay
