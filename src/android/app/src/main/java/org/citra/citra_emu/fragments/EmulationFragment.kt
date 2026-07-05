@@ -600,7 +600,7 @@ class EmulationFragment : Fragment(), SurfaceHolder.Callback, Choreographer.Fram
 
         NetPlayManager.setOverlayListener { type, message ->
             requireActivity().runOnUiThread {
-                addChatOverlayMessage(type, message)
+                addChatMessage(type, message)
             }
         }
     }
