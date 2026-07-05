@@ -138,7 +138,12 @@ class EmulationFragment : Fragment(), SurfaceHolder.Callback, Choreographer.Fram
     private var netplayListenerInstalled = false
 
     private val hideChatRunnable = Runnable {
-        binding.chatRecycler.visibility = View.GONE
+        binding.chatRecycler.animate()
+            .alpha(0f)
+            .setDuration(300)
+            .withEndAction {
+                binding.chatRecycler.visibility = View.GONE
+            }
     }
     
     override fun onAttach(context: Context) {
@@ -598,17 +603,25 @@ class EmulationFragment : Fragment(), SurfaceHolder.Callback, Choreographer.Fram
             else -> msg
         }
 
-        val chatMessage = ChatMessage(type, text)
-
         binding.chatRecycler.visibility = View.VISIBLE
-        
-        chatAdapter.addMessage(chatMessage)
+        binding.chatRecycler.alpha = 1f
+
+        chatAdapter.addMessage(ChatMessage(type, text))
 
         binding.chatRecycler.scrollToPosition(chatAdapter.itemCount - 1)
+
+        // ⭐ IMPORTANT: reset timer every message
+        chatHandler.removeCallbacks(hideChatRunnable)
+        chatHandler.postDelayed(hideChatRunnable, 10000)
     }
 
     private fun clearChatOverlay() {
         chatAdapter.clear()
+
+        chatHandler.removeCallbacks(hideChatRunnable)
+
+        binding.chatRecycler.visibility = View.GONE
+        binding.chatRecycler.alpha = 1f
     }
 
     private fun makeChatButtonDraggable(fab: FloatingActionButton) {
