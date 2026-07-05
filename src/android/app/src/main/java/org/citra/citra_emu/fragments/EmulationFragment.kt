@@ -248,7 +248,7 @@ class EmulationFragment : Fragment(), SurfaceHolder.Callback, Choreographer.Fram
             binding.surfaceInputOverlay.setIsInEditMode(false)
         }
 
-        makeChatButtonDraggable(binding.chatButton)
+        chatAdapter = ChatAdapter()
 
         binding.chatRecycler.apply {
             adapter = chatAdapter
@@ -256,6 +256,8 @@ class EmulationFragment : Fragment(), SurfaceHolder.Callback, Choreographer.Fram
                 stackFromEnd = true
             }
         }
+
+        makeChatButtonDraggable(binding.chatButton)
 
         setupNetplayListener()
         
