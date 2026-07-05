@@ -6,23 +6,25 @@ import kotlinx.coroutines.flow.StateFlow
 
 class NetplayOverlayViewModel : ViewModel() {
 
-    private val _messages = MutableStateFlow<List<Pair<Int, String>>>(emptyList())
+    private val _messages =
+        MutableStateFlow<List<Pair<Int, String>>>(emptyList())
+
     val messages: StateFlow<List<Pair<Int, String>>> = _messages
 
-    private val _connected = MutableStateFlow(false)
+    private val _connected =
+        MutableStateFlow(false)
+
     val connected: StateFlow<Boolean> = _connected
 
-    fun onMessage(type: Int, message: String) {
-        val updated = _messages.value.toMutableList()
-        updated.add(type to message)
-        _messages.value = updated
+    fun addMessage(type: Int, message: String) {
+        _messages.value = _messages.value + (type to message)
     }
 
     fun setConnected(state: Boolean) {
         _connected.value = state
     }
 
-    fun clearMessages() {
+    fun clear() {
         _messages.value = emptyList()
     }
 }
