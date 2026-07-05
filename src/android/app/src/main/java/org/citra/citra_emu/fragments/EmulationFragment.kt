@@ -135,11 +135,13 @@ class EmulationFragment : Fragment(), SurfaceHolder.Callback, Choreographer.Fram
     private val chatHandler = Handler(Looper.getMainLooper())
 
     private val hideChatRunnable = Runnable {
+
         binding.chatRecycler.animate()
             .alpha(0f)
             .setDuration(300)
             .withEndAction {
                 binding.chatRecycler.visibility = View.GONE
+                binding.chatRecycler.alpha = 1f
             }
     }
 
@@ -633,6 +635,13 @@ class EmulationFragment : Fragment(), SurfaceHolder.Callback, Choreographer.Fram
     }
 
     private fun addChatMessage(type: Int, msg: String) {
+
+        // Cancel previous hide animation
+        binding.chatRecycler.animate().cancel()
+
+        // Reset state
+        binding.chatRecycler.alpha = 1f
+        binding.chatRecycler.visibility = View.VISIBLE
 
         val text = when (type) {
             NetPlayManager.NetPlayStatus.CHAT_MESSAGE -> msg
