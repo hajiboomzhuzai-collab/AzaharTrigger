@@ -595,11 +595,26 @@ class EmulationFragment : Fragment(), SurfaceHolder.Callback, Choreographer.Fram
         setupNetplayListener()
         refreshNetplayUI()
     }
+
+    override fun onStop() {
+       super.onStop()
+
+        clearChat()
+        chatHandler.removeCallbacksAndMessages(null)
+    }
     
     private fun setupNetplayListener() {
 
         NetPlayManager.setOverlayListener { type, message ->
             requireActivity().runOnUiThread {
+
+                // if disconnected → cleanup immediately
+                if (!NetPlayManager.netPlayIsJoined()) {
+                    clearChat()
+                    refreshNetplayUI()
+                    return@runOnUiThread
+                }
+
                 addChatMessage(type, message)
             }
         }
