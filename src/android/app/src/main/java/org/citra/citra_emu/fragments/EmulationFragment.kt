@@ -541,6 +541,13 @@ class EmulationFragment : Fragment(), SurfaceHolder.Callback, Choreographer.Fram
                         if (started) {
                             ViewUtils.hideView(binding.loadingIndicator)
                             ViewUtils.showView(binding.surfaceInputOverlay)
+
+                            if (!netplayListenerInstalled) {
+                                setupNetplayListener()
+                            }
+
+                            refreshNetplayUI()
+                            
                             binding.inGameMenu.menu.findItem(R.id.menu_emulation_savestates)
                                 .setVisible(NativeLibrary.getSavestateInfo() != null)
                             binding.drawerLayout.setDrawerLockMode(EmulationMenuSettings.drawerLockMode)
@@ -595,12 +602,6 @@ class EmulationFragment : Fragment(), SurfaceHolder.Callback, Choreographer.Fram
         } else {
             setupCitraDirectoriesThenStartEmulation()
         }
-    }
-
-    override fun onStart() {
-        super.onStart()
-        setupNetplayListener()
-        refreshNetplayUI()
     }
 
     override fun onStop() {
