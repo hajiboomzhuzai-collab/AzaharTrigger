@@ -62,6 +62,7 @@ import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.android.material.floatingactionbutton.FloatingActionButton
 import com.google.android.material.slider.Slider
 import java.io.File
+import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 import org.citra.citra_emu.CitraApplication
@@ -82,6 +83,7 @@ import org.citra.citra_emu.features.settings.model.SettingsViewModel
 import org.citra.citra_emu.features.settings.ui.SettingsActivity
 import org.citra.citra_emu.features.settings.utils.SettingsFile
 import org.citra.citra_emu.model.Game
+import org.citra.citra_emu.overlay.NetplayOverlayViewModel
 import org.citra.citra_emu.utils.AmiiboDatabase.Companion.amiibos
 import org.citra.citra_emu.utils.AmiiboDatabase.Companion.amiibos_series
 import org.citra.citra_emu.utils.AmiiboUsageDatabase
@@ -145,8 +147,19 @@ class EmulationFragment : Fragment(), SurfaceHolder.Callback, Choreographer.Fram
 
         NetPlayManager.setOverlayListener { type, message ->
 
-            // ONLY forward data to ViewModel (NO UI WORK HERE)
-            netplayOverlayViewModel.addMessage(type, message)
+            requireActivity().runOnUiThread {
+
+                val connected = NetPlayManager.netPlayIsJoined()
+
+                netplayOverlayViewModel.setConnected(connected)
+
+                if (!connected) {
+                    netplayOverlayViewModel.clear()
+                    return@runOnUiThread
+                }
+
+                netplayOverlayViewModel.addMessage(type, message)
+            }
         }
 
         netplayListenerInstalled = true
@@ -157,25 +170,22 @@ class EmulationFragment : Fragment(), SurfaceHolder.Callback, Choreographer.Fram
         viewLifecycleOwner.lifecycleScope.launch {
             viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
 
-                netplayOverlayViewModel.messages.collect { list ->
+                launch {
+                    netplayOverlayViewModel.messages.collect { list ->
 
-                    if (displayedMessages.isEmpty()) {
-                        // FIRST TIME LOAD
-                        renderFullChat(list)
-                    } else {
-                        // ONLY NEW MESSAGES
-                        appendNewMessages(list)
+                        clearChatOverlay()
+
+                        list.forEach { (type, msg) ->
+                            addChatOverlayMessage(type, msg)
+                        }
                     }
                 }
 
-                netplayOverlayViewModel.connected.collect { connected ->
+                launch {
+                    netplayOverlayViewModel.connected.collect { connected ->
 
-                    binding.chatButton.visibility =
-                        if (connected) View.VISIBLE else View.GONE
-
-                    if (!connected) {
-                        clearChatOverlay()
-                        displayedMessages.clear()
+                        binding.chatButton.visibility =
+                            if (connected) View.VISIBLE else View.GONE
                     }
                 }
             }
