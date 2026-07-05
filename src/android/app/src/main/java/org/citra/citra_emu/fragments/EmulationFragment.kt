@@ -132,10 +132,7 @@ class EmulationFragment : Fragment(), SurfaceHolder.Callback, Choreographer.Fram
     private val displayedMessages = mutableListOf<Pair<Int, String>>()
     
     private lateinit var chatAdapter: ChatAdapter
-
     private val chatHandler = Handler(Looper.getMainLooper())
-
-    private var netplayListenerInstalled = false
 
     private val hideChatRunnable = Runnable {
         binding.chatRecycler.animate()
@@ -145,6 +142,12 @@ class EmulationFragment : Fragment(), SurfaceHolder.Callback, Choreographer.Fram
                 binding.chatRecycler.visibility = View.GONE
             }
     }
+
+    private var netplayListenerInstalled = false
+
+    private lateinit var emulationState: EmulationState
+    private lateinit var emulationActivity: EmulationActivity
+}
     
     override fun onAttach(context: Context) {
         super.onAttach(context)
@@ -262,9 +265,17 @@ class EmulationFragment : Fragment(), SurfaceHolder.Callback, Choreographer.Fram
             }
         }
 
-        makeChatButtonDraggable(binding.chatButton)
+        binding.chatButton.apply {
+            bringToFront()
+            isClickable = true
+            isEnabled = true
 
-        setupNetplayListener()
+            setOnClickListener {
+                ChatDialog(requireContext()).show()
+            }
+        }
+
+        makeChatButtonDraggable(binding.chatButton)
         
         // Show/hide the "Stats" overlay
         updateShowPerformanceOverlay()
@@ -582,6 +593,12 @@ class EmulationFragment : Fragment(), SurfaceHolder.Callback, Choreographer.Fram
             setupCitraDirectoriesThenStartEmulation()
         }
     }
+
+    override fun onStart() {
+        super.onStart()
+        setupNetplayListener()
+        refreshNetplayUI()
+    }
     
     private fun setupNetplayListener() {
 
@@ -592,7 +609,7 @@ class EmulationFragment : Fragment(), SurfaceHolder.Callback, Choreographer.Fram
         }
     }
 
-    private fun addChatOverlayMessage(type: Int, msg: String) {
+    private fun addChatMessage(type: Int, msg: String) {
 
         val text = when (type) {
             NetPlayManager.NetPlayStatus.CHAT_MESSAGE -> msg
@@ -603,25 +620,42 @@ class EmulationFragment : Fragment(), SurfaceHolder.Callback, Choreographer.Fram
             else -> msg
         }
 
+        // SHOW CHAT
         binding.chatRecycler.visibility = View.VISIBLE
         binding.chatRecycler.alpha = 1f
-
+        
+        // ADD MESSAGE
         chatAdapter.addMessage(ChatMessage(type, text))
 
+        // SCROLL
         binding.chatRecycler.scrollToPosition(chatAdapter.itemCount - 1)
 
-        // ⭐ IMPORTANT: reset timer every message
+        // RESET AUTO-HIDE TIMER
         chatHandler.removeCallbacks(hideChatRunnable)
         chatHandler.postDelayed(hideChatRunnable, 10000)
     }
 
-    private fun clearChatOverlay() {
+    private fun clearChat() {
         chatAdapter.clear()
-
         chatHandler.removeCallbacks(hideChatRunnable)
 
         binding.chatRecycler.visibility = View.GONE
         binding.chatRecycler.alpha = 1f
+    }
+
+    private fun refreshNetplayUI() {
+
+        val connected = NetPlayManager.netPlayIsJoined()
+
+        binding.chatButton.visibility =
+            if (connected) View.VISIBLE else View.GONE
+
+        binding.chatRecycler.visibility =
+            if (connected) View.VISIBLE else View.GONE
+
+        if (!connected) {
+            clearChat()
+        }
     }
 
     private fun makeChatButtonDraggable(fab: FloatingActionButton) {
@@ -676,18 +710,6 @@ class EmulationFragment : Fragment(), SurfaceHolder.Callback, Choreographer.Fram
 
                 else -> false
             }
-        }
-    }
-
-    private fun updateChatButtonVisibility() {
-        val joined = NetPlayManager.netPlayIsJoined()
-
-        binding.chatButton.visibility =
-            if (joined) View.VISIBLE
-            else View.GONE
-
-        if (!joined) {
-            clearChatOverlay()
         }
     }
 
