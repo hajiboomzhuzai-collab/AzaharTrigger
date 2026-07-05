@@ -144,9 +144,6 @@ class EmulationFragment : Fragment(), SurfaceHolder.Callback, Choreographer.Fram
     }
 
     private var netplayListenerInstalled = false
-
-    private lateinit var emulationState: EmulationState
-    private lateinit var emulationActivity: EmulationActivity
     
     override fun onAttach(context: Context) {
         super.onAttach(context)
