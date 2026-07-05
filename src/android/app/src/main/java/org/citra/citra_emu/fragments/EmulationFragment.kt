@@ -138,12 +138,7 @@ class EmulationFragment : Fragment(), SurfaceHolder.Callback, Choreographer.Fram
     private var netplayListenerInstalled = false
 
     private val hideChatRunnable = Runnable {
-        binding.chatOverlay.animate()
-            .alpha(0f)
-            .setDuration(300)
-            .withEndAction {
-                binding.chatOverlay.visibility = View.GONE
-            }
+        binding.chatRecycler.visibility = View.GONE
     }
     
     override fun onAttach(context: Context) {
@@ -603,6 +598,8 @@ class EmulationFragment : Fragment(), SurfaceHolder.Callback, Choreographer.Fram
 
         val chatMessage = ChatMessage(type, text)
 
+        binding.chatRecycler.visibility = View.VISIBLE
+        
         chatAdapter.addMessage(chatMessage)
 
         binding.chatRecycler.scrollToPosition(chatAdapter.itemCount - 1)
