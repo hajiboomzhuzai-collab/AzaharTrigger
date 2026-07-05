@@ -57,6 +57,7 @@ import androidx.lifecycle.repeatOnLifecycle
 import androidx.navigation.findNavController
 import androidx.navigation.fragment.navArgs
 import androidx.preference.PreferenceManager
+import androidx.recyclerview.widget.LinearLayoutManager
 import com.google.android.material.checkbox.MaterialCheckBox
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.android.material.floatingactionbutton.FloatingActionButton
@@ -83,7 +84,8 @@ import org.citra.citra_emu.features.settings.model.SettingsViewModel
 import org.citra.citra_emu.features.settings.ui.SettingsActivity
 import org.citra.citra_emu.features.settings.utils.SettingsFile
 import org.citra.citra_emu.model.Game
-import org.citra.citra_emu.overlay.NetplayOverlayViewModel
+import org.citra.citra_emu.overlay.ChatAdapter
+import org.citra.citra_emu.overlay.ChatMessage
 import org.citra.citra_emu.utils.AmiiboDatabase.Companion.amiibos
 import org.citra.citra_emu.utils.AmiiboDatabase.Companion.amiibos_series
 import org.citra.citra_emu.utils.AmiiboUsageDatabase
