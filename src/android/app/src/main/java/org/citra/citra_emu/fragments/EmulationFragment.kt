@@ -261,8 +261,12 @@ class EmulationFragment : Fragment(), SurfaceHolder.Callback, Choreographer.Fram
             }
         }
 
+        binding.chatRecycler.visibility = View.GONE
+        binding.chatButton.visibility = View.GONE
+
         binding.chatButton.apply {
             bringToFront()
+            elevation = 100f
             isClickable = true
             isEnabled = true
 
@@ -563,7 +567,6 @@ class EmulationFragment : Fragment(), SurfaceHolder.Callback, Choreographer.Fram
 
     override fun onResume() {
         super.onResume()
-        refreshNetplayUI()
         Choreographer.getInstance().postFrameCallback(this)
         if (NativeLibrary.isRunning()) {
             emulationState.unpause()
@@ -585,6 +588,10 @@ class EmulationFragment : Fragment(), SurfaceHolder.Callback, Choreographer.Fram
 
         if (DirectoryInitialization.areCitraDirectoriesReady()) {
             emulationState.run(emulationActivity.isActivityRecreated)
+            
+            binding.root.postDelayed({
+                refreshNetplayUI()
+            }, 500)
         } else {
             setupCitraDirectoriesThenStartEmulation()
         }
@@ -605,19 +612,23 @@ class EmulationFragment : Fragment(), SurfaceHolder.Callback, Choreographer.Fram
     
     private fun setupNetplayListener() {
 
+        if (netplayListenerInstalled) return
+
         NetPlayManager.setOverlayListener { type, message ->
             requireActivity().runOnUiThread {
 
-                // if disconnected → cleanup immediately
+                refreshNetplayUI()
+
                 if (!NetPlayManager.netPlayIsJoined()) {
                     clearChat()
-                    refreshNetplayUI()
                     return@runOnUiThread
                 }
 
                 addChatMessage(type, message)
             }
         }
+
+        netplayListenerInstalled = true
     }
 
     private fun addChatMessage(type: Int, msg: String) {
