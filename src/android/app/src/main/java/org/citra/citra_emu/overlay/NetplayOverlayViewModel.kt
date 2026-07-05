@@ -11,7 +11,9 @@ class NetplayOverlayViewModel : ViewModel() {
 
     val messages: StateFlow<List<Pair<Int, String>>> = _messages
 
-    private val _connected = MutableStateFlow(false)
+    private val _connected =
+        MutableStateFlow(false)
+
     val connected: StateFlow<Boolean> = _connected
 
     fun addMessage(type: Int, message: String) {
