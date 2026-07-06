@@ -745,9 +745,6 @@ class EmulationFragment : Fragment(), SurfaceHolder.Callback, Choreographer.Fram
         }
         Choreographer.getInstance().removeFrameCallback(this)
         super.onPause()
-        clearChat()
-
-        binding.chatContainer.visibility = View.GONE
     }
 
     override fun onStop() {
@@ -756,8 +753,6 @@ class EmulationFragment : Fragment(), SurfaceHolder.Callback, Choreographer.Fram
         NetPlayManager.setOverlayListener(null)
 
         clearChat()
-
-        chatHandler.removeCallbacksAndMessages(null)
     }
     
     override fun onDetach() {
