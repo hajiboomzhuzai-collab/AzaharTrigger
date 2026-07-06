@@ -127,20 +127,23 @@
             android:textColor="@android:color/white"
             android:textSize="12sp"
             tools:ignore="RtlHardcoded" />
-        
-        <androidx.recyclerview.widget.RecyclerView
-            android:id="@+id/chatRecycler"
+        <FrameLayout
+            android:id="@+id/chatContainer"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_margin="12dp"
             android:layout_gravity="top|start"
             android:background="#66000000"
             android:padding="8dp"
-            android:textColor="@android:color/white"
-            android:textSize="13sp"
-            android:maxLines="8"
-            android:overScrollMode="never"
-            android:visibility="gone"/>
+            android:visibility="gone">
+
+            <androidx.recyclerview.widget.RecyclerView
+                android:id="@+id/chatRecycler"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:overScrollMode="never"/>
+
+        </FrameLayout>
 
         <com.google.android.material.floatingactionbutton.FloatingActionButton
             android:id="@+id/chatButton"
