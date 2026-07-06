@@ -671,7 +671,7 @@ class EmulationFragment : Fragment(), SurfaceHolder.Callback, Choreographer.Fram
         chatAdapter.clear()
         chatHandler.removeCallbacks(hideChatRunnable)
 
-        binding.chatRecycler.visibility = View.GONE
+        binding.chatContainer.visibility = View.GONE
         binding.chatRecycler.alpha = 1f
     }
 
@@ -682,7 +682,7 @@ class EmulationFragment : Fragment(), SurfaceHolder.Callback, Choreographer.Fram
         binding.chatButton.visibility =
             if (connected) View.VISIBLE else View.GONE
 
-        binding.chatRecycler.visibility =
+        binding.chatContainer.visibility =
             if (connected) View.VISIBLE else View.GONE
 
         if (!connected) {
