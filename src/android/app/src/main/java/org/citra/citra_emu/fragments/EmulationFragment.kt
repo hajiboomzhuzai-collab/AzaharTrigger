@@ -24,7 +24,6 @@ import android.os.ParcelFileDescriptor
 import android.os.SystemClock
 import android.text.Editable
 import android.text.TextWatcher
-import android.util.Log
 import android.view.Choreographer
 import android.view.Gravity
 import android.view.LayoutInflater
@@ -686,9 +685,9 @@ class EmulationFragment : Fragment(), SurfaceHolder.Callback, Choreographer.Fram
         binding.chatContainer.visibility =
             if (connected) View.VISIBLE else View.GONE
 
-        Log.d("CHAT", "Container = ${binding.chatContainer.visibility}")
-        Log.d("CHAT", "Recycler = ${binding.chatRecycler.visibility}")
-        Log.d("CHAT", "Items = ${chatAdapter.itemCount}")
+        Log.debug("CHAT", "Container = ${binding.chatContainer.visibility}")
+        Log.debug("CHAT", "Recycler = ${binding.chatRecycler.visibility}")
+        Log.debug("CHAT", "Items = ${chatAdapter.itemCount}")
           
         if (!connected) {
             clearChat()
