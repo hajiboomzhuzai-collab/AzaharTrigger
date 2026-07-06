@@ -24,6 +24,7 @@ import android.os.ParcelFileDescriptor
 import android.os.SystemClock
 import android.text.Editable
 import android.text.TextWatcher
+import android.util.Log
 import android.view.Choreographer
 import android.view.Gravity
 import android.view.LayoutInflater
