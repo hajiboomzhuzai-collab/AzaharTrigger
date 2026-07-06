@@ -113,7 +113,6 @@ class EmulationFragment : Fragment(), SurfaceHolder.Callback, Choreographer.Fram
     private var _binding: FragmentEmulationBinding? = null
     private val binding get() = _binding!!
 
-    private val chatMessages = mutableListOf<String>()
     private val chatHandler = Handler(Looper.getMainLooper())
     private lateinit var overlayChatAdapter: OverlayChatAdapter
 
@@ -720,6 +719,8 @@ class EmulationFragment : Fragment(), SurfaceHolder.Callback, Choreographer.Fram
 
     override fun onDestroy() {
         NetPlayManager.setOverlayListener(null)
+
+        clearChatOverlay()
 
         if (::emulationState.isInitialized && requireActivity().isFinishing) {
             emulationState.stop()
