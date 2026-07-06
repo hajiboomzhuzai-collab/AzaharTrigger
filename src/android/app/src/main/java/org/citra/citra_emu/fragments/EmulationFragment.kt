@@ -599,18 +599,12 @@ class EmulationFragment : Fragment(), SurfaceHolder.Callback, Choreographer.Fram
             emulationState.run(emulationActivity.isActivityRecreated)
             
             binding.root.postDelayed({
+                setupNetplayListener()
                 refreshNetplayUI()
             }, 500)
         } else {
             setupCitraDirectoriesThenStartEmulation()
         }
-    }
-
-    override fun onStop() {
-       super.onStop()
-
-        clearChat()
-        chatHandler.removeCallbacksAndMessages(null)
     }
     
     private fun setupNetplayListener() {
@@ -684,10 +678,6 @@ class EmulationFragment : Fragment(), SurfaceHolder.Callback, Choreographer.Fram
 
         binding.chatContainer.visibility =
             if (connected) View.VISIBLE else View.GONE
-
-        Log.debug("[CHAT] Container=${binding.chatContainer.visibility}")
-        Log.debug("[CHAT] Recycler=${binding.chatRecycler.visibility}")
-        Log.debug("[CHAT] Items=${chatAdapter.itemCount}")
           
         if (!connected) {
             clearChat()
@@ -755,13 +745,36 @@ class EmulationFragment : Fragment(), SurfaceHolder.Callback, Choreographer.Fram
         }
         Choreographer.getInstance().removeFrameCallback(this)
         super.onPause()
+        clearChat()
+
+        binding.chatContainer.visibility = View.GONE
     }
 
+    override fun onStop() {
+        super.onStop()
+
+        NetPlayManager.setOverlayListener(null)
+
+        clearChat()
+
+        chatHandler.removeCallbacksAndMessages(null)
+    }
+    
     override fun onDetach() {
         NativeLibrary.clearEmulationActivity()
         super.onDetach()
     }
 
+    override fun onDestroyView() {
+        chatHandler.removeCallbacksAndMessages(null)
+
+        binding.chatRecycler.adapter = null
+
+        _binding = null
+
+        super.onDestroyView()
+    }
+    
     override fun onDestroy() {
         NetPlayManager.setOverlayListener(null)
 
