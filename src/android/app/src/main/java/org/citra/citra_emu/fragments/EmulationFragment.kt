@@ -617,8 +617,6 @@ class EmulationFragment : Fragment(), SurfaceHolder.Callback, Choreographer.Fram
 
                     binding.chatContainer.visibility = View.GONE
                     binding.chatContainer.alpha = 1f
-
-                    overlayChatAdapter.clear()
                 }
 
         }, 10000)
