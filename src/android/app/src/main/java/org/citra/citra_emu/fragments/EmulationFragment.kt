@@ -685,6 +685,10 @@ class EmulationFragment : Fragment(), SurfaceHolder.Callback, Choreographer.Fram
         binding.chatContainer.visibility =
             if (connected) View.VISIBLE else View.GONE
 
+        Log.d("CHAT", "Container = ${binding.chatContainer.visibility}")
+        Log.d("CHAT", "Recycler = ${binding.chatRecycler.visibility}")
+        Log.d("CHAT", "Items = ${chatAdapter.itemCount}")
+          
         if (!connected) {
             clearChat()
         }
