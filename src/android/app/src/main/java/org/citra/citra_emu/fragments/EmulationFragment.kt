@@ -685,9 +685,9 @@ class EmulationFragment : Fragment(), SurfaceHolder.Callback, Choreographer.Fram
         binding.chatContainer.visibility =
             if (connected) View.VISIBLE else View.GONE
 
-        Log.debug("CHAT", "Container = ${binding.chatContainer.visibility}")
-        Log.debug("CHAT", "Recycler = ${binding.chatRecycler.visibility}")
-        Log.debug("CHAT", "Items = ${chatAdapter.itemCount}")
+        Log.debug("[CHAT] Container=${binding.chatContainer.visibility}")
+        Log.debug("[CHAT] Recycler=${binding.chatRecycler.visibility}")
+        Log.debug("[CHAT] Items=${chatAdapter.itemCount}")
           
         if (!connected) {
             clearChat()
