@@ -719,11 +719,9 @@ class EmulationFragment : Fragment(), SurfaceHolder.Callback, Choreographer.Fram
 
             binding.customLayoutEditor.saveLayout()
 
-            saveSettings()
-
             NativeLibrary.reloadSettings()
             NativeLibrary.updateFramebuffer(
-                NativeLibrary.isPortraitMode
+               NativeLibrary.isPortraitMode
             )
 
             binding.customLayoutEditor.visibility = View.GONE
