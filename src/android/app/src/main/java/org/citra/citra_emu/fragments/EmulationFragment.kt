@@ -705,13 +705,6 @@ class EmulationFragment : Fragment(), SurfaceHolder.Callback, Choreographer.Fram
         binding.chatContainer.alpha = 1f
         binding.chatContainer.visibility = View.GONE
     }
-
-    private fun openCustomLayoutEditor() {
-
-        binding.customLayoutEditor.visibility = View.VISIBLE
-        binding.customLayoutToolbar.visibility = View.VISIBLE
-
-    }
     
     private fun setupCustomLayoutEditor() {
 
@@ -719,10 +712,33 @@ class EmulationFragment : Fragment(), SurfaceHolder.Callback, Choreographer.Fram
 
             binding.customLayoutEditor.saveLayout()
 
+            if (NativeLibrary.isPortraitMode) {
+
+                SettingsFile.saveFile(SettingsFile.FILE_NAME_CONFIG, IntSetting.PORTRAIT_TOP_X)
+                SettingsFile.saveFile(SettingsFile.FILE_NAME_CONFIG, IntSetting.PORTRAIT_TOP_Y)
+                SettingsFile.saveFile(SettingsFile.FILE_NAME_CONFIG, IntSetting.PORTRAIT_TOP_WIDTH)
+                SettingsFile.saveFile(SettingsFile.FILE_NAME_CONFIG, IntSetting.PORTRAIT_TOP_HEIGHT)
+
+                SettingsFile.saveFile(SettingsFile.FILE_NAME_CONFIG, IntSetting.PORTRAIT_BOTTOM_X)
+                SettingsFile.saveFile(SettingsFile.FILE_NAME_CONFIG, IntSetting.PORTRAIT_BOTTOM_Y)
+                SettingsFile.saveFile(SettingsFile.FILE_NAME_CONFIG, IntSetting.PORTRAIT_BOTTOM_WIDTH)
+                SettingsFile.saveFile(SettingsFile.FILE_NAME_CONFIG, IntSetting.PORTRAIT_BOTTOM_HEIGHT)
+
+            } else {
+
+                SettingsFile.saveFile(SettingsFile.FILE_NAME_CONFIG, IntSetting.LANDSCAPE_TOP_X)
+                SettingsFile.saveFile(SettingsFile.FILE_NAME_CONFIG, IntSetting.LANDSCAPE_TOP_Y)
+                SettingsFile.saveFile(SettingsFile.FILE_NAME_CONFIG, IntSetting.LANDSCAPE_TOP_WIDTH)
+                SettingsFile.saveFile(SettingsFile.FILE_NAME_CONFIG, IntSetting.LANDSCAPE_TOP_HEIGHT)
+
+                SettingsFile.saveFile(SettingsFile.FILE_NAME_CONFIG, IntSetting.LANDSCAPE_BOTTOM_X)
+                SettingsFile.saveFile(SettingsFile.FILE_NAME_CONFIG, IntSetting.LANDSCAPE_BOTTOM_Y)
+                SettingsFile.saveFile(SettingsFile.FILE_NAME_CONFIG, IntSetting.LANDSCAPE_BOTTOM_WIDTH)
+                SettingsFile.saveFile(SettingsFile.FILE_NAME_CONFIG, IntSetting.LANDSCAPE_BOTTOM_HEIGHT)
+            }
+
             NativeLibrary.reloadSettings()
-            NativeLibrary.updateFramebuffer(
-               NativeLibrary.isPortraitMode
-            )
+            NativeLibrary.updateFramebuffer(NativeLibrary.isPortraitMode)
 
             binding.customLayoutEditor.visibility = View.GONE
             binding.customLayoutToolbar.visibility = View.GONE
