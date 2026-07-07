@@ -756,6 +756,10 @@ class EmulationFragment : Fragment(), SurfaceHolder.Callback, Choreographer.Fram
             binding.customLayoutEditor.visibility = View.GONE
             binding.customLayoutToolbar.visibility = View.GONE
         }
+
+        binding.resetButton.setOnClickListener {
+            binding.customLayoutEditor.resetLayout()
+        }
     }
     
     override fun onPause() {

@@ -10,6 +10,7 @@ import android.view.MotionEvent
 import android.view.View
 import org.citra.citra_emu.NativeLibrary
 import org.citra.citra_emu.features.settings.model.IntSetting
+import org.citra.citra_emu.features.settings.utils.SettingsFile
 
 class CustomLayoutEditorView @JvmOverloads constructor(
     context: Context,
@@ -607,7 +608,9 @@ class CustomLayoutEditorView @JvmOverloads constructor(
             0f,
             r.bottom - 100f
         )
-
+        
+        clampRect(r)
+        
         if (r == topRect)
             snapResize(topRect, bottomRect)
         else
@@ -630,6 +633,8 @@ class CustomLayoutEditorView @JvmOverloads constructor(
             0f,
             r.bottom - 100f
         )
+        
+        clampRect(r)
 
         if (r == topRect)
             snapResize(topRect, bottomRect)
@@ -653,6 +658,8 @@ class CustomLayoutEditorView @JvmOverloads constructor(
             r.top + 100f,
             height.toFloat()
         )
+        
+        clampRect(r)
 
         if (r == topRect)
             snapResize(topRect, bottomRect)
@@ -676,6 +683,8 @@ class CustomLayoutEditorView @JvmOverloads constructor(
             r.top + 100f,
             height.toFloat()
         )
+        
+        clampRect(r)
 
         if (r == topRect)
             snapResize(topRect, bottomRect)
@@ -697,6 +706,8 @@ class CustomLayoutEditorView @JvmOverloads constructor(
             0f,
             r.bottom - 100f
         )
+        
+        clampRect(r)
 
         if (r == topRect)
             snapResize(topRect, bottomRect)
@@ -718,6 +729,8 @@ class CustomLayoutEditorView @JvmOverloads constructor(
             r.top + 100f,
             height.toFloat()
         )
+        
+        clampRect(r)
 
         if (r == topRect)
             snapResize(topRect, bottomRect)
@@ -739,6 +752,8 @@ class CustomLayoutEditorView @JvmOverloads constructor(
             0f,
             r.right - 100f
         )
+        
+        clampRect(r)
 
         if (r == topRect)
             snapResize(topRect, bottomRect)
@@ -760,6 +775,8 @@ class CustomLayoutEditorView @JvmOverloads constructor(
             r.left + 100f,
             width.toFloat()
         )
+        
+        clampRect(r)
 
         if (r == topRect)
             snapResize(topRect, bottomRect)
@@ -978,6 +995,36 @@ class CustomLayoutEditorView @JvmOverloads constructor(
             NativeLibrary.isPortraitMode
         )
     }
+    
+    private fun clampRect(rect: RectF) {
+        rect.left = rect.left.coerceIn(0f, width.toFloat())
+        rect.top = rect.top.coerceIn(0f, height.toFloat())
+        rect.right = rect.right.coerceIn(0f, width.toFloat())
+        rect.bottom = rect.bottom.coerceIn(0f, height.toFloat())
+    }
+    
+    fun resetLayout() {
+        if (NativeLibrary.isPortraitMode) {
+            IntSetting.clearPortraitLayout() // or restore defaults manually
+        } else {
+            IntSetting.LANDSCAPE_TOP_X.int = 0
+            IntSetting.LANDSCAPE_TOP_Y.int = 0
+            IntSetting.LANDSCAPE_TOP_WIDTH.int = 800
+            IntSetting.LANDSCAPE_TOP_HEIGHT.int = 480
+
+            IntSetting.LANDSCAPE_BOTTOM_X.int = 80
+            IntSetting.LANDSCAPE_BOTTOM_Y.int = 480
+            IntSetting.LANDSCAPE_BOTTOM_WIDTH.int = 640
+            IntSetting.LANDSCAPE_BOTTOM_HEIGHT.int = 480
+        }
+
+        loadFromSettings()
+
+        NativeLibrary.reloadSettings()
+        NativeLibrary.updateFramebuffer(NativeLibrary.isPortraitMode)
+
+        invalidate()
+}
 
     // -------------------------
     // MODE
