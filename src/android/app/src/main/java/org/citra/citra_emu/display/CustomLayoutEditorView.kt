@@ -964,7 +964,17 @@ class CustomLayoutEditorView @JvmOverloads constructor(
                (bottomRect.height() * sy).toInt()
         }
 
-        NativeLibrary.updateFramebuffer(
+        NativeLibrary.setCustomLayout(
+            topRect.left.toInt(),
+            topRect.top.toInt(),
+            topRect.width().toInt(),
+            topRect.height().toInt(),
+
+            bottomRect.left.toInt(),
+            bottomRect.top.toInt(),
+            bottomRect.width().toInt(),
+            bottomRect.height().toInt(),
+
             NativeLibrary.isPortraitMode
         )
     }
