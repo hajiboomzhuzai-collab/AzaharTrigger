@@ -1337,15 +1337,12 @@ class EmulationFragment : Fragment(), SurfaceHolder.Callback, Choreographer.Fram
                     true
                 }
 
-                R.id.menu_screen_layout_custom -> {
-                    
+                R.id.menu_screen_layout_custom -> {               
                     screenAdjustmentUtil.changeScreenOrientation(ScreenLayout.CUSTOM_LAYOUT.int)
+                    openCustomLayoutEditor()                 
                     true
                 }
-
-                openCustomLayoutEditor()
-
-                else -> true
+               else -> true
             }
         }
 
@@ -1387,13 +1384,10 @@ class EmulationFragment : Fragment(), SurfaceHolder.Callback, Choreographer.Fram
                 }
 
                 R.id.menu_portrait_layout_custom -> {
-
                     screenAdjustmentUtil.changePortraitOrientation(PortraitScreenLayout.CUSTOM_PORTRAIT_LAYOUT.int)
+                    openCustomLayoutEditor()
                     true
-                }
-
-                openCustomLayoutEditor()
-
+                }              
                 else -> true
             }
         }
