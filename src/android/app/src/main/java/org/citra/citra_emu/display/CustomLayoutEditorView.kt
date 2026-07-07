@@ -1004,9 +1004,21 @@ class CustomLayoutEditorView @JvmOverloads constructor(
     }
     
     fun resetLayout() {
+
         if (NativeLibrary.isPortraitMode) {
-            IntSetting.clearPortraitLayout() // or restore defaults manually
+
+            IntSetting.PORTRAIT_TOP_X.int = 0
+            IntSetting.PORTRAIT_TOP_Y.int = 0
+            IntSetting.PORTRAIT_TOP_WIDTH.int = 800
+            IntSetting.PORTRAIT_TOP_HEIGHT.int = 480
+
+            IntSetting.PORTRAIT_BOTTOM_X.int = 80
+            IntSetting.PORTRAIT_BOTTOM_Y.int = 480
+            IntSetting.PORTRAIT_BOTTOM_WIDTH.int = 640
+            IntSetting.PORTRAIT_BOTTOM_HEIGHT.int = 480
+
         } else {
+
             IntSetting.LANDSCAPE_TOP_X.int = 0
             IntSetting.LANDSCAPE_TOP_Y.int = 0
             IntSetting.LANDSCAPE_TOP_WIDTH.int = 800
@@ -1024,7 +1036,7 @@ class CustomLayoutEditorView @JvmOverloads constructor(
         NativeLibrary.updateFramebuffer(NativeLibrary.isPortraitMode)
 
         invalidate()
-}
+    }
 
     // -------------------------
     // MODE
