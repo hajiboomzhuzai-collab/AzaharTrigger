@@ -313,12 +313,12 @@ class CustomLayoutEditorView @JvmOverloads constructor(
             MotionEvent.ACTION_DOWN -> {
                 activeRect = findTouchedRect(event.x, event.y)
                 dragMode = detectMode(event.x, event.y, activeRect)
-            }
-            
-            selectedScreen = when (activeRect) {
-                topRect -> SelectedScreen.TOP
-                bottomRect -> SelectedScreen.BOTTOM
-                else -> SelectedScreen.NONE
+                
+                selectedScreen = when (activeRect) {
+                    topRect -> SelectedScreen.TOP
+                    bottomRect -> SelectedScreen.BOTTOM
+                    else -> SelectedScreen.NONE
+                }
             }
 
             MotionEvent.ACTION_MOVE -> {
