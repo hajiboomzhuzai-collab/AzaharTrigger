@@ -1387,7 +1387,6 @@ class EmulationFragment : Fragment(), SurfaceHolder.Callback, Choreographer.Fram
                 }
 
                 R.id.menu_portrait_layout_custom -> {
-                    Toast.makeText(
 
                     screenAdjustmentUtil.changePortraitOrientation(PortraitScreenLayout.CUSTOM_PORTRAIT_LAYOUT.int)
                     true
