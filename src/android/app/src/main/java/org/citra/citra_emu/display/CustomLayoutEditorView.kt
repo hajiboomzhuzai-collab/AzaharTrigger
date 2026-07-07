@@ -74,10 +74,6 @@ class CustomLayoutEditorView @JvmOverloads constructor(
 
     private var activeRect: RectF? = null
 
-    init {
-        loadFromSettings()
-    }
-
     private val infoPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         color = Color.WHITE
         textSize = 42f
@@ -97,6 +93,17 @@ class CustomLayoutEditorView @JvmOverloads constructor(
     private var activeHandleX = -1f
     private var activeHandleY = -1f
 
+    override fun onSizeChanged(
+        w: Int,
+        h: Int,
+        oldw: Int,
+        oldh: Int
+    ) {
+        super.onSizeChanged(w, h, oldw, oldh)
+
+        loadFromSettings()
+    }
+    
     // -------------------------
     // LOAD INITIAL POSITIONS
     // -------------------------
@@ -548,23 +555,30 @@ class CustomLayoutEditorView @JvmOverloads constructor(
             else
                 0f
 
+        val maxLeft = maxOf(
+            0f,
+            width.toFloat() - r.width()
+        )
+
+        val maxTop = maxOf(
+            0f,
+            height.toFloat() - r.height()
+        )
+
         val newLeft =
-            (r.left + dx)
-                .coerceIn(
-                    0f,
-                    width - r.width()
-                )
+            (r.left + dx).coerceIn(
+                0f,
+                maxLeft
+            )
 
         val newTop =
-            (r.top + dy)
-                .coerceIn(
-                    0f,
-                    height - r.height()
-                )
+            (r.top + dy).coerceIn(
+                0f,
+                maxTop
+            )
 
         r.offsetTo(newLeft, newTop)
 
-        // Snap to the other screen
         if (r == topRect)
             snapRect(topRect, bottomRect)
         else
