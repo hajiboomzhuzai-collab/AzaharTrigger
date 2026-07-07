@@ -93,8 +93,8 @@ class CustomLayoutEditorView @JvmOverloads constructor(
     private var activeHandleX = -1f
     private var activeHandleY = -1f
 
-    private const val FB_WIDTH = 800f
-    private const val FB_HEIGHT = 960f
+    private val FB_WIDTH = 800f
+    private val FB_HEIGHT = 960f
     
     override fun onSizeChanged(
         w: Int,
