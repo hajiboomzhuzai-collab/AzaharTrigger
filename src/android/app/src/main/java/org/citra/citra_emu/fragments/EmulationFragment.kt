@@ -705,6 +705,13 @@ class EmulationFragment : Fragment(), SurfaceHolder.Callback, Choreographer.Fram
         binding.chatContainer.alpha = 1f
         binding.chatContainer.visibility = View.GONE
     }
+
+    private fun openCustomLayoutEditor() {
+
+        binding.customLayoutEditor.visibility = View.VISIBLE
+        binding.customLayoutToolbar.visibility = View.VISIBLE
+
+    }
     
     private fun setupCustomLayoutEditor() {
 
