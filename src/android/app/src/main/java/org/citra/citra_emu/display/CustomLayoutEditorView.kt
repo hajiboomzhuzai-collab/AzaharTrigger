@@ -127,18 +127,21 @@ class CustomLayoutEditorView @JvmOverloads constructor(
 
         } else {
 
+            val scaleX = width / 800f
+            val scaleY = height / 960f
+
             topRect.set(
-                IntSetting.LANDSCAPE_TOP_X.int.toFloat(),
-                IntSetting.LANDSCAPE_TOP_Y.int.toFloat(),
-                (IntSetting.LANDSCAPE_TOP_X.int + IntSetting.LANDSCAPE_TOP_WIDTH.int).toFloat(),
-                (IntSetting.LANDSCAPE_TOP_Y.int + IntSetting.LANDSCAPE_TOP_HEIGHT.int).toFloat()
+                IntSetting.LANDSCAPE_TOP_X.int * scaleX,
+                IntSetting.LANDSCAPE_TOP_Y.int * scaleY,
+                (IntSetting.LANDSCAPE_TOP_X.int + IntSetting.LANDSCAPE_TOP_WIDTH.int) * scaleX,
+                (IntSetting.LANDSCAPE_TOP_Y.int + IntSetting.LANDSCAPE_TOP_HEIGHT.int) * scaleY
             )
 
             bottomRect.set(
-                IntSetting.LANDSCAPE_BOTTOM_X.int.toFloat(),
-                IntSetting.LANDSCAPE_BOTTOM_Y.int.toFloat(),
-                (IntSetting.LANDSCAPE_BOTTOM_X.int + IntSetting.LANDSCAPE_BOTTOM_WIDTH.int).toFloat(),
-                (IntSetting.LANDSCAPE_BOTTOM_Y.int + IntSetting.LANDSCAPE_BOTTOM_HEIGHT.int).toFloat()
+                IntSetting.LANDSCAPE_BOTTOM_X.int * scaleX,
+                IntSetting.LANDSCAPE_BOTTOM_Y.int * scaleY,
+                (IntSetting.LANDSCAPE_BOTTOM_X.int + IntSetting.LANDSCAPE_BOTTOM_WIDTH.int) * scaleX,
+                (IntSetting.LANDSCAPE_BOTTOM_Y.int + IntSetting.LANDSCAPE_BOTTOM_HEIGHT.int) * scaleY
             )
         }
     }
