@@ -220,6 +220,18 @@ object NativeLibrary {
      */
     external fun updateFramebuffer(isPortrait: Boolean)
 
+    external fun setCustomLayout(
+        topX: Int,
+        topY: Int,
+        topWidth: Int,
+        topHeight: Int,
+        bottomX: Int,
+        bottomY: Int,
+        bottomWidth: Int,
+        bottomHeight: Int,
+        isPortraitMode: Boolean
+    )
+
     /**
      * Swaps the top and bottom screens.
      */
