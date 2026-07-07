@@ -93,6 +93,9 @@ class CustomLayoutEditorView @JvmOverloads constructor(
     private var activeHandleX = -1f
     private var activeHandleY = -1f
 
+    private const val FB_WIDTH = 800f
+    private const val FB_HEIGHT = 960f
+    
     override fun onSizeChanged(
         w: Int,
         h: Int,
@@ -903,32 +906,65 @@ class CustomLayoutEditorView @JvmOverloads constructor(
 
     private fun updateSettings() {
 
+        val sx = FB_WIDTH / width.toFloat()
+        val sy = FB_HEIGHT / height.toFloat()
+
         if (NativeLibrary.isPortraitMode) {
 
-            IntSetting.PORTRAIT_TOP_X.int = topRect.left.toInt()
-            IntSetting.PORTRAIT_TOP_Y.int = topRect.top.toInt()
-            IntSetting.PORTRAIT_TOP_WIDTH.int = topRect.width().toInt()
-            IntSetting.PORTRAIT_TOP_HEIGHT.int = topRect.height().toInt()
+            IntSetting.PORTRAIT_TOP_X.int =
+                (topRect.left * sx).toInt()
 
-            IntSetting.PORTRAIT_BOTTOM_X.int = bottomRect.left.toInt()
-            IntSetting.PORTRAIT_BOTTOM_Y.int = bottomRect.top.toInt()
-            IntSetting.PORTRAIT_BOTTOM_WIDTH.int = bottomRect.width().toInt()
-            IntSetting.PORTRAIT_BOTTOM_HEIGHT.int = bottomRect.height().toInt()
+            IntSetting.PORTRAIT_TOP_Y.int =
+                (topRect.top * sy).toInt()
+
+            IntSetting.PORTRAIT_TOP_WIDTH.int =
+                (topRect.width() * sx).toInt()
+
+            IntSetting.PORTRAIT_TOP_HEIGHT.int =
+                (topRect.height() * sy).toInt()
+
+            IntSetting.PORTRAIT_BOTTOM_X.int =
+                (bottomRect.left * sx).toInt()
+
+            IntSetting.PORTRAIT_BOTTOM_Y.int =
+                (bottomRect.top * sy).toInt()
+
+            IntSetting.PORTRAIT_BOTTOM_WIDTH.int =
+                (bottomRect.width() * sx).toInt()
+
+            IntSetting.PORTRAIT_BOTTOM_HEIGHT.int =
+                (bottomRect.height() * sy).toInt()
 
         } else {
 
-            IntSetting.LANDSCAPE_TOP_X.int = topRect.left.toInt()
-            IntSetting.LANDSCAPE_TOP_Y.int = topRect.top.toInt()
-            IntSetting.LANDSCAPE_TOP_WIDTH.int = topRect.width().toInt()
-            IntSetting.LANDSCAPE_TOP_HEIGHT.int = topRect.height().toInt()
+            IntSetting.LANDSCAPE_TOP_X.int =
+                (topRect.left * sx).toInt()
 
-            IntSetting.LANDSCAPE_BOTTOM_X.int = bottomRect.left.toInt()
-            IntSetting.LANDSCAPE_BOTTOM_Y.int = bottomRect.top.toInt()
-            IntSetting.LANDSCAPE_BOTTOM_WIDTH.int = bottomRect.width().toInt()
-            IntSetting.LANDSCAPE_BOTTOM_HEIGHT.int = bottomRect.height().toInt()
+            IntSetting.LANDSCAPE_TOP_Y.int =
+                (topRect.top * sy).toInt()
+
+            IntSetting.LANDSCAPE_TOP_WIDTH.int =
+                (topRect.width() * sx).toInt()
+
+            IntSetting.LANDSCAPE_TOP_HEIGHT.int =
+                (topRect.height() * sy).toInt()
+
+            IntSetting.LANDSCAPE_BOTTOM_X.int =
+                (bottomRect.left * sx).toInt()
+
+            IntSetting.LANDSCAPE_BOTTOM_Y.int =
+                (bottomRect.top * sy).toInt()
+
+            IntSetting.LANDSCAPE_BOTTOM_WIDTH.int =
+               (bottomRect.width() * sx).toInt()
+
+            IntSetting.LANDSCAPE_BOTTOM_HEIGHT.int =
+               (bottomRect.height() * sy).toInt()
         }
 
-        NativeLibrary.updateFramebuffer(NativeLibrary.isPortraitMode)
+        NativeLibrary.updateFramebuffer(
+            NativeLibrary.isPortraitMode
+        )
     }
 
     // -------------------------
