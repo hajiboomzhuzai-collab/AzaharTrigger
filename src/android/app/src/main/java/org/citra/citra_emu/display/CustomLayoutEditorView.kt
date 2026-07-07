@@ -22,7 +22,7 @@ class CustomLayoutEditorView @JvmOverloads constructor(
         strokeWidth = 5f
     }
 
-    private val handleFill = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+    private val handlePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         color = Color.WHITE
         style = Paint.Style.FILL
     }
@@ -923,17 +923,30 @@ class CustomLayoutEditorView @JvmOverloads constructor(
         MOVE_TOP,
         MOVE_BOTTOM,
 
-        RESIZE_TOP_LEFT,
-        RESIZE_TOP,
-        RESIZE_TOP_RIGHT,
+        // Top screen handles
+        TOP_TOP_LEFT,
+        TOP_TOP,
+        TOP_TOP_RIGHT,
 
-        RESIZE_LEFT,
-        RESIZE_RIGHT,
+        TOP_LEFT,
+        TOP_RIGHT,
 
-        RESIZE_BOTTOM_LEFT,
-        RESIZE_BOTTOM,
-        RESIZE_BOTTOM_RIGHT
-    }
+        TOP_BOTTOM_LEFT,
+        TOP_BOTTOM,
+        TOP_BOTTOM_RIGHT,
+
+        // Bottom screen handles
+        BOTTOM_TOP_LEFT,
+        BOTTOM_TOP,
+        BOTTOM_TOP_RIGHT,
+
+        BOTTOM_LEFT,
+        BOTTOM_RIGHT,
+
+        BOTTOM_BOTTOM_LEFT,
+        BOTTOM_BOTTOM,
+        BOTTOM_BOTTOM_RIGHT
+}
     
     private enum class SelectedScreen {
         NONE,
