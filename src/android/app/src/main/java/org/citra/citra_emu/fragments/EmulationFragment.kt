@@ -75,6 +75,7 @@ import org.citra.citra_emu.databinding.DialogCheckboxBinding
 import org.citra.citra_emu.databinding.DialogSliderBinding
 import org.citra.citra_emu.databinding.FragmentEmulationBinding
 import org.citra.citra_emu.dialogs.ChatDialog
+import org.citra.citra_emu.display.CustomLayoutEditorView
 import org.citra.citra_emu.display.PortraitScreenLayout
 import org.citra.citra_emu.display.ScreenAdjustmentUtil
 import org.citra.citra_emu.display.ScreenLayout
@@ -228,6 +229,9 @@ class EmulationFragment : Fragment(), SurfaceHolder.Callback, Choreographer.Fram
     @SuppressLint("UnsafeRepeatOnLifecycleDetector")
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
+        
+        setupCustomLayoutEditor()
+        
         if (requireActivity().isFinishing) {
             return
         }
@@ -700,6 +704,37 @@ class EmulationFragment : Fragment(), SurfaceHolder.Callback, Choreographer.Fram
 
         binding.chatContainer.alpha = 1f
         binding.chatContainer.visibility = View.GONE
+    }
+
+    private fun openCustomLayoutEditor() {
+
+        binding.customLayoutEditor.visibility = View.VISIBLE
+        binding.customLayoutToolbar.visibility = View.VISIBLE
+
+    }
+    
+    private fun setupCustomLayoutEditor() {
+
+        binding.doneButton.setOnClickListener {
+
+            binding.customLayoutEditor.saveLayout()
+
+            saveSettings()
+
+            NativeLibrary.reloadSettings()
+            NativeLibrary.updateFramebuffer(
+                NativeLibrary.isPortraitMode
+            )
+
+            binding.customLayoutEditor.visibility = View.GONE
+            binding.customLayoutToolbar.visibility = View.GONE
+        }
+
+        binding.cancelButton.setOnClickListener {
+
+            binding.customLayoutEditor.visibility = View.GONE
+            binding.customLayoutToolbar.visibility = View.GONE
+        }
     }
     
     override fun onPause() {
@@ -1305,14 +1340,12 @@ class EmulationFragment : Fragment(), SurfaceHolder.Callback, Choreographer.Fram
                 }
 
                 R.id.menu_screen_layout_custom -> {
-                    Toast.makeText(
-                        requireContext(),
-                        R.string.emulation_adjust_custom_layout,
-                        Toast.LENGTH_LONG
-                    ).show()
+                    
                     screenAdjustmentUtil.changeScreenOrientation(ScreenLayout.CUSTOM_LAYOUT.int)
                     true
                 }
+
+                openCustomLayoutEditor()
 
                 else -> true
             }
@@ -1357,13 +1390,12 @@ class EmulationFragment : Fragment(), SurfaceHolder.Callback, Choreographer.Fram
 
                 R.id.menu_portrait_layout_custom -> {
                     Toast.makeText(
-                        requireContext(),
-                        R.string.emulation_adjust_custom_layout,
-                        Toast.LENGTH_LONG
-                    ).show()
+
                     screenAdjustmentUtil.changePortraitOrientation(PortraitScreenLayout.CUSTOM_PORTRAIT_LAYOUT.int)
                     true
                 }
+
+                openCustomLayoutEditor()
 
                 else -> true
             }
