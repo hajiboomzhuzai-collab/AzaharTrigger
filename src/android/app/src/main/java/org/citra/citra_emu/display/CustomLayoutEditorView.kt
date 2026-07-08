@@ -123,12 +123,15 @@ class CustomLayoutEditorView @JvmOverloads constructor(
     // -------------------------
     private fun loadFromSettings() {
 
-    Log.debug("[CustomLayout] loadFromSettings() portrait=${NativeLibrary.isPortraitMode}")
+    Log.debug(
+        "[CustomLayout] loadFromSettings() portrait=${NativeLibrary.isPortraitMode} view=${width}x${height}"
+    )
 
         val scaleX = width / FB_WIDTH
         val scaleY = height / FB_HEIGHT
 
         if (NativeLibrary.isPortraitMode) {
+
             Log.debug("[CustomLayout] Loading PORTRAIT settings")
 
             topRect.set(
@@ -146,8 +149,9 @@ class CustomLayoutEditorView @JvmOverloads constructor(
             )
 
         } else {
+
             Log.debug("[CustomLayout] Loading LANDSCAPE settings")
-            
+
             topRect.set(
                 IntSetting.LANDSCAPE_TOP_X.int * scaleX,
                 IntSetting.LANDSCAPE_TOP_Y.int * scaleY,
@@ -162,6 +166,10 @@ class CustomLayoutEditorView @JvmOverloads constructor(
                 (IntSetting.LANDSCAPE_BOTTOM_Y.int + IntSetting.LANDSCAPE_BOTTOM_HEIGHT.int) * scaleY
             )
         }
+
+        Log.debug(
+            "[CustomLayout] Result top=$topRect bottom=$bottomRect"
+        )
 
         invalidate()
     }
