@@ -105,7 +105,11 @@ class CustomLayoutEditorView @JvmOverloads constructor(
     ) {
         super.onSizeChanged(w, h, oldw, oldh)
 
-        loadFromSettings()
+        if (w == 0 || h == 0) return
+
+        post {
+            loadFromSettings()
+        }
     }
     
     // -------------------------
