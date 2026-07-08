@@ -115,11 +115,6 @@ struct EAPoLLogoffPacket {
 
 static_assert(sizeof(EAPoLLogoffPacket) == 0x298, "EAPoLLogoffPacket has the wrong size");
 
-struct ParsedEAPoLStart {
-    EAPoLStartPacket packet;
-    bool legacy = false;
-};
-
 /**
  * Generates an unencrypted 802.11 data payload.
  * @returns The generated frame payload.
@@ -158,8 +153,6 @@ u16 GetEAPoLFrameType(std::span<const u8> frame);
 NodeInfo DeserializeNodeInfoFromFrame(std::span<const u8> frame);
 
 EAPoLStartPacket DeserializeEAPolStartPacket(std::span<const u8> frame);
-
-ParsedEAPoLStart ParseCompatibleEAPoLStart(std::span<const u8> frame);
 
 /*
  * Returns a NodeInfo constructed from the data in the specified EAPoLNodeInfo.
