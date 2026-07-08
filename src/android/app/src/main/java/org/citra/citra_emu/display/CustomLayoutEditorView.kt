@@ -121,6 +121,10 @@ class CustomLayoutEditorView @JvmOverloads constructor(
     // LOAD INITIAL POSITIONS
     // -------------------------
     private fun loadFromSettings() {
+        Log.d(
+            "CustomLayout",
+            "loadFromSettings() portrait=${NativeLibrary.isPortraitMode}"
+        )
 
         val scaleX = width / FB_WIDTH
         val scaleY = height / FB_HEIGHT
