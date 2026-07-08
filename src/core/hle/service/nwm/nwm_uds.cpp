@@ -561,10 +561,9 @@ void NWM_UDS::HandleDeauthenticationFrame(const Network::WifiPacket& packet) {
     LOG_ERROR(Service_NWM,
           "DEAUTH sender node={} host_status={} total_nodes={}",
           node.node_id,
-          static_cast<int>(connection_status.status),
-          connection_status.total_nodes);
-          node.node_id,
-          node.connected);
+          node.connected),
+    static_cast<int>(connection_status.status),
+    connection_status.total_nodes);
     node_map.erase(packet.transmitter_address);
 
     if (!node.connected) {
