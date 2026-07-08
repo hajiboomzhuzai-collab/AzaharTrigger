@@ -708,6 +708,8 @@ class EmulationFragment : Fragment(), SurfaceHolder.Callback, Choreographer.Fram
 
     private fun openCustomLayoutEditor() {
 
+        Log.debug("[CustomLayout] openCustomLayoutEditor() portrait=${NativeLibrary.isPortraitMode}")
+
         binding.customLayoutEditor.reloadLayout()
 
         binding.customLayoutEditor.visibility = View.VISIBLE
