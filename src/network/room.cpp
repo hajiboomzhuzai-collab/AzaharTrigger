@@ -261,6 +261,8 @@ void Room::RoomImpl::ServerLoop() {
                     HandleGameNamePacket(&event);
                     break;
                 case IdWifiPacket:
+                LOG_DEBUG(Network,
+                    "Received WifiPacket (size={})",
                     HandleWifiPacket(&event);
                     break;
                 case IdChatMessage:
@@ -283,10 +285,17 @@ void Room::RoomImpl::ServerLoop() {
                 enet_packet_destroy(event.packet);
                 break;
             case ENET_EVENT_TYPE_DISCONNECT:
-                HandleClientDisconnection(event.peer);
-                break;
+                LOG_WARNING(Network,
+                    "ENet peer disconnected: peer={} data={}",
+                static_cast<void*>(event.peer),
+                event.data);
+
+            HandleClientDisconnection(event.peer);
+            break;
             case ENET_EVENT_TYPE_NONE:
             case ENET_EVENT_TYPE_CONNECT:
+                LOG_INFO(Network,
+                     "Peer connected: {}",
                 break;
             }
         }
@@ -851,6 +860,8 @@ MacAddress Room::RoomImpl::GenerateMacAddress() {
 
 void Room::RoomImpl::HandleWifiPacket(const ENetEvent* event) {
     Packet in_packet;
+    LOG_DEBUG(Network,
+          "HandleWifiPacket() size={} peer={}",
     in_packet.Append(event->packet->data, event->packet->dataLength);
     in_packet.IgnoreBytes(sizeof(u8));         // Message type
     in_packet.IgnoreBytes(sizeof(u8));         // WifiPacket Type
@@ -870,6 +881,11 @@ void Room::RoomImpl::HandleWifiPacket(const ENetEvent* event) {
         for (const auto& member : members) {
             if (member.peer != event->peer) {
                 sent_packet = true;
+                
+                LOG_DEBUG(Network,
+                  "Forward broadcast to peer={}",
+                  static_cast<void*>(member.peer));
+                  
                 enet_peer_send(member.peer, 0, enet_packet);
             }
         }
@@ -884,6 +900,11 @@ void Room::RoomImpl::HandleWifiPacket(const ENetEvent* event) {
                                        return member.mac_address == destination_address;
                                    });
         if (member != members.end()) {
+        	
+            LOG_DEBUG(Network,
+              "Forward unicast to peer={}",
+              static_cast<void*>(member->peer));
+              
             enet_peer_send(member->peer, 0, enet_packet);
         } else {
             LOG_ERROR(Network,
@@ -981,29 +1002,54 @@ void Room::RoomImpl::HandleGameNamePacket(const ENetEvent* event) {
 }
 
 void Room::RoomImpl::HandleClientDisconnection(ENetPeer* client) {
+    LOG_WARNING(Network,
+                "HandleClientDisconnection() peer={}",
+                static_cast<void*>(client));
+
     // Remove the client from the members list.
     std::string nickname, username, ip;
     {
         std::lock_guard lock(member_mutex);
-        auto member = std::find_if(members.begin(), members.end(), [client](const Member& member) {
-            return member.peer == client;
-        });
+        auto member = std::find_if(members.begin(), members.end(),
+                                   [client](const Member& member) {
+                                       return member.peer == client;
+                                   });
+
         if (member != members.end()) {
             nickname = member->nickname;
             username = member->user_data.username;
 
             char ip_raw[256];
-            enet_address_get_host_ip(&member->peer->address, ip_raw, sizeof(ip_raw) - 1);
+            enet_address_get_host_ip(&member->peer->address,
+                                     ip_raw,
+                                     sizeof(ip_raw) - 1);
             ip = ip_raw;
 
+            LOG_WARNING(Network,
+                        "Removing member nickname='{}' username='{}' ip={}",
+                        nickname,
+                        username,
+                        ip);
+
             members.erase(member);
+        } else {
+            LOG_WARNING(Network,
+                        "Disconnect for unknown member");
         }
     }
 
-    // Announce the change to all clients.
+    LOG_WARNING(Network,
+                "Calling enet_peer_disconnect()");
+
     enet_peer_disconnect(client, 0);
-    if (!nickname.empty())
+
+    if (!nickname.empty()) {
+        LOG_WARNING(Network,
+                    "Broadcasting leave message");
+
         SendStatusMessage(IdMemberLeave, nickname, username, ip);
+    }
+
     BroadcastRoomInformation();
 }
 
