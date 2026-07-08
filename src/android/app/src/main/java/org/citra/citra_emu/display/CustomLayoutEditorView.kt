@@ -11,6 +11,7 @@ import android.view.View
 import org.citra.citra_emu.NativeLibrary
 import org.citra.citra_emu.features.settings.model.IntSetting
 import org.citra.citra_emu.features.settings.utils.SettingsFile
+import org.citra.citra_emu.utils.Log
 
 class CustomLayoutEditorView @JvmOverloads constructor(
     context: Context,
@@ -121,15 +122,14 @@ class CustomLayoutEditorView @JvmOverloads constructor(
     // LOAD INITIAL POSITIONS
     // -------------------------
     private fun loadFromSettings() {
-        Log.d(
-            "CustomLayout",
-            "loadFromSettings() portrait=${NativeLibrary.isPortraitMode}"
-        )
+
+    Log.debug("[CustomLayout] loadFromSettings() portrait=${NativeLibrary.isPortraitMode}")
 
         val scaleX = width / FB_WIDTH
         val scaleY = height / FB_HEIGHT
 
         if (NativeLibrary.isPortraitMode) {
+            Log.debug("[CustomLayout] Loading PORTRAIT settings")
 
             topRect.set(
                 IntSetting.PORTRAIT_TOP_X.int * scaleX,
@@ -146,7 +146,8 @@ class CustomLayoutEditorView @JvmOverloads constructor(
             )
 
         } else {
-
+            Log.debug("[CustomLayout] Loading LANDSCAPE settings")
+            
             topRect.set(
                 IntSetting.LANDSCAPE_TOP_X.int * scaleX,
                 IntSetting.LANDSCAPE_TOP_Y.int * scaleY,
