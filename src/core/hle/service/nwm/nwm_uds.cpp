@@ -561,17 +561,20 @@ void NWM_UDS::HandleDeauthenticationFrame(const Network::WifiPacket& packet) {
     const Node& node = node_it->second;
 
     LOG_ERROR(Service_NWM,
-              "DEAUTH ignored from node {}. Waiting
+              "DEAUTH ignored from node {}. Waiting for timeout instead.",
+              node.node_id);
 
-void NWM_UDS::HandleDataFrame(const Network::WifiPacket& packet) {
-    switch (GetFrameEtherType(packet.data)) {
-    case EtherType::EAPoL:
-        HandleEAPoLPacket(packet);
-        break;
-    case EtherType::SecureData:
-        HandleSecureDataPacket(packet);
-        break;
-    }
+    // ============================================================
+    // Timeout experiment:
+    // Do NOT erase the node.
+    // Do NOT call Reset().
+    // Do NOT signal connection_status_event.
+    //
+    // We want to see if the game disconnects the player naturally
+    // after missing keepalive/heartbeat packets.
+    // ============================================================
+
+    return;
 }
 
 void NWM_UDS::HandleDataFrame(const Network::WifiPacket& packet) {
