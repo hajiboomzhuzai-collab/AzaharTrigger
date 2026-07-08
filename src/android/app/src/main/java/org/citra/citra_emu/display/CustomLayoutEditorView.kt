@@ -933,8 +933,18 @@ class CustomLayoutEditorView @JvmOverloads constructor(
     }
 
     fun reloadLayout() {
-        loadFromSettings()
-        invalidate()
+        post {
+            activeRect = null
+            resizingRect = null
+            selectedScreen = SelectedScreen.NONE
+
+            activeHandleX = -1f
+            activeHandleY = -1f
+
+            loadFromSettings()
+
+            invalidate()
+        }
     }
 
     private fun updateSettings() {
