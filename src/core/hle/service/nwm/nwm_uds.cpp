@@ -537,96 +537,6 @@ void NWM_UDS::HandleAuthenticationFrame(const Network::WifiPacket& packet) {
 
 void NWM_UDS::HandleDeauthenticationFrame(const Network::WifiPacket& packet) {
     LOG_ERROR(Service_NWM,
-          "HandleDeauthenticationFrame(): DEAUTH received from {:02X}:{:02X}:{:02X}:{:02X}:{:02X}:{:02X}",
-          packet.transmitter_address[0],
-          packet.transmitter_address[1],
-          packet.transmitter_address[2],
-          packet.transmitter_address[3],
-          packet.transmitter_address[4],
-          packet.transmitter_address[5]);
-    std::scoped_lock lock{connection_status_mutex, system.Kernel().GetHLELock()};
-
-    if (connection_status.status != NetworkStatus::ConnectedAsHost) {
-        LOG_ERROR(Service_NWM, "Got deauthentication frame but we are not the host");
-        return;
-    }
-    if (node_map.find(packet.transmitter_address) == node_map.end()) {
-        LOG_ERROR(Service_NWM,
-          "Got deauthentication frame from unknown node (status={})",
-          static_cast<int>(connection_status.status));
-        return;
-    }
-
-    Node node = node_map[packet.transmitter_address];
-    LOG_ERROR(Service_NWM,
-          "DEAUTH sender node={} host_status={} total_nodes={}",
-          node.node_id,
-          node.connected),
-    static_cast<int>(connection_status.status),
-    connection_status.total_nodes);
-    node_map.erase(packet.transmitter_address);
-
-    if (!node.connected) {
-        LOG_DEBUG(Service_NWM, "Received DeauthenticationFrame from a not connected MAC Address");
-        return;
-    }
-
-    auto node_it = std::find_if(node_info.begin(), node_info.end(), [&node](const NodeInfo& info) {
-        return info.network_node_id == node.node_id;
-    });
-    if (node_it == node_info.end()) {
-        LOG_ERROR(Service_NWM, "node_it is last node of node_info");
-        return;
-    }
-
-    if (!node.spec) {
-        connection_status.node_bitmask &= ~(1 << (node.node_id - 1));
-        connection_status.changed_nodes |= 1 << (node.node_id - 1);
-        connection_status.total_nodes--;
-        connection_status.nodes[node.node_id - 1] = 0;
-
-        network_info.total_nodes--;
-        // TODO(B3N30): broadcast new connection_status to clients
-    }
-    LOG_ERROR(Service_NWM,
-          "Removing node {} from network",
-          node.node_id);
-    node_it->Reset();
-    connection_status_event->Signal();
-}
-
-void NWM_UDS::HandleDataFrame(const Network::WifiPacket& packet) {
-    LOG_DEBUG(Service_NWM,
-        "HandleDataFrame(): from {:02X}:{:02X}:{:02X}:{:02X}:{:02X}:{:02X} size={}",
-            packet.transmitter_address[0],
-            packet.transmitter_address[1],
-            packet.transmitter_address[2],
-            packet.transmitter_address[3],
-            packet.transmitter_address[4],
-            packet.transmitter_address[5],
-            packet.data.size());
-
-    switch (GetFrameEtherType(packet.data)) {
-    case EtherType::EAPoL:
-        LOG_DEBUG(Service_NWM, "HandleDataFrame(): EAPoL");
-        HandleEAPoLPacket(packet);
-        break;
-
-    case EtherType::SecureData:
-        LOG_DEBUG(Service_NWM, "HandleDataFrame(): SecureData");
-        HandleSecureDataPacket(packet);
-        break;
-
-    default:
-        LOG_WARNING(Service_NWM,
-            "HandleDataFrame(): Unknown EtherType");
-        break;
-    }
-}
-
-/// Callback to parse and handle a received wifi packet.
-void NWM_UDS::HandleDeauthenticationFrame(const Network::WifiPacket& packet) {
-    LOG_ERROR(Service_NWM,
         "HandleDeauthenticationFrame(): DEAUTH received from {:02X}:{:02X}:{:02X}:{:02X}:{:02X}:{:02X}",
         packet.transmitter_address[0],
         packet.transmitter_address[1],
@@ -692,6 +602,71 @@ void NWM_UDS::HandleDeauthenticationFrame(const Network::WifiPacket& packet) {
 
     node_it->Reset();
     connection_status_event->Signal();
+}
+
+void NWM_UDS::HandleDataFrame(const Network::WifiPacket& packet) {
+    LOG_DEBUG(Service_NWM,
+        "HandleDataFrame(): from {:02X}:{:02X}:{:02X}:{:02X}:{:02X}:{:02X} size={}",
+            packet.transmitter_address[0],
+            packet.transmitter_address[1],
+            packet.transmitter_address[2],
+            packet.transmitter_address[3],
+            packet.transmitter_address[4],
+            packet.transmitter_address[5],
+            packet.data.size());
+
+    switch (GetFrameEtherType(packet.data)) {
+    case EtherType::EAPoL:
+        LOG_DEBUG(Service_NWM, "HandleDataFrame(): EAPoL");
+        HandleEAPoLPacket(packet);
+        break;
+
+    case EtherType::SecureData:
+        LOG_DEBUG(Service_NWM, "HandleDataFrame(): SecureData");
+        HandleSecureDataPacket(packet);
+        break;
+
+    default:
+        LOG_WARNING(Service_NWM,
+            "HandleDataFrame(): Unknown EtherType");
+        break;
+    }
+}
+
+/// Callback to parse and handle a received wifi packet.
+void NWM_UDS::OnWifiPacketReceived(const Network::WifiPacket& packet) {
+    if (!initialized) {
+        return;
+    }
+    switch (packet.type) {
+    case Network::WifiPacket::PacketType::Beacon:
+        HandleBeaconFrame(packet);
+        break;
+    case Network::WifiPacket::PacketType::Authentication:
+        HandleAuthenticationFrame(packet);
+        break;
+    case Network::WifiPacket::PacketType::AssociationResponse:
+        HandleAssociationResponseFrame(packet);
+        break;
+    case Network::WifiPacket::PacketType::Data:
+        HandleDataFrame(packet);
+        break;
+    case Network::WifiPacket::PacketType::Deauthentication:
+    LOG_ERROR(Service_NWM,
+        "RX -> DEAUTH from {:02X}:{:02X}:{:02X}:{:02X}:{:02X}:{:02X}",
+        packet.transmitter_address[0],
+        packet.transmitter_address[1],
+        packet.transmitter_address[2],
+        packet.transmitter_address[3],
+        packet.transmitter_address[4],
+        packet.transmitter_address[5]);
+
+    HandleDeauthenticationFrame(packet);
+    break;
+    case Network::WifiPacket::PacketType::NodeMap:
+        HandleNodeMapPacket(packet);
+        break;
+    }
 }
 
 boost::optional<Network::MacAddress> NWM_UDS::GetNodeMacAddress(u16 dest_node_id, u8 flags) {
