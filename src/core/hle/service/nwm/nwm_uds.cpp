@@ -562,11 +562,38 @@ void NWM_UDS::HandleAuthenticationFrame(const Network::WifiPacket& packet) {
                 return;
             }
 
-            if (node_map.find(packet.transmitter_address) != node_map.end()) {
-                LOG_ERROR(Service_NWM,
-                          "AUTH ABORT: MAC already exists in node_map");
-                return;
-            }
+            auto it = node_map.find(packet.transmitter_address);
+
+            if (it != node_map.end()) {
+            LOG_ERROR(Service_NWM,
+              "AUTH REJECT: Existing node for %02X:%02X:%02X:%02X:%02X:%02X "
+              "connected=%d node_id=%u",
+              packet.transmitter_address[0],
+              packet.transmitter_address[1],
+              packet.transmitter_address[2],
+              packet.transmitter_address[3],
+              packet.transmitter_address[4],
+              packet.transmitter_address[5],
+              it->second.connected,
+              static_cast<u32>(it->second.node_id));
+
+    // Uncomment this ONLY if you want to test whether stale nodes are the problem.
+    /*
+    if (!it->second.connected) {
+        LOG_ERROR(Service_NWM,
+                  "AUTH: Removing stale node and allowing reconnect.");
+        node_map.erase(it);
+    } else {
+        LOG_ERROR(Service_NWM,
+                  "Connection sequence aborted, because there is already a connected client with that MAC-Adress");
+        return;
+    }
+    */
+
+    LOG_ERROR(Service_NWM,
+              "Connection sequence aborted, because there is already a connected client with that MAC-Adress");
+    return;
+}
 
             if (connection_status.max_nodes == connection_status.total_nodes) {
                 LOG_ERROR(Service_NWM,
