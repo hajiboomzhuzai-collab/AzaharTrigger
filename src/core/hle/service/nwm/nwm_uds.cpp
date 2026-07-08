@@ -79,6 +79,16 @@ std::list<Network::WifiPacket> NWM_UDS::GetReceivedBeacons(const MacAddress& sen
 
 /// Sends a WifiPacket to the room we're currently connected to.
 void SendPacket(Network::WifiPacket& packet) {
+    if (packet.type == Network::WifiPacket::PacketType::Deauthentication) {
+        LOG_ERROR(Service_NWM,
+            ">>> Sending DEAUTH to {:02X}:{:02X}:{:02X}:{:02X}:{:02X}:{:02X}",
+            packet.destination_address[0],
+            packet.destination_address[1],
+            packet.destination_address[2],
+            packet.destination_address[3],
+            packet.destination_address[4],
+            packet.destination_address[5]);
+    }
     LOG_DEBUG(Service_NWM,
               "TX WifiPacket type={} to {:02X}:{:02X}:{:02X}:{:02X}:{:02X}:{:02X}",
               static_cast<int>(packet.type),
@@ -95,14 +105,16 @@ void SendPacket(Network::WifiPacket& packet) {
 
             packet.transmitter_address = room_member->GetMacAddress();
 
-            LOG_DEBUG(Service_NWM,
-                      "TX sender {:02X}:{:02X}:{:02X}:{:02X}:{:02X}:{:02X}",
-                      packet.transmitter_address[0],
-                      packet.transmitter_address[1],
-                      packet.transmitter_address[2],
-                      packet.transmitter_address[3],
-                      packet.transmitter_address[4],
-                      packet.transmitter_address[5]);
+            if (packet.type == Network::WifiPacket::PacketType::Deauthentication) {
+                LOG_ERROR(Service_NWM,
+                    ">>> DEAUTH sender {:02X}:{:02X}:{:02X}:{:02X}:{:02X}:{:02X}",
+                        packet.transmitter_address[0],
+                        packet.transmitter_address[1],
+                        packet.transmitter_address[2],
+                        packet.transmitter_address[3],
+                        packet.transmitter_address[4],
+                        packet.transmitter_address[5]);
+            }
 
             room_member->SendWifiPacket(packet);
         } else {
@@ -547,7 +559,10 @@ void NWM_UDS::HandleDeauthenticationFrame(const Network::WifiPacket& packet) {
 
     Node node = node_map[packet.transmitter_address];
     LOG_ERROR(Service_NWM,
-          "DEAUTH node_id={} connected={}",
+          "DEAUTH sender node={} host_status={} total_nodes={}",
+          node.node_id,
+          static_cast<int>(connection_status.status),
+          connection_status.total_nodes);
           node.node_id,
           node.connected);
     node_map.erase(packet.transmitter_address);
@@ -648,9 +663,17 @@ void NWM_UDS::OnWifiPacketReceived(const Network::WifiPacket& packet) {
         break;
 
     case Network::WifiPacket::PacketType::Deauthentication:
-        LOG_DEBUG(Service_NWM, "RX -> Deauthentication");
-        HandleDeauthenticationFrame(packet);
-        break;
+    LOG_ERROR(Service_NWM,
+        "RX -> DEAUTH from {:02X}:{:02X}:{:02X}:{:02X}:{:02X}:{:02X}",
+        packet.transmitter_address[0],
+        packet.transmitter_address[1],
+        packet.transmitter_address[2],
+        packet.transmitter_address[3],
+        packet.transmitter_address[4],
+        packet.transmitter_address[5]);
+
+    HandleDeauthenticationFrame(packet);
+    break;
 
     case Network::WifiPacket::PacketType::NodeMap:
         LOG_DEBUG(Service_NWM, "RX -> NodeMap");
@@ -1555,6 +1578,9 @@ ResultStatus NWM_UDS::DisconnectNetworkHLE() {
         deauth.destination_address = network_info.host_mac_address;
         deauth.type = WifiPacket::PacketType::Deauthentication;
     }
+
+    LOG_ERROR(Service_NWM,
+          "DisconnectNetworkHLE() sending DEAUTH to host");
 
     SendPacket(deauth);
 
