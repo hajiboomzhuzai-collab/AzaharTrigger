@@ -539,7 +539,8 @@ void NWM_UDS::HandleDeauthenticationFrame(const Network::WifiPacket& packet) {
         return;
     }
     if (node_map.find(packet.transmitter_address) == node_map.end()) {
-        LOG_ERROR(Service_NWM, "Got deauthentication frame from unknown node");
+        LOG_ERROR(Service_NWM,
+          "Got deauthentication frame from unknown node (status={})",
           static_cast<int>(connection_status.status));
         return;
     }
