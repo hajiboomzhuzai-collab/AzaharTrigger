@@ -165,6 +165,9 @@ void RoomMember::RoomMemberImpl::MemberLoop() {
             case ENET_EVENT_TYPE_RECEIVE:
                 switch (event.packet->data[0]) {
                 case IdWifiPacket:
+                LOG_DEBUG(Network,
+                  "Received WifiPacket size={}",
+                  event.packet->dataLength);
                     HandleWifiPackets(&event);
                     break;
                 case IdChatMessage:
@@ -238,7 +241,12 @@ void RoomMember::RoomMemberImpl::MemberLoop() {
                 enet_packet_destroy(event.packet);
                 break;
             case ENET_EVENT_TYPE_DISCONNECT:
+            LOG_WARNING(Network,
+                "MemberLoop: ENet disconnect state={}",
+                static_cast<int>(state));
                 if (state == State::Joined || state == State::Moderator) {
+                	LOG_WARNING(Network,
+                        "LostConnection triggered");
                     SetState(State::Idle);
                     SetError(Error::LostConnection);
                 }
@@ -259,9 +267,18 @@ void RoomMember::RoomMemberImpl::MemberLoop() {
             packets.swap(send_list);
         }
         for (const auto& packet : packets) {
-            ENetPacket* enetPacket = enet_packet_create(packet.GetData(), packet.GetDataSize(),
-                                                        ENET_PACKET_FLAG_RELIABLE);
-            enet_peer_send(server, 0, enetPacket);
+
+    LOG_DEBUG(Network,
+              "Sending packet to server size={}",
+              packet.GetDataSize());
+
+    ENetPacket* enetPacket =
+        enet_packet_create(packet.GetData(),
+                           packet.GetDataSize(),
+                           ENET_PACKET_FLAG_RELIABLE);
+
+    enet_peer_send(server, 0, enetPacket);
+}
         }
         enet_host_flush(client);
     }
@@ -349,6 +366,9 @@ void RoomMember::RoomMemberImpl::HandleJoinPacket(const ENetEvent* event) {
 }
 
 void RoomMember::RoomMemberImpl::HandleWifiPackets(const ENetEvent* event) {
+	LOG_DEBUG(Network,
+              "HandleWifiPackets() size={}",
+              event->packet->dataLength);
     WifiPacket wifi_packet{};
     Packet packet;
     packet.Append(event->packet->data, event->packet->dataLength);
