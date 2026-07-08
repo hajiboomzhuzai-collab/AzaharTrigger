@@ -932,6 +932,11 @@ class CustomLayoutEditorView @JvmOverloads constructor(
         }
     }
 
+    fun reloadLayout() {
+        loadFromSettings()
+        invalidate()
+    }
+
     private fun updateSettings() {
 
         val sx = FB_WIDTH / width.toFloat()
