@@ -79,11 +79,29 @@ std::list<Network::WifiPacket> NWM_UDS::GetReceivedBeacons(const MacAddress& sen
 
 /// Sends a WifiPacket to the room we're currently connected to.
 void SendPacket(Network::WifiPacket& packet) {
+	LOG_DEBUG(Service_NWM,
+          "TX WifiPacket type={} to {:02X}:{:02X}:{:02X}:{:02X}:{:02X}:{:02X}",
+          static_cast<int>(packet.type),
+          packet.destination_address[0],
+          packet.destination_address[1],
+          packet.destination_address[2],
+          packet.destination_address[3],
+          packet.destination_address[4],
+          packet.destination_address[5]);
     if (auto room_member = Network::GetRoomMember().lock()) {
         if (room_member->GetState() == Network::RoomMember::State::Joined ||
             room_member->GetState() == Network::RoomMember::State::Moderator) {
 
             packet.transmitter_address = room_member->GetMacAddress();
+            LOG_DEBUG(Service_NWM,
+    "TX type={} {:02X}:{:02X}:{:02X}:{:02X}:{:02X}:{:02X} -> {:02X}:{:02X}:{:02X}:{:02X}:{:02X}:{:02X}",
+    static_cast<int>(packet.type),
+    packet.transmitter_address[0], packet.transmitter_address[1],
+    packet.transmitter_address[2], packet.transmitter_address[3],
+    packet.transmitter_address[4], packet.transmitter_address[5],
+    packet.destination_address[0], packet.destination_address[1],
+    packet.destination_address[2], packet.destination_address[3],
+    packet.destination_address[4], packet.destination_address[5]);
             room_member->SendWifiPacket(packet);
         }
     }
@@ -308,6 +326,17 @@ void NWM_UDS::HandleEAPoLPacket(const Network::WifiPacket& packet) {
             LOG_ERROR(Service_NWM, "Unknown connection type: 0x{:x}", static_cast<u32>(conn_type));
         }
 
+        // Start keepalive timeout monitoring
+        last_keepalive_timestamp =
+            std::chrono::duration_cast<std::chrono::milliseconds>(
+            std::chrono::steady_clock::now().time_since_epoch())
+            .count();
+
+        system.CoreTiming().ScheduleEvent(
+            msToCycles(1000),
+            keepalive_event,
+            0);
+        
         // We're now connected, signal the application
         connection_status.status_change_reason = NetworkStatusChangeReason::ConnectionEstablished;
         // Some games require ConnectToNetwork to block, for now it doesn't
@@ -497,7 +526,15 @@ void NWM_UDS::HandleAuthenticationFrame(const Network::WifiPacket& packet) {
 }
 
 void NWM_UDS::HandleDeauthenticationFrame(const Network::WifiPacket& packet) {
-    LOG_DEBUG(Service_NWM, "called");
+    LOG_WARNING(
+        Service_NWM,
+        "HandleDeauthenticationFrame: MAC={:02X}:{:02X}:{:02X}:{:02X}:{:02X}:{:02X}",
+        packet.transmitter_address[0],
+        packet.transmitter_address[1],
+        packet.transmitter_address[2],
+        packet.transmitter_address[3],
+        packet.transmitter_address[4],
+        packet.transmitter_address[5]);
     std::scoped_lock lock{connection_status_mutex, system.Kernel().GetHLELock()};
 
     if (connection_status.status != NetworkStatus::ConnectedAsHost) {
@@ -510,6 +547,9 @@ void NWM_UDS::HandleDeauthenticationFrame(const Network::WifiPacket& packet) {
     }
 
     Node node = node_map[packet.transmitter_address];
+    LOG_WARNING(Service_NWM,
+                "Removing node {} from node_map",
+                node.node_id);
     node_map.erase(packet.transmitter_address);
 
     if (!node.connected) {
@@ -528,6 +568,10 @@ void NWM_UDS::HandleDeauthenticationFrame(const Network::WifiPacket& packet) {
     if (!node.spec) {
         connection_status.node_bitmask &= ~(1 << (node.node_id - 1));
         connection_status.changed_nodes |= 1 << (node.node_id - 1);
+        LOG_WARNING(Service_NWM,
+                "total_nodes {} -> {}",
+                connection_status.total_nodes,
+                connection_status.total_nodes - 1);
         connection_status.total_nodes--;
         connection_status.nodes[node.node_id - 1] = 0;
 
@@ -539,6 +583,9 @@ void NWM_UDS::HandleDeauthenticationFrame(const Network::WifiPacket& packet) {
 }
 
 void NWM_UDS::HandleDataFrame(const Network::WifiPacket& packet) {
+	LOG_DEBUG(Service_NWM,
+              "HandleDataFrame size={}",
+              packet.data.size());
     switch (GetFrameEtherType(packet.data)) {
     case EtherType::EAPoL:
         HandleEAPoLPacket(packet);
@@ -551,6 +598,15 @@ void NWM_UDS::HandleDataFrame(const Network::WifiPacket& packet) {
 
 /// Callback to parse and handle a received wifi packet.
 void NWM_UDS::OnWifiPacketReceived(const Network::WifiPacket& packet) {
+	LOG_DEBUG(Service_NWM,
+          "RX WifiPacket type={} from {:02X}:{:02X}:{:02X}:{:02X}:{:02X}:{:02X}",
+          static_cast<int>(packet.type),
+          packet.transmitter_address[0],
+          packet.transmitter_address[1],
+          packet.transmitter_address[2],
+          packet.transmitter_address[3],
+          packet.transmitter_address[4],
+          packet.transmitter_address[5]);
     if (!initialized) {
         return;
     }
@@ -992,8 +1048,20 @@ Result NWM_UDS::BeginHostingNetwork(std::span<const u8> network_info_buffer,
     connection_status_event->Signal();
 
     // Start broadcasting the network, send a beacon frame every 102.4ms.
-    system.CoreTiming().ScheduleEvent(msToCycles(DefaultBeaconInterval * MillisecondsPerTU),
-                                      beacon_broadcast_event, 0);
+    system.CoreTiming().ScheduleEvent(
+        msToCycles(DefaultBeaconInterval * MillisecondsPerTU),
+        beacon_broadcast_event,
+        0);
+    
+    last_keepalive_timestamp =
+        std::chrono::duration_cast<std::chrono::milliseconds>(
+            std::chrono::steady_clock::now().time_since_epoch())
+            .count();
+
+    system.CoreTiming().ScheduleEvent(
+        msToCycles(1000),
+        keepalive_event,
+        0);
 
     return ResultSuccess;
 }
@@ -1626,19 +1694,15 @@ void NWM_UDS::BeaconBroadcastCallback(std::uintptr_t user_data, s64 cycles_late)
 
     // ================= KEEPALIVE (INSERT HERE) =================
     if (keepalive_enabled) {
-        keepalive_tick++;
+        Network::WifiPacket keepalive;
+        keepalive.type = Network::WifiPacket::PacketType::Data;
+        keepalive.channel = network_channel;
+        keepalive.destination_address = Network::BroadcastMac;
 
-        if (keepalive_tick % 2 == 0) { // ~1 second depending on beacon interval
-            Network::WifiPacket keepalive;
-            keepalive.type = Network::WifiPacket::PacketType::Data;
-            keepalive.channel = network_channel;
-            keepalive.destination_address = Network::BroadcastMac;
+        // 1-byte harmless payload
+        keepalive.data = std::vector<u8>{0x00};
 
-            // tiny harmless payload (does not affect UDS logic)
-            keepalive.data = std::vector<u8>{0x00};
-
-            SendPacket(keepalive);
-        }
+        SendPacket(keepalive);
     }
     // ==========================================================
 
@@ -1657,6 +1721,42 @@ void NWM_UDS::BeaconBroadcastCallback(std::uintptr_t user_data, s64 cycles_late)
     system.CoreTiming().ScheduleEvent(msToCycles(DefaultBeaconInterval * MillisecondsPerTU) -
                                           cycles_late,
                                       beacon_broadcast_event, 0);
+}
+
+void NWM_UDS::KeepaliveCallback(std::uintptr_t user_data, s64 cycles_late) {
+    if (connection_status.status == NetworkStatus::ConnectedAsClient) {
+
+        const auto now =
+            std::chrono::duration_cast<std::chrono::milliseconds>(
+                std::chrono::steady_clock::now().time_since_epoch())
+                .count();
+
+        const auto elapsed = now - last_keepalive_timestamp;
+
+        if (last_keepalive_timestamp != 0 &&
+            elapsed > KEEPALIVE_TIMEOUT_MS) {
+
+            missed_keepalive++;
+
+            LOG_WARNING(Service_NWM,
+                    "Missed keepalive {} ({} ms)",
+                        missed_keepalive,
+                        elapsed);
+
+            if (missed_keepalive >= 3) {
+                LOG_ERROR(Service_NWM, "Host timed out. Disconnecting.");
+                DisconnectNetworkHLE();
+                return;
+            }
+        } else {
+            // Connection is healthy again
+            missed_keepalive = 0;
+        }
+    }
+    system.CoreTiming().ScheduleEvent(
+        msToCycles(1000),
+        keepalive_event,
+        0);
 }
 
 Network::MacAddress NWM_UDS::GetMacAddress() {
@@ -1720,6 +1820,12 @@ NWM_UDS::NWM_UDS(Core::System& system) : ServiceFramework("nwm::UDS"), system(sy
     beacon_broadcast_event = system.CoreTiming().RegisterEvent(
         "UDS::BeaconBroadcastCallback", [this](std::uintptr_t user_data, s64 cycles_late) {
             BeaconBroadcastCallback(user_data, cycles_late);
+        });
+
+    keepalive_event = system.CoreTiming().RegisterEvent(
+        "UDS::KeepaliveCallback",
+        [this](std::uintptr_t user_data, s64 cycles_late) {
+            KeepaliveCallback(user_data, cycles_late);
         });
 
     system.Kernel().GetSharedPageHandler().SetMacAddress(GetMacAddress());
