@@ -105,12 +105,17 @@ class CustomLayoutEditorView @JvmOverloads constructor(
     ) {
         super.onSizeChanged(w, h, oldw, oldh)
 
-        if (w == 0 || h == 0) return
+        loadFromSettings()
 
-        post {
-            loadFromSettings()
-        }
-    }
+        activeRect = null
+        resizingRect = null
+        selectedScreen = SelectedScreen.NONE
+
+        activeHandleX = -1f
+        activeHandleY = -1f
+
+        invalidate()
+   }
     
     // -------------------------
     // LOAD INITIAL POSITIONS
