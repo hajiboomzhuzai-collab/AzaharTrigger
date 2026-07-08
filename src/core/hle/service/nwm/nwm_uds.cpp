@@ -498,46 +498,32 @@ void NWM_UDS::HandleAuthenticationFrame(const Network::WifiPacket& packet) {
 }
 
 void NWM_UDS::HandleDeauthenticationFrame(const Network::WifiPacket& packet) {
-    LOG_DEBUG(Service_NWM, "called");
+    LOG_ERROR(Service_NWM,
+              "Ignoring DEAUTH from {:02X}:{:02X}:{:02X}:{:02X}:{:02X}:{:02X} (timeout test)",
+              packet.transmitter_address[0],
+              packet.transmitter_address[1],
+              packet.transmitter_address[2],
+              packet.transmitter_address[3],
+              packet.transmitter_address[4],
+              packet.transmitter_address[5]);
+
     std::scoped_lock lock{connection_status_mutex, system.Kernel().GetHLELock()};
 
     if (connection_status.status != NetworkStatus::ConnectedAsHost) {
-        LOG_ERROR(Service_NWM, "Got deauthentication frame but we are not the host");
-        return;
-    }
-    if (node_map.find(packet.transmitter_address) == node_map.end()) {
-        LOG_ERROR(Service_NWM, "Got deauthentication frame from unknown node");
+        LOG_ERROR(Service_NWM, "Ignoring DEAUTH because we are not the host");
         return;
     }
 
-    Node node = node_map[packet.transmitter_address];
-    node_map.erase(packet.transmitter_address);
-
-    if (!node.connected) {
-        LOG_DEBUG(Service_NWM, "Received DeauthenticationFrame from a not connected MAC Address");
+    auto node_it = node_map.find(packet.transmitter_address);
+    if (node_it == node_map.end()) {
+        LOG_ERROR(Service_NWM, "Ignoring DEAUTH from unknown node");
         return;
     }
 
-    auto node_it = std::find_if(node_info.begin(), node_info.end(), [&node](const NodeInfo& info) {
-        return info.network_node_id == node.node_id;
-    });
-    if (node_it == node_info.end()) {
-        LOG_ERROR(Service_NWM, "node_it is last node of node_info");
-        return;
-    }
+    const Node& node = node_it->second;
 
-    if (!node.spec) {
-        connection_status.node_bitmask &= ~(1 << (node.node_id - 1));
-        connection_status.changed_nodes |= 1 << (node.node_id - 1);
-        connection_status.total_nodes--;
-        connection_status.nodes[node.node_id - 1] = 0;
-
-        network_info.total_nodes--;
-        // TODO(B3N30): broadcast new connection_status to clients
-    }
-    node_it->Reset();
-    connection_status_event->Signal();
-}
+    LOG_ERROR(Service_NWM,
+              "DEAUTH ignored from node {}. Waiting
 
 void NWM_UDS::HandleDataFrame(const Network::WifiPacket& packet) {
     switch (GetFrameEtherType(packet.data)) {
