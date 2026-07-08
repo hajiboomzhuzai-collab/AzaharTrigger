@@ -762,11 +762,6 @@ class EmulationFragment : Fragment(), SurfaceHolder.Callback, Choreographer.Fram
             binding.customLayoutEditor.resetLayout()
         }
     }
-
-    fun reloadLayout() {
-        loadFromSettings()
-        invalidate()
-    }
     
     override fun onPause() {
         if (NativeLibrary.isRunning()) {
