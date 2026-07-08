@@ -375,10 +375,9 @@ void NWM_UDS::HandleEAPoLPacket(const Network::WifiPacket& packet) {
     auto logoff = ParseEAPoLLogoffFrame(packet.data);
 
     LOG_ERROR(Service_NWM,
-              "EAPOL host says total_nodes={} max_nodes={} assigned_nodes={}",
+              "EAPOL host says total_nodes={} max_nodes={}",
               logoff.connected_nodes,
-              logoff.max_nodes,
-              logoff.nodes.size());
+              logoff.max_nodes);
 
     network_info.total_nodes = logoff.connected_nodes;
     connection_status.total_nodes = logoff.connected_nodes;
@@ -397,14 +396,8 @@ void NWM_UDS::HandleEAPoLPacket(const Network::WifiPacket& packet) {
         }
 
         LOG_ERROR(Service_NWM,
-                  "EAPOL NODE id={} mac={:02X}:{:02X}:{:02X}:{:02X}:{:02X}:{:02X}",
-                  index,
-                  node.mac_address[0],
-                  node.mac_address[1],
-                  node.mac_address[2],
-                  node.mac_address[3],
-                  node.mac_address[4],
-                  node.mac_address[5]);
+                  "EAPOL NODE id={}",
+                  index);
 
         connection_status.node_bitmask |= 1 << (index - 1);
         connection_status.nodes[index - 1] = index;
