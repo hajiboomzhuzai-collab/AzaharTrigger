@@ -708,9 +708,10 @@ class EmulationFragment : Fragment(), SurfaceHolder.Callback, Choreographer.Fram
 
     private fun openCustomLayoutEditor() {
 
+        binding.customLayoutEditor.reloadLayout()
+
         binding.customLayoutEditor.visibility = View.VISIBLE
         binding.customLayoutToolbar.visibility = View.VISIBLE
-
     }
     
     private fun setupCustomLayoutEditor() {
@@ -760,6 +761,11 @@ class EmulationFragment : Fragment(), SurfaceHolder.Callback, Choreographer.Fram
         binding.resetButton.setOnClickListener {
             binding.customLayoutEditor.resetLayout()
         }
+    }
+
+    fun reloadLayout() {
+        loadFromSettings()
+        invalidate()
     }
     
     override fun onPause() {
