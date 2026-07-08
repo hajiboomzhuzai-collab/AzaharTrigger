@@ -250,7 +250,7 @@ void NWM_UDS::HandleEAPoLPacket(const Network::WifiPacket& packet) {
 
         ASSERT(connection_status.max_nodes != connection_status.total_nodes);
 
-        auto eapol_start = DeserializeEAPolStartPacket(packet.data)
+        auto eapol_start = DeserializeEAPolStartPacket(packet.data);
 
         auto node = DeserializeNodeInfo(eapol_start.node);
 
