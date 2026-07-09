@@ -611,7 +611,7 @@ private:
     // Mapping of mac addresses to their respective node_ids.
     struct Node {
     bool connected = false;
-    bool spectator = false;
+    bool spec = false;
 
     // NEW
     bool reconnecting = false;
@@ -625,7 +625,7 @@ private:
     template <class Archive>
     void serialize(Archive& ar, const unsigned int) {
         ar & connected;
-        ar & spectator;
+        ar & spec;
         ar & reconnecting;
         ar & node_id;
     }
