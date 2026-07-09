@@ -462,12 +462,7 @@ connection_status.total_nodes = logoff.connected_nodes;
 
 void NWM_UDS::HandleSecureDataPacket(const Network::WifiPacket& packet) {
     const auto secure_data = ParseSecureDataHeader(packet.data);
-    LOG_ERROR(Service_NWM,
-          "DATA src={} dst={} channel={} packets={}",
-          secure_data.src_node_id,
-          secure_data.dest_node_id,
-          secure_data.data_channel,
-          channel_info == channel_data.end() ? -1 : 0);
+
     std::scoped_lock lock{connection_status_mutex, system.Kernel().GetHLELock()};
 
     if (connection_status.status != NetworkStatus::ConnectedAsHost &&
@@ -513,17 +508,18 @@ void NWM_UDS::HandleSecureDataPacket(const Network::WifiPacket& packet) {
     // TODO(B3N30): Allow more than one bind node per channel.
     auto channel_info = channel_data.find(secure_data.data_channel);
 
-LOG_ERROR(Service_NWM,
-          "DATA src={} dst={} channel={} found_channel={}",
-          static_cast<u32>(secure_data.src_node_id),
-          static_cast<u32>(secure_data.dest_node_id),
-          static_cast<u32>(secure_data.data_channel),
-          channel_info != channel_data.end());
+    LOG_ERROR(Service_NWM,
+              "DATA src={} dst={} channel={} found_channel={}",
+              static_cast<u32>(secure_data.src_node_id),
+              static_cast<u32>(secure_data.dest_node_id),
+              static_cast<u32>(secure_data.data_channel),
+              channel_info != channel_data.end());
 
-// Ignore packets from channels we're not interested in.
-if (channel_info == channel_data.end()) {
-    return;
-}
+    // Ignore packets from channels we're not interested in.
+    if (channel_info == channel_data.end()) {
+        return;
+    }
+
     if (channel_info->second.network_node_id != BroadcastNetworkNodeId &&
         channel_info->second.network_node_id != secure_data.src_node_id) {
         return;
