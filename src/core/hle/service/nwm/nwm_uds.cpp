@@ -651,19 +651,9 @@ if (it != node_map.end()) {
 
     node_map.erase(it);
 }
-    } else {
-        LOG_ERROR(Service_NWM,
-                  "Connection sequence aborted, because there is already a connected client with that MAC-Adress");
-        return;
-    }
-    */
 
-    LOG_ERROR(Service_NWM,
-              "Connection sequence aborted, because there is already a connected client with that MAC-Adress");
-    return;
-}
-
-            if (connection_status.max_nodes == connection_status.total_nodes) {
+if (connection_status.max_nodes == connection_status.total_nodes) {
+    ...
                 LOG_ERROR(Service_NWM,
                           "AUTH ABORT: maximum nodes reached ({}/{})",
                           connection_status.total_nodes,
