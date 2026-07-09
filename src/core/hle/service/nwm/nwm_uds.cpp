@@ -473,19 +473,15 @@ connection_status.total_nodes = logoff.connected_nodes;
 }
 
 NWM_UDS::Node* NWM_UDS::FindNodeByNodeId(u16 node_id) {
-    if (node_id == 0 || node_id > UDSMaxNodes) {
+    if (node_id == 0 || node_id > UDSMaxNodes)
         return nullptr;
-    }
 
-    const auto& mac = node_lookup[node_id];
-    if (!mac.has_value()) {
+    if (!node_lookup[node_id])
         return nullptr;
-    }
 
-    auto it = node_map.find(*mac);
-    if (it == node_map.end()) {
+    auto it = node_map.find(*node_lookup[node_id]);
+    if (it == node_map.end())
         return nullptr;
-    }
 
     return &it->second;
 }
@@ -495,11 +491,8 @@ void NWM_UDS::HandleSecureDataPacket(const Network::WifiPacket& packet) {
 
     std::scoped_lock lock{connection_status_mutex, system.Kernel().GetHLELock()};
     // Refresh timeout for the sender whenever we receive a valid packet.
-for (auto& [mac, node] : node_map) {
-    if (node.connected && node.node_id == secure_data.src_node_id) {
-        node.last_seen = std::chrono::steady_clock::now();
-        break;
-    }
+if (auto* node = FindNodeByNodeId(secure_data.src_node_id)) {
+    node->last_seen = std::chrono::steady_clock::now();
 }
 
     if (connection_status.status != NetworkStatus::ConnectedAsHost &&
@@ -654,7 +647,6 @@ void NWM_UDS::HandleAuthenticationFrame(const Network::WifiPacket& packet) {
             auto it = node_map.find(packet.transmitter_address);
 
 if (it != node_map.end()) {
-
     const auto now = std::chrono::steady_clock::now();
 
     LOG_ERROR(Service_NWM,
@@ -680,18 +672,22 @@ if (it != node_map.end()) {
     LOG_ERROR(Service_NWM,
               "AUTH: Existing node timed out, removing stale entry.");
 
+    // Remove stale lookup entry
+    if (it->second.node_id != 0 &&
+        it->second.node_id < node_lookup.size()) {
+        node_lookup[it->second.node_id].reset();
+    }
+
     node_map.erase(it);
 }
 
 if (connection_status.max_nodes == connection_status.total_nodes) {
-    ...
-                LOG_ERROR(Service_NWM,
-                          "AUTH ABORT: maximum nodes reached ({}/{})",
-                          connection_status.total_nodes,
-                          connection_status.max_nodes);
-                // TODO(B3N30): Figure out what packet is sent here
-                return;
-            }
+    LOG_ERROR(Service_NWM,
+              "AUTH ABORT: maximum nodes reached ({}/{})",
+              connection_status.total_nodes,
+              connection_status.max_nodes);
+    return;
+}
 
             LOG_ERROR(Service_NWM,
                       "AUTH ACCEPT: inserting temporary node into node_map");
