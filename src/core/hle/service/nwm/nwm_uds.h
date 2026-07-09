@@ -164,6 +164,8 @@ public:
 private:
     Core::System& system;
 
+    Node* FindNodeByNodeId(u16 node_id);
+
     void UpdateNetworkAttribute(Kernel::HLERequestContext& ctx);
 
     /**
@@ -611,7 +613,7 @@ private:
     // Mapping of mac addresses to their respective node_ids.
     struct Node {
         bool connected = false;
-        bool spec = false;
+        bool spectator = false;
         u16 node_id = 0;
 
         std::chrono::steady_clock::time_point last_seen =
@@ -621,15 +623,16 @@ private:
         template <class Archive>
         void serialize(Archive& ar, const unsigned int) {
             ar & connected;
-            ar & spec;
             ar & node_id;
-            // Don't serialize last_seen.
         }
 
         friend class boost::serialization::access;
     };
 
     std::map<MacAddress, Node> node_map;
+
+    // Fast lookup: node_id -> MAC address
+    std::array<boost::optional<MacAddress>, UDSMaxNodes + 1> node_lookup{};
 
     // Event that will generate and send the 802.11 beacon frames.
     Core::TimingEventType* beacon_broadcast_event;
