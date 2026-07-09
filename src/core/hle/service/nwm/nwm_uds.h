@@ -6,6 +6,7 @@
 
 #include <array>
 #include <atomic>
+#include <chrono>
 #include <cstddef>
 #include <deque>
 #include <list>
@@ -609,9 +610,13 @@ private:
 
     // Mapping of mac addresses to their respective node_ids.
     struct Node {
-        bool connected;
-        bool spec;
-        u16 node_id;
+        bool connected = false;
+        bool spectator = false;
+        u16 node_id = 0;
+
+        // Last time we received any packet from this node.
+        std::chrono::steady_clock::time_point last_seen =
+            std::chrono::steady_clock::now();
 
     private:
         template <class Archive>
@@ -619,6 +624,7 @@ private:
             ar & connected;
             ar & node_id;
         }
+
         friend class boost::serialization::access;
     };
 
