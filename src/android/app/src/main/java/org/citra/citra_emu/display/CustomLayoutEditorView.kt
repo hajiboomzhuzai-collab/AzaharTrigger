@@ -98,25 +98,15 @@ class CustomLayoutEditorView @JvmOverloads constructor(
     private val FB_WIDTH = 800f
     private val FB_HEIGHT = 960f
     
-    override fun onSizeChanged(
-        w: Int,
-        h: Int,
-        oldw: Int,
-        oldh: Int
-    ) {
-        super.onSizeChanged(w, h, oldw, oldh)
+    override fun onSizeChanged(...) {
+        super.onSizeChanged(...)
 
-        loadFromSettings()
-
-        activeRect = null
-        resizingRect = null
-        selectedScreen = SelectedScreen.NONE
-
-        activeHandleX = -1f
-        activeHandleY = -1f
-
-        invalidate()
-   }
+        if (width > 0 && height > 0) {
+            post {
+                loadFromSettings()
+            }
+        }
+    }
     
     // -------------------------
     // LOAD INITIAL POSITIONS
