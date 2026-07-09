@@ -164,8 +164,6 @@ public:
 private:
     Core::System& system;
 
-    Node* FindNodeByNodeId(u16 node_id);
-
     void UpdateNetworkAttribute(Kernel::HLERequestContext& ctx);
 
     /**
@@ -628,6 +626,8 @@ private:
 
         friend class boost::serialization::access;
     };
+
+    Node* FindNodeByNodeId(u16 node_id);
 
     std::map<MacAddress, Node> node_map;
 
