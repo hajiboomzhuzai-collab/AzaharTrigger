@@ -472,6 +472,24 @@ connection_status.total_nodes = logoff.connected_nodes;
 }
 }
 
+NWM_UDS::Node* NWM_UDS::FindNodeByNodeId(u16 node_id) {
+    if (node_id == 0 || node_id > UDSMaxNodes) {
+        return nullptr;
+    }
+
+    const auto& mac = node_lookup[node_id];
+    if (!mac.has_value()) {
+        return nullptr;
+    }
+
+    auto it = node_map.find(*mac);
+    if (it == node_map.end()) {
+        return nullptr;
+    }
+
+    return &it->second;
+}
+
 void NWM_UDS::HandleSecureDataPacket(const Network::WifiPacket& packet) {
     const auto secure_data = ParseSecureDataHeader(packet.data);
 
