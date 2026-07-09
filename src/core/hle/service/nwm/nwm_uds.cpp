@@ -30,6 +30,12 @@
 SERIALIZE_EXPORT_IMPL(Service::NWM::NWM_UDS)
 SERVICE_CONSTRUCT_IMPL(Service::NWM::NWM_UDS)
 
+namespace {
+
+constexpr auto NODE_TIMEOUT = std::chrono::seconds(15);
+
+} // anonymous namespace
+
 namespace Service::NWM {
 
 template <class Archive>
@@ -616,25 +622,35 @@ void NWM_UDS::HandleAuthenticationFrame(const Network::WifiPacket& packet) {
 
             auto it = node_map.find(packet.transmitter_address);
 
-            if (it != node_map.end()) {
-            LOG_ERROR(Service_NWM,
-              "AUTH REJECT: Existing node for %02X:%02X:%02X:%02X:%02X:%02X "
-              "connected=%d node_id=%u",
-              packet.transmitter_address[0],
-              packet.transmitter_address[1],
-              packet.transmitter_address[2],
-              packet.transmitter_address[3],
-              packet.transmitter_address[4],
-              packet.transmitter_address[5],
-              it->second.connected,
-              static_cast<u32>(it->second.node_id));
+if (it != node_map.end()) {
 
-    // Uncomment this ONLY if you want to test whether stale nodes are the problem.
-    /*
-    if (!it->second.connected) {
+    const auto now = std::chrono::steady_clock::now();
+
+    LOG_ERROR(Service_NWM,
+        "AUTH: Existing node for %02X:%02X:%02X:%02X:%02X:%02X "
+        "connected=%d node_id=%u",
+        packet.transmitter_address[0],
+        packet.transmitter_address[1],
+        packet.transmitter_address[2],
+        packet.transmitter_address[3],
+        packet.transmitter_address[4],
+        packet.transmitter_address[5],
+        it->second.connected,
+        static_cast<u32>(it->second.node_id));
+
+    if (it->second.connected &&
+        (now - it->second.last_seen) < NODE_TIMEOUT) {
+
         LOG_ERROR(Service_NWM,
-                  "AUTH: Removing stale node and allowing reconnect.");
-        node_map.erase(it);
+                  "AUTH REJECT: Node still alive, refusing reconnect.");
+        return;
+    }
+
+    LOG_ERROR(Service_NWM,
+              "AUTH: Existing node timed out, removing stale entry.");
+
+    node_map.erase(it);
+}
     } else {
         LOG_ERROR(Service_NWM,
                   "Connection sequence aborted, because there is already a connected client with that MAC-Adress");
@@ -667,6 +683,8 @@ void NWM_UDS::HandleAuthenticationFrame(const Network::WifiPacket& packet) {
             auth_response.type = WifiPacket::PacketType::Authentication;
 
             node_map[packet.transmitter_address].connected = false;
+            node_map[packet.transmitter_address].last_seen =
+            std::chrono::steady_clock::now();
 
             LOG_ERROR(Service_NWM,
                       "AUTH NODE_MAP after insert: size={}",
@@ -764,31 +782,43 @@ void NWM_UDS::OnWifiPacketReceived(const Network::WifiPacket& packet) {
     if (!initialized) {
         return;
     }
+
+    // Refresh last seen time for this node.
+    auto node = node_map.find(packet.transmitter_address);
+    if (node != node_map.end()) {
+        node->second.last_seen = std::chrono::steady_clock::now();
+    }
+
     switch (packet.type) {
     case Network::WifiPacket::PacketType::Beacon:
         HandleBeaconFrame(packet);
         break;
+
     case Network::WifiPacket::PacketType::Authentication:
         HandleAuthenticationFrame(packet);
         break;
+
     case Network::WifiPacket::PacketType::AssociationResponse:
         HandleAssociationResponseFrame(packet);
         break;
+
     case Network::WifiPacket::PacketType::Data:
         HandleDataFrame(packet);
         break;
-    case Network::WifiPacket::PacketType::Deauthentication:
-    LOG_ERROR(Service_NWM,
-        "RX -> DEAUTH from {:02X}:{:02X}:{:02X}:{:02X}:{:02X}:{:02X}",
-        packet.transmitter_address[0],
-        packet.transmitter_address[1],
-        packet.transmitter_address[2],
-        packet.transmitter_address[3],
-        packet.transmitter_address[4],
-        packet.transmitter_address[5]);
 
-    HandleDeauthenticationFrame(packet);
-    break;
+    case Network::WifiPacket::PacketType::Deauthentication:
+        LOG_ERROR(Service_NWM,
+            "RX -> DEAUTH from {:02X}:{:02X}:{:02X}:{:02X}:{:02X}:{:02X}",
+            packet.transmitter_address[0],
+            packet.transmitter_address[1],
+            packet.transmitter_address[2],
+            packet.transmitter_address[3],
+            packet.transmitter_address[4],
+            packet.transmitter_address[5]);
+
+        HandleDeauthenticationFrame(packet);
+        break;
+
     case Network::WifiPacket::PacketType::NodeMap:
         HandleNodeMapPacket(packet);
         break;
