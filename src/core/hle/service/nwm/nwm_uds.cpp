@@ -313,9 +313,12 @@ connection_status.total_nodes++;
 node_info[node_id - 1] = node;
 network_info.total_nodes++;
 
-            node_map[packet.transmitter_address].node_id = node.network_node_id;
-            node_map[packet.transmitter_address].connected = true;
-            node_map[packet.transmitter_address].spec = false;
+            auto& host_node = node_map[packet.transmitter_address];
+host_node.node_id = node.network_node_id;
+host_node.connected = true;
+host_node.spec = false;
+host_node.last_seen = std::chrono::steady_clock::now();
+            node_lookup[node.network_node_id] = packet.transmitter_address;
 
             BroadcastNodeMap();
             LOG_ERROR(Service_NWM,
@@ -324,9 +327,12 @@ network_info.total_nodes++;
           node_map.size(),
           connection_status.node_bitmask);
         } else if (eapol_start.packet.connection_type == ConnectionType::Spectator) {
-            node_map[packet.transmitter_address].node_id = NodeIDSpec;
-            node_map[packet.transmitter_address].connected = true;
-            node_map[packet.transmitter_address].spec = true;
+            auto& spec_node = node_map[packet.transmitter_address];
+spec_node.node_id = NodeIDSpec;
+spec_node.connected = true;
+spec_node.spec = true;
+spec_node.last_seen = std::chrono::steady_clock::now();
+
         } else {
             LOG_ERROR(Service_NWM, "Client tried connecting with unknown connection type: 0x{:x}",
                       static_cast<u32>(eapol_start.packet.connection_type));
@@ -470,6 +476,13 @@ void NWM_UDS::HandleSecureDataPacket(const Network::WifiPacket& packet) {
     const auto secure_data = ParseSecureDataHeader(packet.data);
 
     std::scoped_lock lock{connection_status_mutex, system.Kernel().GetHLELock()};
+    // Refresh timeout for the sender whenever we receive a valid packet.
+for (auto& [mac, node] : node_map) {
+    if (node.connected && node.node_id == secure_data.src_node_id) {
+        node.last_seen = std::chrono::steady_clock::now();
+        break;
+    }
+}
 
     if (connection_status.status != NetworkStatus::ConnectedAsHost &&
         connection_status.status != NetworkStatus::ConnectedAsClient &&
