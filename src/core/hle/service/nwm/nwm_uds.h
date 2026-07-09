@@ -610,24 +610,30 @@ private:
 
     // Mapping of mac addresses to their respective node_ids.
     struct Node {
-        bool connected = false;
-        bool spectator = false;
-        u16 node_id = 0;
+    bool connected = false;
+    bool spectator = false;
 
-        std::chrono::steady_clock::time_point last_seen =
-            std::chrono::steady_clock::now();
+    // NEW
+    bool reconnecting = false;
 
-    private:
-        template <class Archive>
-        void serialize(Archive& ar, const unsigned int) {
-            ar & connected;
-            ar & node_id;
-        }
+    u16 node_id = 0;
 
-        friend class boost::serialization::access;
-    };
+    std::chrono::steady_clock::time_point last_seen =
+        std::chrono::steady_clock::now();
 
-    Node* FindNodeByNodeId(u16 node_id);
+private:
+    template <class Archive>
+    void serialize(Archive& ar, const unsigned int) {
+        ar & connected;
+        ar & spectator;
+        ar & reconnecting;
+        ar & node_id;
+    }
+
+    friend class boost::serialization::access;
+};
+
+Node* FindNodeByNodeId(u16 node_id);
 
     std::map<MacAddress, Node> node_map;
 
