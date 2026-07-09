@@ -448,7 +448,7 @@ void NWM_UDS::HandleSecureDataPacket(const Network::WifiPacket& packet) {
     const auto secure_data = ParseSecureDataHeader(packet.data);
     LOG_ERROR(Service_NWM,
           "DATA from node {}",
-          secure_data.src_node_id);
+          static_cast<u32>(secure_data.src_node_id));
     std::scoped_lock lock{connection_status_mutex, system.Kernel().GetHLELock()};
 
     if (connection_status.status != NetworkStatus::ConnectedAsHost &&
