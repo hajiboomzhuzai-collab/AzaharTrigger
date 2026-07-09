@@ -272,18 +272,35 @@ void NWM_UDS::HandleEAPoLPacket(const Network::WifiPacket& packet) {
             node.network_node_id = node_id;
 
             connection_status.node_bitmask |= 1 << (node_id - 1);
-            connection_status.changed_nodes |= 1 << (node_id - 1);
-            connection_status.nodes[node_id - 1] = node.network_node_id;
-            connection_status.total_nodes++;
+connection_status.changed_nodes |= 1 << (node_id - 1);
+connection_status.nodes[node_id - 1] = node.network_node_id;
 
-            node_info[node_id - 1] = node;
-            network_info.total_nodes++;
+LOG_ERROR(Service_NWM,
+          "HOST JOIN: MAC {:02X}:{:02X}:{:02X}:{:02X}:{:02X}:{:02X} total_nodes {} -> {}",
+          packet.transmitter_address[0],
+          packet.transmitter_address[1],
+          packet.transmitter_address[2],
+          packet.transmitter_address[3],
+          packet.transmitter_address[4],
+          packet.transmitter_address[5],
+          connection_status.total_nodes,
+          connection_status.total_nodes + 1);
+
+connection_status.total_nodes++;
+
+node_info[node_id - 1] = node;
+network_info.total_nodes++;
 
             node_map[packet.transmitter_address].node_id = node.network_node_id;
             node_map[packet.transmitter_address].connected = true;
             node_map[packet.transmitter_address].spec = false;
 
             BroadcastNodeMap();
+            LOG_ERROR(Service_NWM,
+          "HOST AFTER JOIN: total_nodes={} node_map={} bitmask=0x{:X}",
+          connection_status.total_nodes,
+          node_map.size(),
+          connection_status.node_bitmask);
         } else if (eapol_start.packet.connection_type == ConnectionType::Spectator) {
             node_map[packet.transmitter_address].node_id = NodeIDSpec;
             node_map[packet.transmitter_address].connected = true;
@@ -326,7 +343,12 @@ void NWM_UDS::HandleEAPoLPacket(const Network::WifiPacket& packet) {
         network_info.max_nodes = logoff.max_nodes;
 
         connection_status.network_node_id = logoff.assigned_node_id;
-        connection_status.total_nodes = logoff.connected_nodes;
+        LOG_ERROR(Service_NWM,
+          "CLIENT: total_nodes {} -> {} (received EAPOL)",
+          connection_status.total_nodes,
+          logoff.connected_nodes);
+
+connection_status.total_nodes = logoff.connected_nodes;
         connection_status.max_nodes = logoff.max_nodes;
 
         node_info.clear();
@@ -380,7 +402,12 @@ void NWM_UDS::HandleEAPoLPacket(const Network::WifiPacket& packet) {
               logoff.max_nodes);
 
     network_info.total_nodes = logoff.connected_nodes;
-    connection_status.total_nodes = logoff.connected_nodes;
+    LOG_ERROR(Service_NWM,
+          "CLIENT: total_nodes {} -> {} (received EAPOL)",
+          connection_status.total_nodes,
+          logoff.connected_nodes);
+
+connection_status.total_nodes = logoff.connected_nodes;
     std::memset(connection_status.nodes, 0, sizeof(connection_status.nodes));
 
     const auto old_bitmask = connection_status.node_bitmask;
@@ -419,6 +446,9 @@ void NWM_UDS::HandleEAPoLPacket(const Network::WifiPacket& packet) {
 
 void NWM_UDS::HandleSecureDataPacket(const Network::WifiPacket& packet) {
     const auto secure_data = ParseSecureDataHeader(packet.data);
+    LOG_ERROR(Service_NWM,
+          "DATA from node {}",
+          secure_data.src_node_id);
     std::scoped_lock lock{connection_status_mutex, system.Kernel().GetHLELock()};
 
     if (connection_status.status != NetworkStatus::ConnectedAsHost &&
