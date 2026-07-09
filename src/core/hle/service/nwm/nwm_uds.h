@@ -611,10 +611,9 @@ private:
     // Mapping of mac addresses to their respective node_ids.
     struct Node {
         bool connected = false;
-        bool spectator = false;
+        bool spec = false;
         u16 node_id = 0;
 
-        // Last time we received any packet from this node.
         std::chrono::steady_clock::time_point last_seen =
             std::chrono::steady_clock::now();
 
@@ -622,7 +621,9 @@ private:
         template <class Archive>
         void serialize(Archive& ar, const unsigned int) {
             ar & connected;
+            ar & spec;
             ar & node_id;
+            // Don't serialize last_seen.
         }
 
         friend class boost::serialization::access;
