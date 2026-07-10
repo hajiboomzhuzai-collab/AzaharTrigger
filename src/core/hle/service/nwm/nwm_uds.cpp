@@ -516,39 +516,34 @@ NWM_UDS::Node* NWM_UDS::FindNodeByNodeId(u16 node_id) {
 
 void NWM_UDS::HandleSecureDataPacket(const Network::WifiPacket& packet) {
     const auto secure_data = ParseSecureDataHeader(packet.data);
-
     std::scoped_lock lock{connection_status_mutex, system.Kernel().GetHLELock()};
-    // Refresh timeout for the sender whenever we receive a valid packet.
- // Refresh timeout for the sender whenever we receive a valid packet.
-if (auto* node = FindNodeByNodeId(secure_data.src_node_id)) {
-    node->last_seen = std::chrono::steady_clock::now();
 
-    // If this node was temporarily disconnected, it is alive again.
-    node->connected = true;
-    node->reconnecting = false;
-}
+    if (auto* node = FindNodeByNodeId(secure_data.src_node_id)) {
+        node->last_seen = std::chrono::steady_clock::now();
+        node->connected = true;
+        node->reconnecting = false;
+    }
 
-    LOG_ERROR(Service_NWM,
-          "DROP: invalid connection status=%u",
-          static_cast<u32>(connection_status.status));
-return;
+    if (connection_status.status != NetworkStatus::ConnectedAsHost &&
+        connection_status.status != NetworkStatus::ConnectedAsClient &&
+        connection_status.status != NetworkStatus::ConnectedAsSpectator) {
+        LOG_TRACE(Service_NWM,
+                  "Ignored SecureDataPacket because connection status is {}",
+                  static_cast<u32>(connection_status.status));
+        return;
+    }
 
-    LOG_ERROR(Service_NWM,
-          "DROP: invalid connection status={}",
-          static_cast<u16>(connection_status.status));
-return;
+    if (secure_data.src_node_id == connection_status.network_node_id) {
+        return;
+    }
 
     if (secure_data.dest_node_id != connection_status.network_node_id &&
         secure_data.dest_node_id != BroadcastNetworkNodeId) {
-        // The packet wasn't addressed to us, we can only act as a router if we're the host.
-        // However, we might have received this packet due to a broadcast from the host, in that
-        // case just ignore it.
+
         if (packet.destination_address != Network::BroadcastMac &&
             connection_status.status != NetworkStatus::ConnectedAsHost) {
             LOG_ERROR(Service_NWM,
-          "DROP: addressed to another node dst={} me={}",
-          static_cast<u32>(secure_data.dest_node_id),
-          static_cast<u32>(static_cast<u16>(connection_status.network_node_id)));
+                      "Received packet addressed to others but we're not a host");
             return;
         }
 
