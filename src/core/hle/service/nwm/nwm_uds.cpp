@@ -564,36 +564,53 @@ return;
     ASSERT(!secure_data.is_management);
 
     // TODO(B3N30): Allow more than one bind node per channel.
-    auto channel_info = channel_data.find(secure_data.data_channel);
+auto channel_info = channel_data.find(secure_data.data_channel);
+
+LOG_ERROR(Service_NWM,
+          "DATA src={} dst={} channel={} found_channel={}",
+          static_cast<u32>(secure_data.src_node_id),
+          static_cast<u32>(secure_data.dest_node_id),
+          static_cast<u32>(secure_data.data_channel),
+          channel_info != channel_data.end());
+
+// Ignore packets from channels we're not interested in.
+if (channel_info == channel_data.end()) {
+    LOG_ERROR(Service_NWM,
+              "DROP unknown channel=%u",
+              static_cast<u32>(secure_data.data_channel));
+    return;
+}
+
+// Ignore packets that come from a node this channel isn't bound to.
+if (channel_info->second.network_node_id != BroadcastNetworkNodeId &&
+    channel_info->second.network_node_id != secure_data.src_node_id) {
 
     LOG_ERROR(Service_NWM,
-              "DATA src={} dst={} channel={} found_channel={}",
-              static_cast<u32>(secure_data.src_node_id),
-              static_cast<u32>(secure_data.dest_node_id),
-              static_cast<u32>(secure_data.data_channel),
-              channel_info != channel_data.end());
+              "DROP bind mismatch expected=%u got=%u",
+              static_cast<u32>(channel_info->second.network_node_id),
+              static_cast<u32>(secure_data.src_node_id));
 
-    // Ignore packets from channels we're not interested in.
-    LOG_ERROR(Service_NWM,
-          "DROP: unknown channel %u",
-          secure_data.data_channel);
-return;
+    return;
+}
 
-    LOG_ERROR(Service_NWM,
-          "DROP: channel bound to node %u but packet from %u",
-          channel_info->second.network_node_id,
-          secure_data.src_node_id);
-return;
-
-    // Add the received packet to the data queue.
-    LOG_ERROR(Service_NWM,
-          "ACCEPT: src=%u dst=%u channel=%u queue_before=%zu",
-          secure_data.src_node_id,
-          secure_data.dest_node_id,
-          secure_data.data_channel,
+// Add the received packet to the data queue.
+LOG_ERROR(Service_NWM,
+          "QUEUE channel=%u size_before=%zu",
+          static_cast<u32>(secure_data.data_channel),
           channel_info->second.received_packets.size());
 
-    // Signal the data event. We can do this directly because we locked hle_lock
+channel_info->second.received_packets.emplace_back(packet.data);
+
+LOG_ERROR(Service_NWM,
+          "QUEUE size_after=%zu",
+          channel_info->second.received_packets.size());
+
+// Signal the data event. We can do this directly because we locked hle_lock
+channel_info->second.event->Signal();
+
+LOG_ERROR(Service_NWM,
+          "EVENT signaled for channel=%u",
+          static_cast<u32>(secure_data.data_channel)); we locked hle_lock
     channel_info->second.event->Signal();
 }
 
