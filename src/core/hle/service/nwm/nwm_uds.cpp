@@ -383,7 +383,12 @@ spec_node.last_seen = std::chrono::steady_clock::now();
         network_info.max_nodes = logoff.max_nodes;
 
         connection_status.network_node_id = logoff.assigned_node_id;
-        LOG_ERROR(Service_NWM,
+
+LOG_ERROR(Service_NWM,
+          "CLIENT ASSIGNED NODE: {}",
+          connection_status.network_node_id);
+
+LOG_ERROR(Service_NWM,
           "CLIENT: total_nodes {} -> {} (received EAPOL)",
           connection_status.total_nodes,
           logoff.connected_nodes);
@@ -529,8 +534,8 @@ if (auto* node = FindNodeByNodeId(secure_data.src_node_id)) {
 return;
 
     LOG_ERROR(Service_NWM,
-          "DROP: own packet src=%u",
-          static_cast<u32>(secure_data.src_node_id));
+          "DROP: invalid connection status={}",
+          static_cast<u16>(connection_status.status));
 return;
 
     if (secure_data.dest_node_id != connection_status.network_node_id &&
