@@ -523,18 +523,15 @@ if (auto* node = FindNodeByNodeId(secure_data.src_node_id)) {
     node->reconnecting = false;
 }
 
-    if (connection_status.status != NetworkStatus::ConnectedAsHost &&
-        connection_status.status != NetworkStatus::ConnectedAsClient &&
-        connection_status.status != NetworkStatus::ConnectedAsSpectator) {
-        LOG_TRACE(Service_NWM, "Ignored SecureDataPacket because connection status is {}",
-                  static_cast<u32>(connection_status.status));
-        return;
-    }
+    LOG_ERROR(Service_NWM,
+          "DROP: invalid connection status=%u",
+          static_cast<u32>(connection_status.status));
+return;
 
-    if (secure_data.src_node_id == connection_status.network_node_id) {
-        // Ignore packets that came from ourselves.
-        return;
-    }
+    LOG_ERROR(Service_NWM,
+          "DROP: own packet src=%u",
+          static_cast<u32>(secure_data.src_node_id));
+return;
 
     if (secure_data.dest_node_id != connection_status.network_node_id &&
         secure_data.dest_node_id != BroadcastNetworkNodeId) {
@@ -543,7 +540,10 @@ if (auto* node = FindNodeByNodeId(secure_data.src_node_id)) {
         // case just ignore it.
         if (packet.destination_address != Network::BroadcastMac &&
             connection_status.status != NetworkStatus::ConnectedAsHost) {
-            LOG_ERROR(Service_NWM, "Received packet addressed to others but we're not a host");
+            LOG_ERROR(Service_NWM,
+          "DROP: addressed to another node dst=%u me=%u",
+          secure_data.dest_node_id,
+          connection_status.network_node_id);
             return;
         }
 
@@ -574,17 +574,24 @@ if (auto* node = FindNodeByNodeId(secure_data.src_node_id)) {
               channel_info != channel_data.end());
 
     // Ignore packets from channels we're not interested in.
-    if (channel_info == channel_data.end()) {
-        return;
-    }
+    LOG_ERROR(Service_NWM,
+          "DROP: unknown channel %u",
+          secure_data.data_channel);
+return;
 
-    if (channel_info->second.network_node_id != BroadcastNetworkNodeId &&
-        channel_info->second.network_node_id != secure_data.src_node_id) {
-        return;
-    }
+    LOG_ERROR(Service_NWM,
+          "DROP: channel bound to node %u but packet from %u",
+          channel_info->second.network_node_id,
+          secure_data.src_node_id);
+return;
 
     // Add the received packet to the data queue.
-    channel_info->second.received_packets.emplace_back(packet.data);
+    LOG_ERROR(Service_NWM,
+          "ACCEPT: src=%u dst=%u channel=%u queue_before=%zu",
+          secure_data.src_node_id,
+          secure_data.dest_node_id,
+          secure_data.data_channel,
+          channel_info->second.received_packets.size());
 
     // Signal the data event. We can do this directly because we locked hle_lock
     channel_info->second.event->Signal();
