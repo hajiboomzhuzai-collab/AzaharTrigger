@@ -541,9 +541,9 @@ return;
         if (packet.destination_address != Network::BroadcastMac &&
             connection_status.status != NetworkStatus::ConnectedAsHost) {
             LOG_ERROR(Service_NWM,
-          "DROP: addressed to another node dst=%u me=%u",
-          secure_data.dest_node_id,
-          connection_status.network_node_id);
+          "DROP: addressed to another node dst={} me={}",
+          static_cast<u32>(secure_data.dest_node_id),
+          static_cast<u32>(static_cast<u16>(connection_status.network_node_id)));
             return;
         }
 
@@ -610,8 +610,7 @@ channel_info->second.event->Signal();
 
 LOG_ERROR(Service_NWM,
           "EVENT signaled for channel=%u",
-          static_cast<u32>(secure_data.data_channel)); we locked hle_lock
-    channel_info->second.event->Signal();
+          static_cast<u32>(secure_data.data_channel));
 }
 
 void NWM_UDS::StartConnectionSequence(const MacAddress& server) {
