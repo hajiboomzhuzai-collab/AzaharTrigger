@@ -291,32 +291,30 @@ void RoomMember::RoomMemberImpl::MemberLoop() {
             enet_peer_send(server, 0, enetPacket);
         }
         enet_host_flush(client);
-		if (reconnect_requested) {
+		enet_host_flush(client);
+
+if (reconnect_requested) {
     reconnect_requested = false;
 
     LOG_WARNING(Network, "Attempting automatic room reconnect...");
 
-    // Give the network a moment to settle (Wi-Fi/mobile switch)
     std::this_thread::sleep_for(std::chrono::seconds(2));
 
-    // Clean up the dead ENet connection
-    if (server) {
-        enet_peer_reset(server);
-        server = nullptr;
+    if (ReconnectToServer()) {
+        LOG_INFO(Network, "Automatic reconnect succeeded.");
+        continue;
     }
 
-    // Try joining again using the saved information
-    Join(last_nickname,
-         last_console_id_hash,
-         room_information.member_slots > 0 ? room_information.ip.c_str() : "127.0.0.1",
-         room_information.port,
-         0,
-         last_preferred_mac,
-         last_password,
-         last_token);
-		}
-    }
-    Disconnect();
+    LOG_ERROR(Network, "Automatic reconnect failed.");
+
+    SetState(State::Idle);
+    SetError(Error::LostConnection);
+    break;
+}
+
+} // while (IsConnected())
+
+Disconnect();
 };
 
 void RoomMember::RoomMemberImpl::StartLoop() {
@@ -510,8 +508,8 @@ bool RoomMember::RoomMemberImpl::ReconnectToServer() {
 
     ENetAddress address{};
 
-    enet_address_set_host(&address, room_information.ip.c_str());
-    address.port = room_information.port;
+    enet_address_set_host(&address, last_server_addr.c_str());
+    address.port = last_server_port;
 
     server = enet_host_connect(client, &address, NumChannels, 0);
 
@@ -534,7 +532,7 @@ bool RoomMember::RoomMemberImpl::ReconnectToServer() {
                     last_password,
                     last_token);
 
-    SendGameInfo(current_game_info);
+    parent->SendGameInfo(current_game_info);
 
     return true;
 }
