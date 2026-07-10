@@ -85,25 +85,17 @@ std::list<Network::WifiPacket> NWM_UDS::GetReceivedBeacons(const MacAddress& sen
 
 /// Sends a WifiPacket to the room we're currently connected to.
 void SendPacket(Network::WifiPacket& packet) {
-    if (packet.type == Network::WifiPacket::PacketType::Deauthentication) {
-        LOG_ERROR(Service_NWM,
-            ">>> Sending DEAUTH to {:02X}:{:02X}:{:02X}:{:02X}:{:02X}:{:02X}",
-            packet.destination_address[0],
-            packet.destination_address[1],
-            packet.destination_address[2],
-            packet.destination_address[3],
-            packet.destination_address[4],
-            packet.destination_address[5]);
-    }
-    LOG_DEBUG(Service_NWM,
-              "TX WifiPacket type={} to {:02X}:{:02X}:{:02X}:{:02X}:{:02X}:{:02X}",
-              static_cast<int>(packet.type),
-              packet.destination_address[0],
-              packet.destination_address[1],
-              packet.destination_address[2],
-              packet.destination_address[3],
-              packet.destination_address[4],
-              packet.destination_address[5]);
+    LOG_ERROR(Service_NWM,
+        "TX type={} ch={} size={} dst={:02X}:{:02X}:{:02X}:{:02X}:{:02X}:{:02X}",
+        static_cast<u32>(packet.type),
+        packet.channel,
+        packet.data.size(),
+        packet.destination_address[0],
+        packet.destination_address[1],
+        packet.destination_address[2],
+        packet.destination_address[3],
+        packet.destination_address[4],
+        packet.destination_address[5]);
 
     if (auto room_member = Network::GetRoomMember().lock()) {
         if (room_member->GetState() == Network::RoomMember::State::Joined ||
@@ -111,26 +103,29 @@ void SendPacket(Network::WifiPacket& packet) {
 
             packet.transmitter_address = room_member->GetMacAddress();
 
-            if (packet.type == Network::WifiPacket::PacketType::Deauthentication) {
-                LOG_ERROR(Service_NWM,
-                    ">>> DEAUTH sender {:02X}:{:02X}:{:02X}:{:02X}:{:02X}:{:02X}",
-                        packet.transmitter_address[0],
-                        packet.transmitter_address[1],
-                        packet.transmitter_address[2],
-                        packet.transmitter_address[3],
-                        packet.transmitter_address[4],
-                        packet.transmitter_address[5]);
-            }
+            LOG_ERROR(Service_NWM,
+                "TX sender={:02X}:{:02X}:{:02X}:{:02X}:{:02X}:{:02X}",
+                packet.transmitter_address[0],
+                packet.transmitter_address[1],
+                packet.transmitter_address[2],
+                packet.transmitter_address[3],
+                packet.transmitter_address[4],
+                packet.transmitter_address[5]);
 
             room_member->SendWifiPacket(packet);
+
+            LOG_ERROR(Service_NWM,
+                "TX SENT type={} size={}",
+                static_cast<u32>(packet.type),
+                packet.data.size());
+
         } else {
-            LOG_WARNING(Service_NWM,
-                        "SendPacket(): RoomMember not joined (state={})",
-                        static_cast<int>(room_member->GetState()));
+            LOG_ERROR(Service_NWM,
+                "TX FAILED room state={}",
+                static_cast<u32>(room_member->GetState()));
         }
     } else {
-        LOG_WARNING(Service_NWM,
-                    "SendPacket(): No RoomMember available");
+        LOG_ERROR(Service_NWM, "TX FAILED no RoomMember");
     }
 }
 
@@ -960,6 +955,18 @@ void NWM_UDS::OnWifiPacketReceived(const Network::WifiPacket& packet) {
     if (!initialized) {
         return;
     }
+
+    LOG_ERROR(Service_NWM,
+        "RX type={} ch={} size={} from {:02X}:{:02X}:{:02X}:{:02X}:{:02X}:{:02X}",
+        static_cast<u32>(packet.type),
+        packet.channel,
+        packet.data.size(),
+        packet.transmitter_address[0],
+        packet.transmitter_address[1],
+        packet.transmitter_address[2],
+        packet.transmitter_address[3],
+        packet.transmitter_address[4],
+        packet.transmitter_address[5]);
 
     // Refresh last seen time for this node.
     auto node = node_map.find(packet.transmitter_address);
