@@ -483,10 +483,10 @@ void RoomMember::RoomMemberImpl::HandleModBanListResponsePacket(const ENetEvent*
 
 void RoomMember::RoomMemberImpl::Disconnect() {
     LOG_WARNING(Network,
-                "Disconnect() ENTER server=%p reconnect_requested=%d state=%d",
-                static_cast<void*>(server),
-                reconnect_requested,
-                static_cast<int>(state));
+            "Disconnect() ENTER server=%p reconnect_requested=%d state=%d",
+            static_cast<void*>(server),
+            reconnect_requested,
+            static_cast<int>(state.load()));
 
     member_information.clear();
     room_information.member_slots = 0;
