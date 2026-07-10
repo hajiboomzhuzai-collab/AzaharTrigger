@@ -281,17 +281,22 @@ void RoomMember::RoomMemberImpl::MemberLoop() {
         }
 
         std::list<Packet> packets;
-        {
-            std::lock_guard send_list_lock(send_list_mutex);
-            packets.swap(send_list);
-        }
-        for (const auto& packet : packets) {
-            ENetPacket* enetPacket = enet_packet_create(packet.GetData(), packet.GetDataSize(),
-                                                        ENET_PACKET_FLAG_RELIABLE);
-            enet_peer_send(server, 0, enetPacket);
-        }
-        enet_host_flush(client);
-		enet_host_flush(client);
+{
+    std::lock_guard send_list_lock(send_list_mutex);
+    packets.swap(send_list);
+}
+
+if (server) {
+    for (const auto& packet : packets) {
+        ENetPacket* enetPacket =
+            enet_packet_create(packet.GetData(),
+                               packet.GetDataSize(),
+                               ENET_PACKET_FLAG_RELIABLE);
+        enet_peer_send(server, 0, enetPacket);
+    }
+
+    enet_host_flush(client);
+}
 
 if (reconnect_requested) {
     reconnect_requested = false;
@@ -300,10 +305,12 @@ if (reconnect_requested) {
 
     std::this_thread::sleep_for(std::chrono::seconds(2));
 
-    if (ReconnectToServer()) {
-        LOG_INFO(Network, "Automatic reconnect succeeded.");
-        continue;
-    }
+    LOG_WARNING(Network, "Calling ReconnectToServer()");
+
+if (ReconnectToServer()) {
+    LOG_INFO(Network, "Automatic reconnect succeeded.");
+    continue;
+}
 
     LOG_ERROR(Network, "Automatic reconnect failed.");
 
@@ -475,56 +482,99 @@ void RoomMember::RoomMemberImpl::HandleModBanListResponsePacket(const ENetEvent*
 }
 
 void RoomMember::RoomMemberImpl::Disconnect() {
+    LOG_WARNING(Network,
+                "Disconnect() ENTER server=%p reconnect_requested=%d state=%d",
+                static_cast<void*>(server),
+                reconnect_requested,
+                static_cast<int>(state));
+
     member_information.clear();
     room_information.member_slots = 0;
     room_information.name.clear();
 
-    if (!server)
+    if (!server) {
+        LOG_WARNING(Network, "Disconnect(): server already nullptr");
         return;
+    }
+
+    LOG_WARNING(Network, "Disconnect(): calling enet_peer_disconnect()");
     enet_peer_disconnect(server, 0);
 
-    ENetEvent event;
+    ENetEvent event{};
     while (enet_host_service(client, &event, ConnectionTimeoutMs) > 0) {
         switch (event.type) {
         case ENET_EVENT_TYPE_RECEIVE:
-            enet_packet_destroy(event.packet); // Ignore all incoming data
+            LOG_WARNING(Network, "Disconnect(): discarding packet during shutdown");
+            enet_packet_destroy(event.packet);
             break;
+
         case ENET_EVENT_TYPE_DISCONNECT:
+            LOG_WARNING(Network, "Disconnect(): graceful disconnect completed");
             server = nullptr;
             return;
+
         case ENET_EVENT_TYPE_NONE:
+            break;
+
         case ENET_EVENT_TYPE_CONNECT:
+            LOG_WARNING(Network,
+                        "Disconnect(): unexpected CONNECT event during disconnect");
             break;
         }
     }
-    // didn't disconnect gracefully force disconnect
+
+    LOG_WARNING(Network, "Disconnect(): forcing enet_peer_reset()");
     enet_peer_reset(server);
     server = nullptr;
+
+    LOG_WARNING(Network, "Disconnect() EXIT");
 }
 
 bool RoomMember::RoomMemberImpl::ReconnectToServer() {
-    if (!client)
+    LOG_WARNING(Network, "ReconnectToServer() ENTER");
+
+    if (!client) {
+        LOG_ERROR(Network, "Reconnect failed: client == nullptr");
         return false;
+    }
 
     ENetAddress address{};
+
+    LOG_INFO(Network,
+             "Reconnect target %s:%u",
+             last_server_addr.c_str(),
+             last_server_port);
 
     enet_address_set_host(&address, last_server_addr.c_str());
     address.port = last_server_port;
 
+    LOG_INFO(Network, "Calling enet_host_connect...");
+
     server = enet_host_connect(client, &address, NumChannels, 0);
 
-    if (!server)
+    if (!server) {
+        LOG_ERROR(Network, "enet_host_connect returned nullptr");
         return false;
+    }
+
+    LOG_INFO(Network, "Waiting for ENET_EVENT_CONNECT...");
 
     ENetEvent event{};
-
     int net = enet_host_service(client, &event, ConnectionTimeoutMs);
 
+    LOG_INFO(Network,
+             "enet_host_service returned=%d event=%d",
+             net,
+             net > 0 ? event.type : -1);
+
     if (net <= 0 || event.type != ENET_EVENT_TYPE_CONNECT) {
+        LOG_ERROR(Network, "Reconnect timeout or connect failed");
         enet_peer_reset(server);
         server = nullptr;
         return false;
     }
+
+    LOG_INFO(Network, "Connected. Sending JoinRequest...");
 
     SendJoinRequest(last_nickname,
                     last_console_id_hash,
@@ -532,7 +582,11 @@ bool RoomMember::RoomMemberImpl::ReconnectToServer() {
                     last_password,
                     last_token);
 
+    LOG_INFO(Network, "Sending GameInfo...");
+
     parent->SendGameInfo(current_game_info);
+
+    LOG_INFO(Network, "ReconnectToServer SUCCESS");
 
     return true;
 }
