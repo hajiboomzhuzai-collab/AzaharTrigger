@@ -1144,10 +1144,9 @@ std::unique_ptr<NodeInfo> NWM_UDS::GetNodeInformationHLE(u16 network_node_id) {
     }
 
     LOG_ERROR(Service_NWM,
-              "GetNodeInformationHLE FOUND node={} friend_code_seed={} username={}",
-              static_cast<u32>(itr->network_node_id),
-              itr->friend_code_seed,
-              itr->username);
+          "GetNodeInformationHLE FOUND node={} friend_code_seed={}",
+          static_cast<u32>(itr->network_node_id),
+          itr->friend_code_seed);
 
     return std::make_unique<NodeInfo>(*itr);
 }
