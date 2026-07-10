@@ -19,6 +19,7 @@ constexpr u32 ConnectionTimeoutMs = 5000;
 
 class RoomMember::RoomMemberImpl {
 public:
+    RoomMember* parent = nullptr;
     ENetHost* client = nullptr; ///< ENet network interface.
     ENetPeer* server = nullptr; ///< The server peer the client is connected to
 
@@ -41,6 +42,21 @@ public:
     mutable std::mutex username_mutex; ///< Mutex for locking username.
 
     MacAddress mac_address; ///< The mac_address of this member.
+
+   // ==========================
+    // Automatic reconnect state
+    // ==========================
+    std::string last_nickname;
+    std::string last_console_id_hash;
+    MacAddress last_preferred_mac = NoPreferredMac;
+    std::string last_password;
+    std::string last_token;
+    std::string last_server_addr = "127.0.0.1";
+    u16 last_server_port = DefaultRoomPort;
+    u16 last_client_port = 0;
+
+    bool reconnect_requested = false;
+    // ==========================
 
     std::mutex network_mutex; ///< Mutex that controls access to the `client` variable.
     /// Thread that receives and dispatches network packets
@@ -131,6 +147,8 @@ public:
      * Disconnects the RoomMember from the Room
      */
     void Disconnect();
+
+    bool ReconnectToServer();
 
     template <typename T>
     void Invoke(const T& data);
@@ -238,12 +256,20 @@ void RoomMember::RoomMemberImpl::MemberLoop() {
                 enet_packet_destroy(event.packet);
                 break;
             case ENET_EVENT_TYPE_DISCONNECT:
-				LOG_ERROR(Network, "MemberLoop: ENet disconnect received");
-                if (state == State::Joined || state == State::Moderator) {
-                    SetState(State::Idle);
-                    SetError(Error::LostConnection);
-                }
-                break;
+    if (state == State::Joined || state == State::Moderator) {
+
+        LOG_WARNING(Network,
+                    "Lost ENet connection. Starting reconnect grace period.");
+
+        server = nullptr;
+
+        reconnect_requested = true;
+
+        // Don't report LostConnection yet.
+        // We'll try to reconnect first.
+    }
+
+    break;
             case ENET_EVENT_TYPE_NONE:
                 break;
             case ENET_EVENT_TYPE_CONNECT:
@@ -265,6 +291,30 @@ void RoomMember::RoomMemberImpl::MemberLoop() {
             enet_peer_send(server, 0, enetPacket);
         }
         enet_host_flush(client);
+		if (reconnect_requested) {
+    reconnect_requested = false;
+
+    LOG_WARNING(Network, "Attempting automatic room reconnect...");
+
+    // Give the network a moment to settle (Wi-Fi/mobile switch)
+    std::this_thread::sleep_for(std::chrono::seconds(2));
+
+    // Clean up the dead ENet connection
+    if (server) {
+        enet_peer_reset(server);
+        server = nullptr;
+    }
+
+    // Try joining again using the saved information
+    Join(last_nickname,
+         last_console_id_hash,
+         room_information.member_slots > 0 ? room_information.ip.c_str() : "127.0.0.1",
+         room_information.port,
+         0,
+         last_preferred_mac,
+         last_password,
+         last_token);
+		}
     }
     Disconnect();
 };
@@ -283,6 +333,14 @@ void RoomMember::RoomMemberImpl::SendJoinRequest(const std::string& nickname,
                                                  const MacAddress& preferred_mac,
                                                  const std::string& password,
                                                  const std::string& token) {
+    
+	// Save connection information for automatic reconnect.
+    last_nickname = nickname;
+    last_console_id_hash = console_id_hash;
+    last_preferred_mac = preferred_mac;
+    last_password = password;
+    last_token = token;
+
     Packet packet;
     packet << static_cast<u8>(IdJoinRequest);
     packet << nickname;
@@ -446,6 +504,41 @@ void RoomMember::RoomMemberImpl::Disconnect() {
     server = nullptr;
 }
 
+bool RoomMember::RoomMemberImpl::ReconnectToServer() {
+    if (!client)
+        return false;
+
+    ENetAddress address{};
+
+    enet_address_set_host(&address, room_information.ip.c_str());
+    address.port = room_information.port;
+
+    server = enet_host_connect(client, &address, NumChannels, 0);
+
+    if (!server)
+        return false;
+
+    ENetEvent event{};
+
+    int net = enet_host_service(client, &event, ConnectionTimeoutMs);
+
+    if (net <= 0 || event.type != ENET_EVENT_TYPE_CONNECT) {
+        enet_peer_reset(server);
+        server = nullptr;
+        return false;
+    }
+
+    SendJoinRequest(last_nickname,
+                    last_console_id_hash,
+                    last_preferred_mac,
+                    last_password,
+                    last_token);
+
+    SendGameInfo(current_game_info);
+
+    return true;
+}
+
 template <>
 RoomMember::RoomMemberImpl::CallbackSet<WifiPacket>& RoomMember::RoomMemberImpl::Callbacks::Get() {
     return callback_set_wifi_packet;
@@ -505,7 +598,11 @@ RoomMember::CallbackHandle<T> RoomMember::RoomMemberImpl::Bind(
 }
 
 // RoomMember
-RoomMember::RoomMember() : room_member_impl{std::make_unique<RoomMemberImpl>()} {}
+RoomMember::RoomMember()
+    : room_member_impl{std::make_unique<RoomMemberImpl>()} {
+
+    room_member_impl->parent = this;
+}
 
 RoomMember::~RoomMember() {
     ASSERT_MSG(!IsConnected(), "RoomMember is being destroyed while connected");
@@ -544,6 +641,10 @@ void RoomMember::Join(const std::string& nick, const std::string& console_id_has
                       const char* server_addr, u16 server_port, u16 client_port,
                       const MacAddress& preferred_mac, const std::string& password,
                       const std::string& token) {
+	// Save connection information for automatic reconnect.
+    room_member_impl->last_server_addr = server_addr;
+    room_member_impl->last_server_port = server_port;
+    room_member_impl->last_client_port = client_port;
     // If the member is connected, kill the connection first
     if (room_member_impl->loop_thread && room_member_impl->loop_thread->joinable()) {
         Leave();
