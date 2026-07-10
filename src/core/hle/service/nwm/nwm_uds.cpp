@@ -1726,9 +1726,9 @@ Common::Expected<int, ResultStatus> NWM_UDS::PullPacketHLE(
 
 
     LOG_ERROR(Service_NWM,
-              "PullPacketHLE channel found id={} queue_size={}",
-              static_cast<u32>(channel->second.data_channel),
-              channel->second.received_packets.size());
+          "PullPacket channel={} queue_size={}",
+          static_cast<u32>(channel->first),
+          channel->second.received_packets.size());
 
 
     if (channel->second.received_packets.empty()) {
