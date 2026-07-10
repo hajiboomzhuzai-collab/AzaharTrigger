@@ -1092,12 +1092,20 @@ void NWM_UDS::InitializeDeprecated(Kernel::HLERequestContext& ctx) {
 
 ConnectionStatus NWM_UDS::GetConnectionStatusHLE() {
     std::scoped_lock lock(connection_status_mutex);
+
+    LOG_ERROR(Service_NWM,
+              "GetConnectionStatusHLE status={} node_id={} total_nodes={} bitmask=0x{:X} changed=0x{:X}",
+              static_cast<u32>(connection_status.status),
+              connection_status.network_node_id,
+              connection_status.total_nodes,
+              connection_status.node_bitmask,
+              connection_status.changed_nodes);
+
     ConnectionStatus cs_out = connection_status;
 
     // Reset the bitmask of changed nodes after each call to this
     // function to prevent falsely informing games of outstanding
     // changes in subsequent calls.
-    // TODO(Subv): Find exactly where the NWM module resets this value.
     connection_status.changed_nodes = 0;
 
     return cs_out;
@@ -1115,13 +1123,32 @@ void NWM_UDS::GetConnectionStatus(Kernel::HLERequestContext& ctx) {
 
 std::unique_ptr<NodeInfo> NWM_UDS::GetNodeInformationHLE(u16 network_node_id) {
     std::scoped_lock lock(connection_status_mutex);
+
+    LOG_ERROR(Service_NWM,
+              "GetNodeInformationHLE request={} total_nodes={} bitmask=0x{:X}",
+              static_cast<u32>(network_node_id),
+              connection_status.total_nodes,
+              connection_status.node_bitmask);
+
     auto itr =
-        std::find_if(node_info.begin(), node_info.end(), [network_node_id](const NodeInfo& node) {
-            return node.network_node_id == network_node_id;
-        });
+        std::find_if(node_info.begin(), node_info.end(),
+                     [network_node_id](const NodeInfo& node) {
+                         return node.network_node_id == network_node_id;
+                     });
+
     if (itr == node_info.end()) {
+        LOG_ERROR(Service_NWM,
+                  "GetNodeInformationHLE node {} NOT FOUND",
+                  static_cast<u32>(network_node_id));
         return nullptr;
     }
+
+    LOG_ERROR(Service_NWM,
+              "GetNodeInformationHLE FOUND node={} friend_code_seed={} username={}",
+              static_cast<u32>(itr->network_node_id),
+              itr->friend_code_seed,
+              itr->username);
+
     return std::make_unique<NodeInfo>(*itr);
 }
 
@@ -1577,34 +1604,69 @@ void NWM_UDS::PullPacket(Kernel::HLERequestContext& ctx) {
     u32 bind_node_id = rp.Pop<u32>();
     u32 max_out_buff_size_aligned = rp.Pop<u32>();
     u32 max_out_buff_size = rp.Pop<u32>();
-    std::vector<u8> output_buffer;
 
+    std::vector<u8> output_buffer;
     SecureDataHeader secure_data;
 
-    auto ret = PullPacketHLE(bind_node_id, max_out_buff_size, max_out_buff_size_aligned,
-                             output_buffer, &secure_data);
+    LOG_ERROR(Service_NWM,
+              "IPC PullPacket bind={} max_size={} aligned={}",
+              bind_node_id,
+              max_out_buff_size,
+              max_out_buff_size_aligned);
+
+
+    auto ret = PullPacketHLE(bind_node_id,
+                             max_out_buff_size,
+                             max_out_buff_size_aligned,
+                             output_buffer,
+                             &secure_data);
+
+
+    if (ret.has_value()) {
+        LOG_ERROR(Service_NWM,
+                  "PullPacket SUCCESS size={} src_node={} buffer={}",
+                  *ret,
+                  static_cast<u32>(secure_data.src_node_id),
+                  output_buffer.size());
+    } else {
+        LOG_ERROR(Service_NWM,
+                  "PullPacket FAILED error={}",
+                  static_cast<u32>(ret.error()));
+    }
+
 
     switch (ret.error()) {
     case ResultStatus::RecvError_NotConnected: {
         IPC::RequestBuilder rb = rp.MakeBuilder(1, 0);
-        rb.Push(Result(ErrorDescription::NotAuthorized, ErrorModule::UDS,
-                       ErrorSummary::InvalidState, ErrorLevel::Status));
+        rb.Push(Result(ErrorDescription::NotAuthorized,
+                       ErrorModule::UDS,
+                       ErrorSummary::InvalidState,
+                       ErrorLevel::Status));
         return;
     }
+
     case ResultStatus::RecvError_BadNode: {
         IPC::RequestBuilder rb = rp.MakeBuilder(1, 0);
-        rb.Push(Result(ErrorDescription::NotAuthorized, ErrorModule::UDS,
-                       ErrorSummary::InvalidState, ErrorLevel::Status));
+        rb.Push(Result(ErrorDescription::NotAuthorized,
+                       ErrorModule::UDS,
+                       ErrorSummary::InvalidState,
+                       ErrorLevel::Status));
         return;
     }
+
     case ResultStatus::RecvError_PacketSizeTooLarge: {
         IPC::RequestBuilder rb = rp.MakeBuilder(1, 0);
-        rb.Push(Result(ErrorDescription::TooLarge, ErrorModule::UDS, ErrorSummary::WrongArgument,
+        rb.Push(Result(ErrorDescription::TooLarge,
+                       ErrorModule::UDS,
+                       ErrorSummary::WrongArgument,
                        ErrorLevel::Usage));
         return;
     }
-    default:;
+
+    default:
+        break;
     }
+
 
     IPC::RequestBuilder rb = rp.MakeBuilder(3, 2);
 
@@ -1614,56 +1676,119 @@ void NWM_UDS::PullPacket(Kernel::HLERequestContext& ctx) {
     rb.PushStaticBuffer(std::move(output_buffer), 0);
 }
 
-Common::Expected<int, ResultStatus> NWM_UDS::PullPacketHLE(u32 bind_node_id, u32 max_out_buff_size,
-                                                           u32 max_out_buff_size_aligned,
-                                                           std::vector<u8>& output_buffer,
-                                                           void* secure_data_out) {
-    // This size is hard coded into the uds module. We don't know the meaning yet.
+Common::Expected<int, ResultStatus> NWM_UDS::PullPacketHLE(
+    u32 bind_node_id,
+    u32 max_out_buff_size,
+    u32 max_out_buff_size_aligned,
+    std::vector<u8>& output_buffer,
+    void* secure_data_out) {
+
     u32 buff_size = std::min<u32>(max_out_buff_size_aligned, 0x172) << 2;
 
     std::scoped_lock lock(connection_status_mutex);
+
+
+    LOG_ERROR(Service_NWM,
+              "PullPacketHLE ENTER bind={} status={} node={} total_nodes={}",
+              bind_node_id,
+              static_cast<u32>(connection_status.status),
+              static_cast<u32>(connection_status.network_node_id),
+              connection_status.total_nodes);
+
+
     if (connection_status.status != NetworkStatus::ConnectedAsHost &&
         connection_status.status != NetworkStatus::ConnectedAsClient &&
         connection_status.status != NetworkStatus::ConnectedAsSpectator) {
-        LOG_ERROR(Service_NWM, "Not connected yet.");
+
+        LOG_ERROR(Service_NWM,
+                  "PullPacketHLE FAIL: not connected status={}",
+                  static_cast<u32>(connection_status.status));
+
         return Common::Unexpected(ResultStatus::RecvError_NotConnected);
     }
 
+
     auto channel =
-        std::find_if(channel_data.begin(), channel_data.end(), [bind_node_id](const auto& data) {
-            return data.second.bind_node_id == bind_node_id;
-        });
+        std::find_if(channel_data.begin(),
+                     channel_data.end(),
+                     [bind_node_id](const auto& data) {
+                         return data.second.bind_node_id == bind_node_id;
+                     });
+
 
     if (channel == channel_data.end()) {
-        LOG_ERROR(Service_NWM, "Could not find channel bn 0x{:x}.", bind_node_id);
+
+        LOG_ERROR(Service_NWM,
+                  "PullPacketHLE FAIL: channel not found bind={}",
+                  bind_node_id);
+
         return Common::Unexpected(ResultStatus::RecvError_BadNode);
     }
 
+
+    LOG_ERROR(Service_NWM,
+              "PullPacketHLE channel found id={} queue_size={}",
+              static_cast<u32>(channel->second.data_channel),
+              channel->second.received_packets.size());
+
+
     if (channel->second.received_packets.empty()) {
+
+        LOG_ERROR(Service_NWM,
+                  "PullPacketHLE EMPTY QUEUE");
+
         output_buffer.resize(buff_size);
         return int(0);
     }
 
+
     const auto& next_packet = channel->second.received_packets.front();
+
 
     auto secure_data = ParseSecureDataHeader(next_packet);
     auto data_size = secure_data.GetActualDataSize();
+
+
+    LOG_ERROR(Service_NWM,
+              "PullPacketHLE PACKET src={} dst={} channel={} size={}",
+              static_cast<u32>(secure_data.src_node_id),
+              static_cast<u32>(secure_data.dest_node_id),
+              static_cast<u32>(secure_data.data_channel),
+              data_size);
+
 
     if (secure_data_out) {
         *reinterpret_cast<SecureDataHeader*>(secure_data_out) = secure_data;
     }
 
+
     if (data_size > max_out_buff_size) {
-        LOG_ERROR(Service_NWM, "Data size was too large.");
+
+        LOG_ERROR(Service_NWM,
+                  "PullPacketHLE FAIL: packet too large {} > {}",
+                  data_size,
+                  max_out_buff_size);
+
         return Common::Unexpected(ResultStatus::RecvError_PacketSizeTooLarge);
     }
+
+
     output_buffer.resize(buff_size);
 
-    // Write the actual data.
+
     std::memcpy(output_buffer.data(),
-                next_packet.data() + sizeof(LLCHeader) + sizeof(SecureDataHeader), data_size);
+                next_packet.data() + sizeof(LLCHeader) + sizeof(SecureDataHeader),
+                data_size);
+
 
     channel->second.received_packets.pop_front();
+
+
+    LOG_ERROR(Service_NWM,
+              "PullPacketHLE SUCCESS remaining_queue={}",
+              channel->second.received_packets.size());
+
+
     return int(data_size);
 }
 
