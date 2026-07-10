@@ -501,15 +501,21 @@ connection_status.total_nodes = logoff.connected_nodes;
 }
 
 NWM_UDS::Node* NWM_UDS::FindNodeByNodeId(u16 node_id) {
-    if (node_id == 0 || node_id > UDSMaxNodes)
+    if (node_id == 0 || node_id > UDSMaxNodes) {
+        LOG_ERROR(Service_NWM, "FindNodeByNodeId invalid id={}", node_id);
         return nullptr;
+    }
 
-    if (!node_lookup[node_id])
+    if (!node_lookup[node_id]) {
+        LOG_ERROR(Service_NWM, "FindNodeByNodeId lookup missing id={}", node_id);
         return nullptr;
+    }
 
     auto it = node_map.find(*node_lookup[node_id]);
-    if (it == node_map.end())
+    if (it == node_map.end()) {
+        LOG_ERROR(Service_NWM, "FindNodeByNodeId map missing id={}", node_id);
         return nullptr;
+    }
 
     return &it->second;
 }
