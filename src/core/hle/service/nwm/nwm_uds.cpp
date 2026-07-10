@@ -191,6 +191,7 @@ void NWM_UDS::HandleNodeMapPacket(const Network::WifiPacket& packet) {
               num_entries, node_map.size());
 
     node_map.clear();
+node_lookup.fill(boost::none);
 
     Network::MacAddress address;
     u16 id;
@@ -206,8 +207,17 @@ void NWM_UDS::HandleNodeMapPacket(const Network::WifiPacket& packet) {
                   address[0], address[1], address[2],
                   address[3], address[4], address[5]);
 
-        node_map[address].connected = true;
-        node_map[address].node_id = id;
+        auto& node = node_map[address];
+
+node.connected = true;
+node.spec = false;               // NodeMap only contains normal clients
+node.reconnecting = false;       // We heard from the host again
+node.node_id = id;
+node.last_seen = std::chrono::steady_clock::now();
+
+if (id != NodeIDSpec && id <= UDSMaxNodes) {
+    node_lookup[id] = address;
+}
 
         offset += sizeof(address) + sizeof(id);
     }
@@ -316,6 +326,7 @@ network_info.total_nodes++;
             auto& host_node = node_map[packet.transmitter_address];
 host_node.node_id = node.network_node_id;
 host_node.connected = true;
+host_node.reconnecting = false;
 host_node.spec = false;
 host_node.last_seen = std::chrono::steady_clock::now();
             node_lookup[node.network_node_id] = packet.transmitter_address;
@@ -330,6 +341,7 @@ host_node.last_seen = std::chrono::steady_clock::now();
             auto& spec_node = node_map[packet.transmitter_address];
 spec_node.node_id = NodeIDSpec;
 spec_node.connected = true;
+spec_node.reconnecting = false;
 spec_node.spec = true;
 spec_node.last_seen = std::chrono::steady_clock::now();
 
@@ -402,6 +414,12 @@ connection_status.total_nodes = logoff.connected_nodes;
             LOG_ERROR(Service_NWM, "Unknown connection type: 0x{:x}", static_cast<u32>(conn_type));
         }
 
+        if (auto* node = FindNodeByNodeId(connection_status.network_node_id)) {
+    node->connected = true;
+    node->reconnecting = false;
+    node->last_seen = std::chrono::steady_clock::now();
+        }
+
         // We're now connected, signal the application
         connection_status.status_change_reason = NetworkStatusChangeReason::ConnectionEstablished;
         // Some games require ConnectToNetwork to block, for now it doesn't
@@ -461,13 +479,18 @@ connection_status.total_nodes = logoff.connected_nodes;
     }
 
     connection_status.changed_nodes = old_bitmask ^ connection_status.node_bitmask;
-
+        
     LOG_ERROR(Service_NWM,
               "EAPOL UPDATE DONE: total_nodes={} bitmask(after)=0x{:X} changed=0x{:X}",
               connection_status.total_nodes,
               connection_status.node_bitmask,
               connection_status.changed_nodes);
-
+    if (auto* node = FindNodeByNodeId(connection_status.network_node_id)) {
+    node->connected = true;
+    node->reconnecting = false;
+    node->last_seen = std::chrono::steady_clock::now();
+    }
+        
     connection_status_event->Signal();
 }
 }
@@ -491,8 +514,13 @@ void NWM_UDS::HandleSecureDataPacket(const Network::WifiPacket& packet) {
 
     std::scoped_lock lock{connection_status_mutex, system.Kernel().GetHLELock()};
     // Refresh timeout for the sender whenever we receive a valid packet.
+ // Refresh timeout for the sender whenever we receive a valid packet.
 if (auto* node = FindNodeByNodeId(secure_data.src_node_id)) {
     node->last_seen = std::chrono::steady_clock::now();
+
+    // If this node was temporarily disconnected, it is alive again.
+    node->connected = true;
+    node->reconnecting = false;
 }
 
     if (connection_status.status != NetworkStatus::ConnectedAsHost &&
