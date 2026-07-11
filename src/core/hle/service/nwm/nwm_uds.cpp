@@ -365,37 +365,72 @@ if (existing != node_map.end() &&
 }
 
         if (eapol_start.packet.connection_type == ConnectionType::Client) {
-            u16 node_id;
+    u16 node_id;
 
-if (is_reconnect) {
-    node_id = existing->second.node_id;
+    if (is_reconnect) {
+        node_id = existing->second.node_id;
+
+        LOG_ERROR(Service_NWM,
+                  "HOST: restoring node_id={}",
+                  node_id);
+    } else {
+        node_id = GetNextAvailableNodeId();
+
+        LOG_ERROR(Service_NWM,
+                  "HOST JOIN: MAC {:02X}:{:02X}:{:02X}:{:02X}:{:02X}:{:02X} total_nodes {} -> {}",
+                  packet.transmitter_address[0],
+                  packet.transmitter_address[1],
+                  packet.transmitter_address[2],
+                  packet.transmitter_address[3],
+                  packet.transmitter_address[4],
+                  packet.transmitter_address[5],
+                  connection_status.total_nodes,
+                  connection_status.total_nodes + 1);
+
+        connection_status.total_nodes++;
+        network_info.total_nodes++;
+    }
+
+    node.network_node_id = node_id;
+
+    connection_status.node_bitmask |= 1 << (node_id - 1);
+    connection_status.changed_nodes |= 1 << (node_id - 1);
+    connection_status.nodes[node_id - 1] = node.network_node_id;
+
+    node_info[node_id - 1] = node;
+
+    auto& host_node = node_map[packet.transmitter_address];
+    host_node.node_id = node.network_node_id;
+    host_node.connected = true;
+    host_node.reconnecting = false;
+    host_node.spec = false;
+    host_node.last_seen = std::chrono::steady_clock::now();
+
+    // IMPORTANT: restore lookup table
+    node_lookup[node.network_node_id] = packet.transmitter_address;
 
     LOG_ERROR(Service_NWM,
-              "HOST: restoring node_id={}",
-              node_id);
+              "HOST AFTER JOIN: total_nodes={} node_map={} bitmask=0x{:X}",
+              connection_status.total_nodes,
+              node_map.size(),
+              connection_status.node_bitmask);
+
+    BroadcastNodeMap();
+
+} else if (eapol_start.packet.connection_type == ConnectionType::Spectator) {
+
+    auto& spec_node = node_map[packet.transmitter_address];
+    spec_node.node_id = NodeIDSpec;
+    spec_node.connected = true;
+    spec_node.reconnecting = false;
+    spec_node.spec = true;
+    spec_node.last_seen = std::chrono::steady_clock::now();
+
 } else {
-    node_id = GetNextAvailableNodeId();
-
-    connection_status.total_nodes++;
-    network_info.total_nodes++;
+    LOG_ERROR(Service_NWM,
+              "Client tried connecting with unknown connection type: 0x{:x}",
+              static_cast<u32>(eapol_start.packet.connection_type));
 }
-
-node.network_node_id = node_id;
-
-connection_status.node_bitmask |= 1 << (node_id - 1);
-connection_status.changed_nodes |= 1 << (node_id - 1);
-connection_status.nodes[node_id - 1] = node_id;
-
-node_info[node_id - 1] = node;
-
-auto& map_node = node_map[packet.transmitter_address];
-map_node.node_id = node_id;
-map_node.connected = true;
-map_node.spec = false;
-map_node.reconnecting = false;
-map_node.last_seen = std::chrono::steady_clock::now();
-
-BroadcastNodeMap();
             LOG_ERROR(Service_NWM,
           "HOST AFTER JOIN: total_nodes={} node_map={} bitmask=0x{:X}",
           connection_status.total_nodes,
