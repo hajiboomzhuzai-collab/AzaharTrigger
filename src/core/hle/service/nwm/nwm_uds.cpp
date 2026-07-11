@@ -182,6 +182,11 @@ for (const auto& [mac, node] : node_map) {
               mac[0], mac[1], mac[2],
               mac[3], mac[4], mac[5]);
 }
+    LOG_ERROR(Service_NWM,
+    "HOST >>> Sending NodeMap packet type={} entries={} bytes={}",
+    static_cast<int>(packet.type),
+    num_entries,
+    packet.data.size());
 
     SendPacket(packet);
 }
@@ -1001,7 +1006,11 @@ void NWM_UDS::OnWifiPacketReceived(const Network::WifiPacket& packet) {
         node->second.last_seen = std::chrono::steady_clock::now();
     }
 
-    switch (packet.type) {
+    LOG_ERROR(Service_NWM,
+    "RX SWITCH packet.type={}",
+    static_cast<int>(packet.type));
+
+switch (packet.type) }
     case Network::WifiPacket::PacketType::Beacon:
         HandleBeaconFrame(packet);
         break;
