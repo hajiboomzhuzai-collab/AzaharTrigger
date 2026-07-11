@@ -321,6 +321,10 @@ void NWM_UDS::HandleAssociationResponseFrame(const Network::WifiPacket& packet) 
 void NWM_UDS::HandleEAPoLPacket(const Network::WifiPacket& packet) {
     std::scoped_lock lock{connection_status_mutex, system.Kernel().GetHLELock()};
 
+    LOG_ERROR(Service_NWM,
+          "HandleEAPoLPacket ENTER status={}",
+          static_cast<u32>(connection_status.status));
+
     if (GetEAPoLFrameType(packet.data) == EAPoLStartMagic) {
         if (connection_status.status != NetworkStatus::ConnectedAsHost) {
             LOG_DEBUG(Service_NWM, "Connection sequence aborted, because connection status is {}",
@@ -939,30 +943,32 @@ void NWM_UDS::HandleDeauthenticationFrame(const Network::WifiPacket& packet) {
 }
 
 void NWM_UDS::HandleDataFrame(const Network::WifiPacket& packet) {
-    LOG_DEBUG(Service_NWM,
-        "HandleDataFrame(): from {:02X}:{:02X}:{:02X}:{:02X}:{:02X}:{:02X} size={}",
-            packet.transmitter_address[0],
-            packet.transmitter_address[1],
-            packet.transmitter_address[2],
-            packet.transmitter_address[3],
-            packet.transmitter_address[4],
-            packet.transmitter_address[5],
-            packet.data.size());
+    LOG_ERROR(Service_NWM,
+              "HandleDataFrame ENTER size={}",
+              packet.data.size());
 
-    switch (GetFrameEtherType(packet.data)) {
+    const auto type = GetFrameEtherType(packet.data);
+
+    LOG_ERROR(Service_NWM,
+              "HandleDataFrame EtherType=0x{:04X}",
+              static_cast<u16>(type));
+
+    switch (type) {
     case EtherType::EAPoL:
-        LOG_DEBUG(Service_NWM, "HandleDataFrame(): EAPoL");
+        LOG_ERROR(Service_NWM,
+                  "HandleDataFrame -> EAPOL");
         HandleEAPoLPacket(packet);
         break;
 
     case EtherType::SecureData:
-        LOG_DEBUG(Service_NWM, "HandleDataFrame(): SecureData");
+        LOG_ERROR(Service_NWM,
+                  "HandleDataFrame -> SECUREDATA");
         HandleSecureDataPacket(packet);
         break;
 
     default:
-        LOG_WARNING(Service_NWM,
-            "HandleDataFrame(): Unknown EtherType");
+        LOG_ERROR(Service_NWM,
+                  "HandleDataFrame -> UNKNOWN");
         break;
     }
 }
