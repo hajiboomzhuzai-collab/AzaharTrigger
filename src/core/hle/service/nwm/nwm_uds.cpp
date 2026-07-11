@@ -321,10 +321,6 @@ void NWM_UDS::HandleAssociationResponseFrame(const Network::WifiPacket& packet) 
 void NWM_UDS::HandleEAPoLPacket(const Network::WifiPacket& packet) {
     std::scoped_lock lock{connection_status_mutex, system.Kernel().GetHLELock()};
 
-    LOG_ERROR(Service_NWM,
-          "HandleEAPoLPacket ENTER status={}",
-          static_cast<u32>(connection_status.status));
-
     if (GetEAPoLFrameType(packet.data) == EAPoLStartMagic) {
         if (connection_status.status != NetworkStatus::ConnectedAsHost) {
             LOG_DEBUG(Service_NWM, "Connection sequence aborted, because connection status is {}",
@@ -349,99 +345,41 @@ void NWM_UDS::HandleEAPoLPacket(const Network::WifiPacket& packet) {
         auto eapol_start = ParseCompatibleEAPoLStart(packet.data);
 
         auto node = DeserializeNodeInfo(eapol_start.packet.node);
-
-        bool is_reconnect = false;
-
-auto existing = node_map.find(packet.transmitter_address);
-if (existing != node_map.end() &&
-    existing->second.reconnecting &&
-    existing->second.node_id != NodeIDSpec) {
-
-    is_reconnect = true;
-
-    LOG_ERROR(Service_NWM,
-              "HOST: reconnect request old_node_id={}",
-              existing->second.node_id);
-}
-
+        
         if (eapol_start.packet.connection_type == ConnectionType::Client) {
-    u16 node_id;
+            // Get an unused network node id
+            u16 node_id = GetNextAvailableNodeId();
+            node.network_node_id = node_id;
 
-    if (is_reconnect) {
-        node_id = existing->second.node_id;
+            connection_status.node_bitmask |= 1 << (node_id - 1);
+            connection_status.changed_nodes |= 1 << (node_id - 1);
+            connection_status.nodes[node_id - 1] = node.network_node_id;
+            connection_status.total_nodes++;
 
-        LOG_ERROR(Service_NWM,
-                  "HOST: restoring node_id={}",
-                  node_id);
-    } else {
-        node_id = GetNextAvailableNodeId();
+            node_info[node_id - 1] = node;
+            network_info.total_nodes++;
 
-        LOG_ERROR(Service_NWM,
-                  "HOST JOIN: MAC {:02X}:{:02X}:{:02X}:{:02X}:{:02X}:{:02X} total_nodes {} -> {}",
-                  packet.transmitter_address[0],
-                  packet.transmitter_address[1],
-                  packet.transmitter_address[2],
-                  packet.transmitter_address[3],
-                  packet.transmitter_address[4],
-                  packet.transmitter_address[5],
-                  connection_status.total_nodes,
-                  connection_status.total_nodes + 1);
+            node_map[packet.transmitter_address].node_id = node.network_node_id;
+            node_map[packet.transmitter_address].connected = true;
+            node_map[packet.transmitter_address].spec = false;
 
-        connection_status.total_nodes++;
-        network_info.total_nodes++;
-    }
+            BroadcastNodeMap();
+        } else if (eapol_start.packet.connection_type == ConnectionType::Spectator) {
+            node_map[packet.transmitter_address].node_id = NodeIDSpec;
+            node_map[packet.transmitter_address].connected = true;
+            node_map[packet.transmitter_address].spec = true;
+        } else {
+            LOG_ERROR(Service_NWM, "Client tried connecting with unknown connection type: 0x{:x}",
+                      static_cast<u32>(eapol_start.packet.connection_type));
+        }
 
-    node.network_node_id = node_id;
-
-    connection_status.node_bitmask |= 1 << (node_id - 1);
-    connection_status.changed_nodes |= 1 << (node_id - 1);
-    connection_status.nodes[node_id - 1] = node.network_node_id;
-
-    node_info[node_id - 1] = node;
-
-    auto& host_node = node_map[packet.transmitter_address];
-    host_node.node_id = node.network_node_id;
-    host_node.connected = true;
-    host_node.reconnecting = false;
-    host_node.spec = false;
-    host_node.last_seen = std::chrono::steady_clock::now();
-
-    // IMPORTANT: restore lookup table
-    node_lookup[node.network_node_id] = packet.transmitter_address;
-
-    LOG_ERROR(Service_NWM,
-              "HOST AFTER JOIN: total_nodes={} node_map={} bitmask=0x{:X}",
-              connection_status.total_nodes,
-              node_map.size(),
-              connection_status.node_bitmask);
-
-    BroadcastNodeMap();
-
-} else if (eapol_start.packet.connection_type == ConnectionType::Spectator) {
-
-    auto& spec_node = node_map[packet.transmitter_address];
-    spec_node.node_id = NodeIDSpec;
-    spec_node.connected = true;
-    spec_node.reconnecting = false;
-    spec_node.spec = true;
-    spec_node.last_seen = std::chrono::steady_clock::now();
-
-} else {
-    LOG_ERROR(Service_NWM,
-              "Client tried connecting with unknown connection type: 0x{:x}",
-              static_cast<u32>(eapol_start.packet.connection_type));
-}
-
-// Send the EAPoL-Logoff packet.
-using Network::WifiPacket;
-WifiPacket eapol_logoff;
-eapol_logoff.channel = network_channel;
-eapol_logoff.data =
-    GenerateEAPoLLogoffFrame(packet.transmitter_address,
-                             node.network_node_id,
-                             node_info,
-                             network_info.max_nodes,
-                             network_info.total_nodes);
+        // Send the EAPoL-Logoff packet.
+        using Network::WifiPacket;
+        WifiPacket eapol_logoff;
+        eapol_logoff.channel = network_channel;
+        eapol_logoff.data =
+            GenerateEAPoLLogoffFrame(packet.transmitter_address, node.network_node_id, node_info,
+                                     network_info.max_nodes, network_info.total_nodes);
         // TODO(Subv): Encrypt the packet.
 
         // TODO(B3N30): send the eapol packet just to the new client and implement a proper
@@ -459,19 +397,17 @@ eapol_logoff.data =
         auto logoff = ParseEAPoLLogoffFrame(packet.data);
 
         network_info.host_mac_address = packet.transmitter_address;
-        LOG_ERROR(Service_NWM,
-          "EAPOL UPDATE: connected_nodes={} assigned_node={} bitmask(before)=0x{:X}",
-          logoff.connected_nodes,
-          connection_status.network_node_id,
-          connection_status.node_bitmask);
         network_info.total_nodes = logoff.connected_nodes;
         network_info.max_nodes = logoff.max_nodes;
 
         connection_status.network_node_id = logoff.assigned_node_id;
+        connection_status.total_nodes = logoff.connected_nodes;
+        connection_status.max_nodes = logoff.max_nodes;
 
-LOG_ERROR(Service_NWM,
-          "CLIENT ASSIGNED NODE: {}",
-          connection_status.network_node_id);
+        node_info.clear();
+        node_info.resize(network_info.max_nodes);
+        for (const auto& node : logoff.nodes) {
+            const u16 index = node.network_node_id;
             if (!index) {
                 continue;
             }
@@ -491,12 +427,6 @@ LOG_ERROR(Service_NWM,
             LOG_ERROR(Service_NWM, "Unknown connection type: 0x{:x}", static_cast<u32>(conn_type));
         }
 
-        if (auto* node = FindNodeByNodeId(connection_status.network_node_id)) {
-    node->connected = true;
-    node->reconnecting = false;
-    node->last_seen = std::chrono::steady_clock::now();
-        }
-
         // We're now connected, signal the application
         connection_status.status_change_reason = NetworkStatusChangeReason::ConnectionEstablished;
         // Some games require ConnectToNetwork to block, for now it doesn't
@@ -505,71 +435,37 @@ LOG_ERROR(Service_NWM,
         connection_status_event->Signal();
         connection_event->Signal();
     } else if (connection_status.status == NetworkStatus::ConnectedAsClient ||
-           connection_status.status == NetworkStatus::ConnectedAsSpectator) {
+               connection_status.status == NetworkStatus::ConnectedAsSpectator) {
+        // TODO(B3N30): Remove that section and send/receive a proper connection_status packet
+        // On a 3ds this packet wouldn't be addressed to already connected clients
+        // We use this information because in the current implementation the host
+        // isn't broadcasting the node information
+        auto logoff = ParseEAPoLLogoffFrame(packet.data);
 
-    LOG_ERROR(Service_NWM,
-              "EAPOL UPDATE START: status={} total_nodes(before)={} bitmask(before)=0x{:X}",
-              static_cast<u32>(connection_status.status),
-              connection_status.total_nodes,
-              connection_status.node_bitmask);
+        network_info.total_nodes = logoff.connected_nodes;
+        connection_status.total_nodes = logoff.connected_nodes;
+        std::memset(connection_status.nodes, 0, sizeof(connection_status.nodes));
 
-    // TODO(B3N30): Remove that section and send/receive a proper connection_status packet
-    // On a 3ds this packet wouldn't be addressed to already connected clients
-    // We use this information because in the current implementation the host
-    // isn't broadcasting the node information
-    auto logoff = ParseEAPoLLogoffFrame(packet.data);
+        const auto old_bitmask = connection_status.node_bitmask;
+        connection_status.node_bitmask = 0;
 
-    LOG_ERROR(Service_NWM,
-              "EAPOL host says total_nodes={} max_nodes={}",
-              logoff.connected_nodes,
-              logoff.max_nodes);
+        node_info.clear();
+        node_info.resize(network_info.max_nodes);
+        for (const auto& node : logoff.nodes) {
+            const u16 index = node.network_node_id;
+            if (!index) {
+                continue;
+            }
 
-    network_info.total_nodes = logoff.connected_nodes;
-    LOG_ERROR(Service_NWM,
-          "CLIENT: total_nodes {} -> {} (received EAPOL)",
-          connection_status.total_nodes,
-          logoff.connected_nodes);
+            connection_status.node_bitmask |= 1 << (index - 1);
+            connection_status.nodes[index - 1] = index;
 
-connection_status.total_nodes = logoff.connected_nodes;
-    std::memset(connection_status.nodes, 0, sizeof(connection_status.nodes));
-
-    const auto old_bitmask = connection_status.node_bitmask;
-    connection_status.node_bitmask = 0;
-
-    node_info.clear();
-    node_info.resize(network_info.max_nodes);
-
-    for (const auto& node : logoff.nodes) {
-        const u16 index = node.network_node_id;
-        if (!index) {
-            continue;
+            node_info[index - 1] = DeserializeNodeInfo(node);
         }
+        connection_status.changed_nodes = old_bitmask ^ connection_status.node_bitmask;
 
-        LOG_ERROR(Service_NWM,
-                  "EAPOL NODE id={}",
-                  index);
-
-        connection_status.node_bitmask |= 1 << (index - 1);
-        connection_status.nodes[index - 1] = index;
-
-        node_info[index - 1] = DeserializeNodeInfo(node);
+        connection_status_event->Signal();
     }
-
-    connection_status.changed_nodes = old_bitmask ^ connection_status.node_bitmask;
-        
-    LOG_ERROR(Service_NWM,
-              "EAPOL UPDATE DONE: total_nodes={} bitmask(after)=0x{:X} changed=0x{:X}",
-              connection_status.total_nodes,
-              connection_status.node_bitmask,
-              connection_status.changed_nodes);
-    if (auto* node = FindNodeByNodeId(connection_status.network_node_id)) {
-    node->connected = true;
-    node->reconnecting = false;
-    node->last_seen = std::chrono::steady_clock::now();
-    }
-        
-    connection_status_event->Signal();
-}
 }
 
 NWM_UDS::Node* NWM_UDS::FindNodeByNodeId(u16 node_id) {
