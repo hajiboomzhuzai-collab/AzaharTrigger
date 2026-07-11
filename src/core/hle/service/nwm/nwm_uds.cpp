@@ -190,8 +190,6 @@ void NWM_UDS::HandleNodeMapPacket(const Network::WifiPacket& packet) {
     std::scoped_lock lock(connection_status_mutex);
 
     if (connection_status.status == NetworkStatus::ConnectedAsHost) {
-        LOG_DEBUG(Service_NWM,
-                  "Ignored NodeMapPacket since connection_status is host");
         return;
     }
 
@@ -199,29 +197,46 @@ void NWM_UDS::HandleNodeMapPacket(const Network::WifiPacket& packet) {
     std::memcpy(&num_entries, packet.data.data(), sizeof(num_entries));
 
     LOG_ERROR(Service_NWM,
-              "CLIENT <<< HandleNodeMapPacket status={} entries={} old_node_map={} total_nodes={}",
-              static_cast<u32>(connection_status.status),
+              "CLIENT <<< NodeMap entries={} current_nodes={}",
               num_entries,
-              node_map.size(),
-              connection_status.total_nodes);
+              node_map.size());
+
+    // Ignore empty broadcasts.
+    if (num_entries == 0) {
+        LOG_ERROR(Service_NWM,
+                  "CLIENT ignoring empty NodeMap");
+        return;
+    }
 
     node_map.clear();
     node_lookup.fill(boost::none);
-
-    LOG_ERROR(Service_NWM,
-              "CLIENT: rebuilding node_map");
 
     Network::MacAddress address;
     u16 id;
     std::size_t offset = sizeof(num_entries);
 
-    for (std::size_t i = 0; i < num_entries; ++i) {
-        std::memcpy(&address, packet.data.data() + offset, sizeof(address));
-        std::memcpy(&id, packet.data.data() + offset + sizeof(address), sizeof(id));
+    for (std::size_t i = 0; i < num_entries; i++) {
+        std::memcpy(&address,
+                    packet.data.data() + offset,
+                    sizeof(address));
+
+        std::memcpy(&id,
+                    packet.data.data() + offset + sizeof(address),
+                    sizeof(id));
+
+        auto& node = node_map[address];
+        node.connected = true;
+        node.reconnecting = false;
+        node.spec = false;
+        node.node_id = id;
+        node.last_seen = std::chrono::steady_clock::now();
+
+        if (id != NodeIDSpec && id <= UDSMaxNodes) {
+            node_lookup[id] = address;
+        }
 
         LOG_ERROR(Service_NWM,
-                  "CLIENT NodeMap[{}]: id={} mac={:02X}:{:02X}:{:02X}:{:02X}:{:02X}:{:02X}",
-                  i,
+                  "CLIENT NodeMap id={} mac={:02X}:{:02X}:{:02X}:{:02X}:{:02X}:{:02X}",
                   id,
                   address[0],
                   address[1],
@@ -230,62 +245,12 @@ void NWM_UDS::HandleNodeMapPacket(const Network::WifiPacket& packet) {
                   address[4],
                   address[5]);
 
-        auto& node = node_map[address];
-
-        node.connected = true;
-        node.spec = false;
-        node.reconnecting = false;
-        node.node_id = id;
-        node.last_seen = std::chrono::steady_clock::now();
-
-        LOG_ERROR(Service_NWM,
-                  "CLIENT: insert id={} connected={} reconnecting={} spec={}",
-                  node.node_id,
-                  node.connected,
-                  node.reconnecting,
-                  node.spec);
-
-        if (id != NodeIDSpec && id <= UDSMaxNodes) {
-            node_lookup[id] = address;
-
-            LOG_ERROR(Service_NWM,
-                      "CLIENT: lookup[{}] assigned",
-                      id);
-        }
-
         offset += sizeof(address) + sizeof(id);
     }
 
-    const auto lookup_count =
-        std::count_if(node_lookup.begin(), node_lookup.end(),
-                      [](const auto& e) { return e.has_value(); });
-
     LOG_ERROR(Service_NWM,
-              "CLIENT NODEMAP DONE node_map={} lookup_entries={}",
-              node_map.size(),
-              lookup_count);
-
-    for (u16 i = 1; i <= UDSMaxNodes; i++) {
-        if (node_lookup[i]) {
-            const auto& mac = *node_lookup[i];
-            LOG_ERROR(Service_NWM,
-                      "CLIENT lookup[{}] = {:02X}:{:02X}:{:02X}:{:02X}:{:02X}:{:02X}",
-                      i,
-                      mac[0],
-                      mac[1],
-                      mac[2],
-                      mac[3],
-                      mac[4],
-                      mac[5]);
-        } else {
-            LOG_ERROR(Service_NWM,
-                      "CLIENT lookup[{}] = <empty>",
-                      i);
-        }
-    }
-
-    LOG_ERROR(Service_NWM,
-              "CLIENT >>> HandleNodeMapPacket COMPLETE");
+              "CLIENT NodeMap DONE node_map={}",
+              node_map.size());
 }
 
 void NWM_UDS::HandleBeaconFrame(const Network::WifiPacket& packet) {
