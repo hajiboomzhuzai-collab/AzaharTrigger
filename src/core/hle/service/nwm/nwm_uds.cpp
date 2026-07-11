@@ -349,67 +349,178 @@ void NWM_UDS::HandleEAPoLPacket(const Network::WifiPacket& packet) {
     }
 }
 
+NWM_UDS::Node* NWM_UDS::FindNodeByNodeId(u16 node_id) {
+    if (node_id == 0 || node_id > UDSMaxNodes) {
+        LOG_ERROR(Service_NWM,
+                  "FindNodeByNodeId invalid id={}",
+                  node_id);
+        return nullptr;
+    }
+
+    if (!node_lookup[node_id]) {
+        LOG_ERROR(Service_NWM,
+                  "FindNodeByNodeId lookup missing id={} status={} node_map={}",
+                  node_id,
+                  static_cast<u32>(connection_status.status),
+                  node_map.size());
+
+        for (u16 i = 1; i <= UDSMaxNodes; i++) {
+            if (node_lookup[i]) {
+                const auto& mac = *node_lookup[i];
+                LOG_ERROR(Service_NWM,
+                          "  lookup[{}] = {:02X}:{:02X}:{:02X}:{:02X}:{:02X}:{:02X}",
+                          i,
+                          mac[0], mac[1], mac[2],
+                          mac[3], mac[4], mac[5]);
+            } else {
+                LOG_ERROR(Service_NWM,
+                          "  lookup[{}] = <empty>",
+                          i);
+            }
+        }
+
+        return nullptr;
+    }
+
+    auto it = node_map.find(*node_lookup[node_id]);
+    if (it == node_map.end()) {
+        const auto& mac = *node_lookup[node_id];
+
+        LOG_ERROR(Service_NWM,
+                  "FindNodeByNodeId map missing id={} mac={:02X}:{:02X}:{:02X}:{:02X}:{:02X}:{:02X} node_map_size={}",
+                  node_id,
+                  mac[0], mac[1], mac[2],
+                  mac[3], mac[4], mac[5],
+                  node_map.size());
+
+        for (const auto& [map_mac, node] : node_map) {
+            LOG_ERROR(Service_NWM,
+                      "  map: id={} connected={} spec={} mac={:02X}:{:02X}:{:02X}:{:02X}:{:02X}:{:02X}",
+                      node.node_id,
+                      node.connected,
+                      node.spec,
+                      map_mac[0], map_mac[1], map_mac[2],
+                      map_mac[3], map_mac[4], map_mac[5]);
+        }
+
+        return nullptr;
+    }
+
+    LOG_ERROR(Service_NWM,
+              "FindNodeByNodeId SUCCESS id={} connected={} spec={}",
+              node_id,
+              it->second.connected,
+              it->second.spec);
+
+    return &it->second;
+}
+
 void NWM_UDS::HandleSecureDataPacket(const Network::WifiPacket& packet) {
+    LOG_ERROR(Service_NWM,
+              "SECURE ENTER size={}",
+              packet.data.size());
+
     const auto secure_data = ParseSecureDataHeader(packet.data);
+
+    LOG_ERROR(Service_NWM,
+              "SECURE HEADER src={} dst={} channel={} mgmt={}",
+              secure_data.src_node_id,
+              secure_data.dest_node_id,
+              secure_data.data_channel,
+              secure_data.is_management);
+
     std::scoped_lock lock{connection_status_mutex, system.Kernel().GetHLELock()};
+
+    LOG_ERROR(Service_NWM,
+              "SECURE STATUS={} local_node={}",
+              static_cast<u32>(connection_status.status),
+              connection_status.network_node_id);
 
     if (connection_status.status != NetworkStatus::ConnectedAsHost &&
         connection_status.status != NetworkStatus::ConnectedAsClient &&
         connection_status.status != NetworkStatus::ConnectedAsSpectator) {
-        LOG_TRACE(Service_NWM, "Ignored SecureDataPacket because connection status is {}",
+
+        LOG_ERROR(Service_NWM,
+                  "SECURE ABORT: invalid connection state={}",
                   static_cast<u32>(connection_status.status));
         return;
     }
 
     if (secure_data.src_node_id == connection_status.network_node_id) {
-        // Ignore packets that came from ourselves.
+        LOG_ERROR(Service_NWM,
+                  "SECURE IGNORE: packet came from ourselves");
         return;
     }
 
     if (secure_data.dest_node_id != connection_status.network_node_id &&
         secure_data.dest_node_id != BroadcastNetworkNodeId) {
-        // The packet wasn't addressed to us, we can only act as a router if we're the host.
-        // However, we might have received this packet due to a broadcast from the host, in that
-        // case just ignore it.
+
+        LOG_ERROR(Service_NWM,
+                  "SECURE NOT FOR US dst={} local={}",
+                  secure_data.dest_node_id,
+                  connection_status.network_node_id);
+
         if (packet.destination_address != Network::BroadcastMac &&
             connection_status.status != NetworkStatus::ConnectedAsHost) {
-            LOG_ERROR(Service_NWM, "Received packet addressed to others but we're not a host");
+
+            LOG_ERROR(Service_NWM,
+                      "SECURE ERROR: received foreign packet while not host");
             return;
         }
 
         if (connection_status.status == NetworkStatus::ConnectedAsHost &&
             secure_data.dest_node_id != BroadcastNetworkNodeId) {
-            // Broadcast the packet so the right receiver can get it.
-            // TODO(B3N30): Is there a flag that makes this kind of routing be unicast instead of
-            // multicast? Perhaps this is a way to allow spectators to see some of the packets.
+
+            LOG_ERROR(Service_NWM,
+                      "SECURE HOST ROUTE: forwarding packet to broadcast");
+
             Network::WifiPacket out_packet = packet;
             out_packet.destination_address = Network::BroadcastMac;
             SendPacket(out_packet);
         }
+
         return;
     }
 
-    // The packet is addressed to us (or to everyone using the broadcast node id), handle it.
-    // TODO(B3N30): We don't currently send nor handle management frames.
+    LOG_ERROR(Service_NWM,
+              "SECURE ACCEPT: packet addressed to us");
+
     ASSERT(!secure_data.is_management);
 
-    // TODO(B3N30): Allow more than one bind node per channel.
     auto channel_info = channel_data.find(secure_data.data_channel);
-    // Ignore packets from channels we're not interested in.
+
     if (channel_info == channel_data.end()) {
+        LOG_ERROR(Service_NWM,
+                  "SECURE DROP: unknown channel={}",
+                  secure_data.data_channel);
         return;
     }
 
     if (channel_info->second.network_node_id != BroadcastNetworkNodeId &&
         channel_info->second.network_node_id != secure_data.src_node_id) {
+
+        LOG_ERROR(Service_NWM,
+                  "SECURE DROP: channel bound to node={} but sender={}",
+                  channel_info->second.network_node_id,
+                  secure_data.src_node_id);
         return;
     }
 
-    // Add the received packet to the data queue.
+    LOG_ERROR(Service_NWM,
+              "SECURE QUEUE: channel={} packets_before={}",
+              secure_data.data_channel,
+              channel_info->second.received_packets.size());
+
     channel_info->second.received_packets.emplace_back(packet.data);
 
-    // Signal the data event. We can do this directly because we locked hle_lock
+    LOG_ERROR(Service_NWM,
+              "SECURE SIGNAL EVENT channel={}",
+              secure_data.data_channel);
+
     channel_info->second.event->Signal();
+
+    LOG_ERROR(Service_NWM,
+              "SECURE END");
 }
 
 void NWM_UDS::StartConnectionSequence(const MacAddress& server) {
@@ -497,45 +608,97 @@ void NWM_UDS::HandleAuthenticationFrame(const Network::WifiPacket& packet) {
 }
 
 void NWM_UDS::HandleDeauthenticationFrame(const Network::WifiPacket& packet) {
-    LOG_DEBUG(Service_NWM, "called");
+    LOG_ERROR(Service_NWM,
+              "DEAUTH ENTER from {:02X}:{:02X}:{:02X}:{:02X}:{:02X}:{:02X}",
+              packet.transmitter_address[0],
+              packet.transmitter_address[1],
+              packet.transmitter_address[2],
+              packet.transmitter_address[3],
+              packet.transmitter_address[4],
+              packet.transmitter_address[5]);
+
     std::scoped_lock lock{connection_status_mutex, system.Kernel().GetHLELock()};
 
+    LOG_ERROR(Service_NWM,
+              "DEAUTH STATUS={} total_nodes={} node_map={}",
+              static_cast<u32>(connection_status.status),
+              connection_status.total_nodes,
+              node_map.size());
+
     if (connection_status.status != NetworkStatus::ConnectedAsHost) {
-        LOG_ERROR(Service_NWM, "Got deauthentication frame but we are not the host");
-        return;
-    }
-    if (node_map.find(packet.transmitter_address) == node_map.end()) {
-        LOG_ERROR(Service_NWM, "Got deauthentication frame from unknown node");
+        LOG_ERROR(Service_NWM,
+                  "DEAUTH ABORT: not host");
         return;
     }
 
-    Node node = node_map[packet.transmitter_address];
-    node_map.erase(packet.transmitter_address);
+    auto map_it = node_map.find(packet.transmitter_address);
+    if (map_it == node_map.end()) {
+        LOG_ERROR(Service_NWM,
+                  "DEAUTH ABORT: unknown node");
+        return;
+    }
+
+    Node node = map_it->second;
+
+    LOG_ERROR(Service_NWM,
+              "DEAUTH NODE id={} connected={} spec={}",
+              node.node_id,
+              node.connected,
+              node.spec);
+
+    node_map.erase(map_it);
+
+    LOG_ERROR(Service_NWM,
+              "DEAUTH node_map after erase={}",
+              node_map.size());
 
     if (!node.connected) {
-        LOG_DEBUG(Service_NWM, "Received DeauthenticationFrame from a not connected MAC Address");
+        LOG_ERROR(Service_NWM,
+                  "DEAUTH IGNORE: node was not connected");
         return;
     }
 
-    auto node_it = std::find_if(node_info.begin(), node_info.end(), [&node](const NodeInfo& info) {
-        return info.network_node_id == node.node_id;
-    });
+    auto node_it =
+        std::find_if(node_info.begin(), node_info.end(),
+                     [&node](const NodeInfo& info) {
+                         return info.network_node_id == node.node_id;
+                     });
+
     if (node_it == node_info.end()) {
-        LOG_ERROR(Service_NWM, "node_it is last node of node_info");
+        LOG_ERROR(Service_NWM,
+                  "DEAUTH ERROR: node_info entry not found");
         return;
     }
 
     if (!node.spec) {
+        LOG_ERROR(Service_NWM,
+                  "DEAUTH removing client node_id={}",
+                  node.node_id);
+
         connection_status.node_bitmask &= ~(1 << (node.node_id - 1));
         connection_status.changed_nodes |= 1 << (node.node_id - 1);
         connection_status.total_nodes--;
         connection_status.nodes[node.node_id - 1] = 0;
 
         network_info.total_nodes--;
+
+        LOG_ERROR(Service_NWM,
+                  "DEAUTH AFTER REMOVE total_nodes={} bitmask=0x{:X}",
+                  connection_status.total_nodes,
+                  connection_status.node_bitmask);
+
         // TODO(B3N30): broadcast new connection_status to clients
     }
+
     node_it->Reset();
+
+    LOG_ERROR(Service_NWM,
+              "DEAUTH node_info reset complete");
+
     connection_status_event->Signal();
+
+    LOG_ERROR(Service_NWM,
+              "DEAUTH END");
 }
 
 void NWM_UDS::HandleDataFrame(const Network::WifiPacket& packet) {
@@ -550,26 +713,46 @@ void NWM_UDS::HandleDataFrame(const Network::WifiPacket& packet) {
 }
 
 /// Callback to parse and handle a received wifi packet.
+/// Callback to parse and handle a received wifi packet.
 void NWM_UDS::OnWifiPacketReceived(const Network::WifiPacket& packet) {
     if (!initialized) {
         return;
     }
+
     switch (packet.type) {
     case Network::WifiPacket::PacketType::Beacon:
         HandleBeaconFrame(packet);
         break;
+
     case Network::WifiPacket::PacketType::Authentication:
         HandleAuthenticationFrame(packet);
         break;
+
     case Network::WifiPacket::PacketType::AssociationResponse:
         HandleAssociationResponseFrame(packet);
         break;
+
     case Network::WifiPacket::PacketType::Data:
         HandleDataFrame(packet);
         break;
-    case Network::WifiPacket::PacketType::Deauthentication:
+
+    case Network::WifiPacket::PacketType::Deauthentication: {
+        auto it = node_map.find(packet.transmitter_address);
+
+        // Ignore the first deauth from a reconnecting node.
+        if (it != node_map.end() && it->second.reconnecting) {
+            LOG_ERROR(Service_NWM,
+                      "Ignoring deauthentication from reconnecting node_id={}",
+                      it->second.node_id);
+
+            it->second.reconnecting = false;
+            break;
+        }
+
         HandleDeauthenticationFrame(packet);
         break;
+    }
+
     case Network::WifiPacket::PacketType::NodeMap:
         HandleNodeMapPacket(packet);
         break;
