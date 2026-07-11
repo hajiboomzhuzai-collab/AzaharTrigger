@@ -472,19 +472,6 @@ eapol_logoff.data =
 LOG_ERROR(Service_NWM,
           "CLIENT ASSIGNED NODE: {}",
           connection_status.network_node_id);
-
-LOG_ERROR(Service_NWM,
-          "CLIENT: total_nodes {} -> {} (received EAPOL)",
-          connection_status.total_nodes,
-          logoff.connected_nodes);
-
-connection_status.total_nodes = logoff.connected_nodes;
-        connection_status.max_nodes = logoff.max_nodes;
-
-        node_info.clear();
-        node_info.resize(network_info.max_nodes);
-        for (const auto& node : logoff.nodes) {
-            const u16 index = node.network_node_id;
             if (!index) {
                 continue;
             }
@@ -504,15 +491,10 @@ connection_status.total_nodes = logoff.connected_nodes;
             LOG_ERROR(Service_NWM, "Unknown connection type: 0x{:x}", static_cast<u32>(conn_type));
         }
 
-        if (auto* existing =
-        FindNodeByNodeId(connection_status.network_node_id)) {
-    LOG_ERROR(Service_NWM,
-              "CLIENT ACTIVE node_id={}",
-              connection_status.network_node_id);
-
-    existing->connected = true;
-    existing->reconnecting = false;
-    existing->last_seen = std::chrono::steady_clock::now();
+        if (auto* node = FindNodeByNodeId(connection_status.network_node_id)) {
+    node->connected = true;
+    node->reconnecting = false;
+    node->last_seen = std::chrono::steady_clock::now();
         }
 
         // We're now connected, signal the application
