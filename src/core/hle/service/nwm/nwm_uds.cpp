@@ -956,6 +956,16 @@ void NWM_UDS::OnWifiPacketReceived(const Network::WifiPacket& packet) {
         return;
     }
 
+    const auto now = std::chrono::steady_clock::now();
+
+    LOG_ERROR(Service_NWM,
+              "RX GAP {} ms",
+              std::chrono::duration_cast<std::chrono::milliseconds>(
+                  now - last_packet_time)
+                  .count());
+
+    last_packet_time = now;
+
     LOG_ERROR(Service_NWM,
         "RX type={} ch={} size={} from {:02X}:{:02X}:{:02X}:{:02X}:{:02X}:{:02X}",
         static_cast<u32>(packet.type),
@@ -971,7 +981,7 @@ void NWM_UDS::OnWifiPacketReceived(const Network::WifiPacket& packet) {
     // Refresh last seen time for this node.
     auto node = node_map.find(packet.transmitter_address);
     if (node != node_map.end()) {
-        node->second.last_seen = std::chrono::steady_clock::now();
+        node->second.last_seen = now;
     }
 
     switch (packet.type) {
@@ -2007,35 +2017,34 @@ ResultStatus NWM_UDS::DisconnectNetworkHLE() {
     using Network::WifiPacket;
 
     LOG_ERROR(Service_NWM,
-              "DisconnectNetworkHLE() ENTER "
-              "status={} total_nodes={} node_id={} host_mac={:02X}:{:02X}:{:02X}:{:02X}:{:02X}:{:02X}",
-              static_cast<u32>(connection_status.status),
-              connection_status.total_nodes,
-              connection_status.network_node_id,
-              network_info.host_mac_address[0],
-              network_info.host_mac_address[1],
-              network_info.host_mac_address[2],
-              network_info.host_mac_address[3],
-              network_info.host_mac_address[4],
-              network_info.host_mac_address[5]);
+        "================ DISCONNECT BEGIN ================");
+
+    LOG_ERROR(Service_NWM,
+        "status={} total_nodes={} node_id={} node_map={} bitmask=0x{:X}",
+        static_cast<u32>(connection_status.status),
+        connection_status.total_nodes,
+        connection_status.network_node_id,
+        node_map.size(),
+        connection_status.node_bitmask);
+
+    LOG_ERROR(Service_NWM,
+        "host={:02X}:{:02X}:{:02X}:{:02X}:{:02X}:{:02X}",
+        network_info.host_mac_address[0],
+        network_info.host_mac_address[1],
+        network_info.host_mac_address[2],
+        network_info.host_mac_address[3],
+        network_info.host_mac_address[4],
+        network_info.host_mac_address[5]);
 
     WifiPacket deauth;
 
     {
         std::scoped_lock lock(connection_status_mutex);
 
-        LOG_ERROR(Service_NWM,
-                  "DisconnectNetworkHLE() LOCKED "
-                  "status={} node_map={} total_nodes={}",
-                  static_cast<u32>(connection_status.status),
-                  node_map.size(),
-                  connection_status.total_nodes);
-
         if (connection_status.status == NetworkStatus::ConnectedAsHost) {
             LOG_ERROR(Service_NWM,
-                      "DisconnectNetworkHLE() CALLED AS HOST");
+                "DisconnectNetworkHLE(): HOST");
 
-            // A real 3DS makes strange things here. We do the same.
             u16_le tmp_node_id = connection_status.network_node_id;
 
             connection_status = {};
@@ -2045,13 +2054,13 @@ ResultStatus NWM_UDS::DisconnectNetworkHLE() {
             node_map.clear();
 
             LOG_ERROR(Service_NWM,
-                      "DisconnectNetworkHLE() HOST RESET COMPLETE");
+                "DisconnectNetworkHLE(): host reset");
 
             return ResultStatus::DisconError_CalledAsHost;
         }
 
         LOG_ERROR(Service_NWM,
-                  "DisconnectNetworkHLE() CLIENT/SPECTATOR DISCONNECT");
+            "DisconnectNetworkHLE(): CLIENT");
 
         u16_le tmp_node_id = connection_status.network_node_id;
 
@@ -2067,36 +2076,27 @@ ResultStatus NWM_UDS::DisconnectNetworkHLE() {
         deauth.data = {};
         deauth.destination_address = network_info.host_mac_address;
         deauth.type = WifiPacket::PacketType::Deauthentication;
-
-        LOG_ERROR(Service_NWM,
-                  "DisconnectNetworkHLE() Prepared DEAUTH packet");
     }
 
     LOG_ERROR(Service_NWM,
-              "DisconnectNetworkHLE() >>> Sending DEAUTH to "
-              "{:02X}:{:02X}:{:02X}:{:02X}:{:02X}:{:02X}",
-              deauth.destination_address[0],
-              deauth.destination_address[1],
-              deauth.destination_address[2],
-              deauth.destination_address[3],
-              deauth.destination_address[4],
-              deauth.destination_address[5]);
+        "Sending DEAUTH to {:02X}:{:02X}:{:02X}:{:02X}:{:02X}:{:02X}",
+        deauth.destination_address[0],
+        deauth.destination_address[1],
+        deauth.destination_address[2],
+        deauth.destination_address[3],
+        deauth.destination_address[4],
+        deauth.destination_address[5]);
 
     SendPacket(deauth);
 
-    LOG_ERROR(Service_NWM,
-              "DisconnectNetworkHLE() DEAUTH SENT");
-
     for (auto& bind_node : channel_data) {
-        LOG_ERROR(Service_NWM,
-                  "DisconnectNetworkHLE() Signaling channel event");
         bind_node.second.event->Signal();
     }
 
     channel_data.clear();
 
     LOG_ERROR(Service_NWM,
-              "DisconnectNetworkHLE() EXIT");
+        "================ DISCONNECT END ==================");
 
     return ResultStatus::ResultSuccess;
 }
