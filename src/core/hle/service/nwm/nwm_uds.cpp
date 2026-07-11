@@ -208,6 +208,9 @@ void NWM_UDS::HandleNodeMapPacket(const Network::WifiPacket& packet) {
     node_map.clear();
     node_lookup.fill(boost::none);
 
+    LOG_ERROR(Service_NWM,
+              "CLIENT: rebuilding node_map");
+
     Network::MacAddress address;
     u16 id;
     std::size_t offset = sizeof(num_entries);
@@ -235,8 +238,19 @@ void NWM_UDS::HandleNodeMapPacket(const Network::WifiPacket& packet) {
         node.node_id = id;
         node.last_seen = std::chrono::steady_clock::now();
 
+        LOG_ERROR(Service_NWM,
+                  "CLIENT: insert id={} connected={} reconnecting={} spec={}",
+                  node.node_id,
+                  node.connected,
+                  node.reconnecting,
+                  node.spec);
+
         if (id != NodeIDSpec && id <= UDSMaxNodes) {
             node_lookup[id] = address;
+
+            LOG_ERROR(Service_NWM,
+                      "CLIENT: lookup[{}] assigned",
+                      id);
         }
 
         offset += sizeof(address) + sizeof(id);
@@ -269,6 +283,9 @@ void NWM_UDS::HandleNodeMapPacket(const Network::WifiPacket& packet) {
                       i);
         }
     }
+
+    LOG_ERROR(Service_NWM,
+              "CLIENT >>> HandleNodeMapPacket COMPLETE");
 }
 
 void NWM_UDS::HandleBeaconFrame(const Network::WifiPacket& packet) {
@@ -549,6 +566,12 @@ connection_status.total_nodes = logoff.connected_nodes;
 }
 
 NWM_UDS::Node* NWM_UDS::FindNodeByNodeId(u16 node_id) {
+    LOG_ERROR(Service_NWM,
+              "FindNodeByNodeId ENTER id={} status={} node_map={}",
+              node_id,
+              static_cast<u32>(connection_status.status),
+              node_map.size());
+
     if (node_id == 0 || node_id > UDSMaxNodes) {
         LOG_ERROR(Service_NWM,
                   "FindNodeByNodeId invalid id={}",
@@ -581,23 +604,31 @@ NWM_UDS::Node* NWM_UDS::FindNodeByNodeId(u16 node_id) {
         return nullptr;
     }
 
-    auto it = node_map.find(*node_lookup[node_id]);
-    if (it == node_map.end()) {
-        const auto& mac = *node_lookup[node_id];
+    const auto& lookup_mac = *node_lookup[node_id];
 
+    LOG_ERROR(Service_NWM,
+              "FindNodeByNodeId lookup hit id={} mac={:02X}:{:02X}:{:02X}:{:02X}:{:02X}:{:02X}",
+              node_id,
+              lookup_mac[0], lookup_mac[1], lookup_mac[2],
+              lookup_mac[3], lookup_mac[4], lookup_mac[5]);
+
+    auto it = node_map.find(lookup_mac);
+
+    if (it == node_map.end()) {
         LOG_ERROR(Service_NWM,
                   "FindNodeByNodeId map missing id={} mac={:02X}:{:02X}:{:02X}:{:02X}:{:02X}:{:02X} node_map_size={}",
                   node_id,
-                  mac[0], mac[1], mac[2],
-                  mac[3], mac[4], mac[5],
+                  lookup_mac[0], lookup_mac[1], lookup_mac[2],
+                  lookup_mac[3], lookup_mac[4], lookup_mac[5],
                   node_map.size());
 
         for (const auto& [map_mac, node] : node_map) {
             LOG_ERROR(Service_NWM,
-                      "  map: id={} connected={} spec={} mac={:02X}:{:02X}:{:02X}:{:02X}:{:02X}:{:02X}",
+                      "  map: id={} connected={} spec={} reconnecting={} mac={:02X}:{:02X}:{:02X}:{:02X}:{:02X}:{:02X}",
                       node.node_id,
                       node.connected,
                       node.spec,
+                      node.reconnecting,
                       map_mac[0], map_mac[1], map_mac[2],
                       map_mac[3], map_mac[4], map_mac[5]);
         }
@@ -606,10 +637,12 @@ NWM_UDS::Node* NWM_UDS::FindNodeByNodeId(u16 node_id) {
     }
 
     LOG_ERROR(Service_NWM,
-              "FindNodeByNodeId SUCCESS id={} connected={} spec={}",
+              "FindNodeByNodeId SUCCESS id={} connected={} spec={} reconnecting={} node_id={}",
               node_id,
               it->second.connected,
-              it->second.spec);
+              it->second.spec,
+              it->second.reconnecting,
+              it->second.node_id);
 
     return &it->second;
 }
