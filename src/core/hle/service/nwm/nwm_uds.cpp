@@ -431,31 +431,17 @@ if (existing != node_map.end() &&
               "Client tried connecting with unknown connection type: 0x{:x}",
               static_cast<u32>(eapol_start.packet.connection_type));
 }
-            LOG_ERROR(Service_NWM,
-          "HOST AFTER JOIN: total_nodes={} node_map={} bitmask=0x{:X}",
-          connection_status.total_nodes,
-          node_map.size(),
-          connection_status.node_bitmask);
-        } else if (eapol_start.packet.connection_type == ConnectionType::Spectator) {
-            auto& spec_node = node_map[packet.transmitter_address];
-spec_node.node_id = NodeIDSpec;
-spec_node.connected = true;
-spec_node.reconnecting = false;
-spec_node.spec = true;
-spec_node.last_seen = std::chrono::steady_clock::now();
 
-        } else {
-            LOG_ERROR(Service_NWM, "Client tried connecting with unknown connection type: 0x{:x}",
-                      static_cast<u32>(eapol_start.packet.connection_type));
-        }
-
-        // Send the EAPoL-Logoff packet.
-        using Network::WifiPacket;
-        WifiPacket eapol_logoff;
-        eapol_logoff.channel = network_channel;
-        eapol_logoff.data =
-            GenerateEAPoLLogoffFrame(packet.transmitter_address, node.network_node_id, node_info,
-                                     network_info.max_nodes, network_info.total_nodes);
+// Send the EAPoL-Logoff packet.
+using Network::WifiPacket;
+WifiPacket eapol_logoff;
+eapol_logoff.channel = network_channel;
+eapol_logoff.data =
+    GenerateEAPoLLogoffFrame(packet.transmitter_address,
+                             node.network_node_id,
+                             node_info,
+                             network_info.max_nodes,
+                             network_info.total_nodes);
         // TODO(Subv): Encrypt the packet.
 
         // TODO(B3N30): send the eapol packet just to the new client and implement a proper
