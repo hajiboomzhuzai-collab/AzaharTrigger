@@ -467,10 +467,14 @@ connection_status.total_nodes = logoff.connected_nodes;
             LOG_ERROR(Service_NWM, "Unknown connection type: 0x{:x}", static_cast<u32>(conn_type));
         }
 
-        if (auto* node = FindNodeByNodeId(connection_status.network_node_id)) {
-    node->connected = true;
-    node->reconnecting = false;
-    node->last_seen = std::chrono::steady_clock::now();
+        if (auto* existing = FindNodeByNodeId(node.network_node_id)) {
+    LOG_ERROR(Service_NWM,
+              "RECONNECT SUCCESS node_id={}",
+              node.network_node_id);
+
+    existing->connected = true;
+    existing->reconnecting = false;
+    existing->last_seen = std::chrono::steady_clock::now();
         }
 
         // We're now connected, signal the application
@@ -958,6 +962,33 @@ void NWM_UDS::OnWifiPacketReceived(const Network::WifiPacket& packet) {
 
     const auto now = std::chrono::steady_clock::now();
 
+    {
+        std::scoped_lock lock(connection_status_mutex);
+
+        for (auto it = node_map.begin(); it != node_map.end();) {
+            auto& node = it->second;
+
+            if (node.reconnecting &&
+                std::chrono::duration_cast<std::chrono::seconds>(
+                    now - node.last_seen)
+                        .count() >= 10) {
+
+                LOG_ERROR(Service_NWM,
+                          "Reconnect timeout: removing node_id={}",
+                          node.node_id);
+
+                if (node.node_id != 0 && node.node_id <= UDSMaxNodes) {
+                    node_lookup[node.node_id] = boost::none;
+                }
+
+                it = node_map.erase(it);
+                continue;
+            }
+
+            ++it;
+        }
+    }
+
     LOG_ERROR(Service_NWM,
               "RX GAP {} ms",
               std::chrono::duration_cast<std::chrono::milliseconds>(
@@ -967,22 +998,24 @@ void NWM_UDS::OnWifiPacketReceived(const Network::WifiPacket& packet) {
     last_packet_time = now;
 
     LOG_ERROR(Service_NWM,
-        "RX type={} ch={} size={} from {:02X}:{:02X}:{:02X}:{:02X}:{:02X}:{:02X}",
-        static_cast<u32>(packet.type),
-        packet.channel,
-        packet.data.size(),
-        packet.transmitter_address[0],
-        packet.transmitter_address[1],
-        packet.transmitter_address[2],
-        packet.transmitter_address[3],
-        packet.transmitter_address[4],
-        packet.transmitter_address[5]);
+              "RX type={} ch={} size={} from {:02X}:{:02X}:{:02X}:{:02X}:{:02X}:{:02X}",
+              static_cast<u32>(packet.type),
+              packet.channel,
+              packet.data.size(),
+              packet.transmitter_address[0],
+              packet.transmitter_address[1],
+              packet.transmitter_address[2],
+              packet.transmitter_address[3],
+              packet.transmitter_address[4],
+              packet.transmitter_address[5]);
 
     // Refresh last seen time for this node.
     auto node = node_map.find(packet.transmitter_address);
-    if (node != node_map.end()) {
-        node->second.last_seen = now;
-    }
+if (node != node_map.end()) {
+    node->second.last_seen = now;
+    node->second.connected = true;
+    node->second.reconnecting = false;
+}
 
     switch (packet.type) {
     case Network::WifiPacket::PacketType::Beacon:
@@ -1003,13 +1036,13 @@ void NWM_UDS::OnWifiPacketReceived(const Network::WifiPacket& packet) {
 
     case Network::WifiPacket::PacketType::Deauthentication:
         LOG_ERROR(Service_NWM,
-            "RX -> DEAUTH from {:02X}:{:02X}:{:02X}:{:02X}:{:02X}:{:02X}",
-            packet.transmitter_address[0],
-            packet.transmitter_address[1],
-            packet.transmitter_address[2],
-            packet.transmitter_address[3],
-            packet.transmitter_address[4],
-            packet.transmitter_address[5]);
+                  "RX -> DEAUTH from {:02X}:{:02X}:{:02X}:{:02X}:{:02X}:{:02X}",
+                  packet.transmitter_address[0],
+                  packet.transmitter_address[1],
+                  packet.transmitter_address[2],
+                  packet.transmitter_address[3],
+                  packet.transmitter_address[4],
+                  packet.transmitter_address[5]);
 
         HandleDeauthenticationFrame(packet);
         break;
