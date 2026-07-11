@@ -1594,11 +1594,22 @@ Result NWM_UDS::DestroyNetworkHLE() {
     // TODO(B3N30): Send 3 Deauth packets
 
     u16_le tmp_node_id = connection_status.network_node_id;
-    connection_status = {};
-    connection_status.status = NetworkStatus::NotConnected;
-    connection_status.network_node_id = tmp_node_id;
-    node_map.clear();
-    connection_status_event->Signal();
+connection_status = {};
+connection_status.status = NetworkStatus::NotConnected;
+connection_status.network_node_id = tmp_node_id;
+
+// Don't immediately forget every node.
+// Mark them as disconnected so they can reconnect.
+for (auto& [mac, node] : node_map) {
+    node.connected = false;
+    node.reconnecting = true;
+    node.last_seen = std::chrono::steady_clock::now();
+}
+
+// Keep node_lookup intact.
+// Do NOT clear node_map here.
+
+connection_status_event->Signal();
 
     for (auto& bind_node : channel_data) {
         bind_node.second.event->Signal();
@@ -2065,12 +2076,19 @@ ResultStatus NWM_UDS::DisconnectNetworkHLE() {
         u16_le tmp_node_id = connection_status.network_node_id;
 
         connection_status = {};
-        connection_status.status = NetworkStatus::NotConnected;
-        connection_status.network_node_id = tmp_node_id;
+connection_status.status = NetworkStatus::NotConnected;
+connection_status.network_node_id = tmp_node_id;
 
-        node_map.clear();
+// Don't immediately forget every node.
+for (auto& [mac, node] : node_map) {
+    node.connected = false;
+    node.reconnecting = true;
+    node.last_seen = std::chrono::steady_clock::now();
+}
 
-        connection_status_event->Signal();
+// Keep node_map and node_lookup intact.
+
+connection_status_event->Signal();
 
         deauth.channel = network_channel;
         deauth.data = {};
