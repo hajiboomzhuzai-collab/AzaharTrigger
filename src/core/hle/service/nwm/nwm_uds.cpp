@@ -346,40 +346,52 @@ void NWM_UDS::HandleEAPoLPacket(const Network::WifiPacket& packet) {
 
         auto node = DeserializeNodeInfo(eapol_start.packet.node);
 
+        bool is_reconnect = false;
+
+auto existing = node_map.find(packet.transmitter_address);
+if (existing != node_map.end() &&
+    existing->second.reconnecting &&
+    existing->second.node_id != NodeIDSpec) {
+
+    is_reconnect = true;
+
+    LOG_ERROR(Service_NWM,
+              "HOST: reconnect request old_node_id={}",
+              existing->second.node_id);
+}
+
         if (eapol_start.packet.connection_type == ConnectionType::Client) {
-            // Get an unused network node id
-            u16 node_id = GetNextAvailableNodeId();
-            node.network_node_id = node_id;
+            u16 node_id;
 
-            connection_status.node_bitmask |= 1 << (node_id - 1);
+if (is_reconnect) {
+    node_id = existing->second.node_id;
+
+    LOG_ERROR(Service_NWM,
+              "HOST: restoring node_id={}",
+              node_id);
+} else {
+    node_id = GetNextAvailableNodeId();
+
+    connection_status.total_nodes++;
+    network_info.total_nodes++;
+}
+
+node.network_node_id = node_id;
+
+connection_status.node_bitmask |= 1 << (node_id - 1);
 connection_status.changed_nodes |= 1 << (node_id - 1);
-connection_status.nodes[node_id - 1] = node.network_node_id;
-
-LOG_ERROR(Service_NWM,
-          "HOST JOIN: MAC {:02X}:{:02X}:{:02X}:{:02X}:{:02X}:{:02X} total_nodes {} -> {}",
-          packet.transmitter_address[0],
-          packet.transmitter_address[1],
-          packet.transmitter_address[2],
-          packet.transmitter_address[3],
-          packet.transmitter_address[4],
-          packet.transmitter_address[5],
-          connection_status.total_nodes,
-          connection_status.total_nodes + 1);
-
-connection_status.total_nodes++;
+connection_status.nodes[node_id - 1] = node_id;
 
 node_info[node_id - 1] = node;
-network_info.total_nodes++;
 
-            auto& host_node = node_map[packet.transmitter_address];
-host_node.node_id = node.network_node_id;
-host_node.connected = true;
-host_node.reconnecting = false;
-host_node.spec = false;
-host_node.last_seen = std::chrono::steady_clock::now();
-            node_lookup[node.network_node_id] = packet.transmitter_address;
+auto& map_node = node_map[packet.transmitter_address];
+map_node.node_id = node_id;
+map_node.connected = true;
+map_node.spec = false;
+map_node.reconnecting = false;
+map_node.last_seen = std::chrono::steady_clock::now();
 
-            BroadcastNodeMap();
+BroadcastNodeMap();
             LOG_ERROR(Service_NWM,
           "HOST AFTER JOIN: total_nodes={} node_map={} bitmask=0x{:X}",
           connection_status.total_nodes,
@@ -467,10 +479,11 @@ connection_status.total_nodes = logoff.connected_nodes;
             LOG_ERROR(Service_NWM, "Unknown connection type: 0x{:x}", static_cast<u32>(conn_type));
         }
 
-        if (auto* existing = FindNodeByNodeId(node.network_node_id)) {
+        if (auto* existing =
+        FindNodeByNodeId(connection_status.network_node_id)) {
     LOG_ERROR(Service_NWM,
-              "RECONNECT SUCCESS node_id={}",
-              node.network_node_id);
+              "CLIENT ACTIVE node_id={}",
+              connection_status.network_node_id);
 
     existing->connected = true;
     existing->reconnecting = false;
