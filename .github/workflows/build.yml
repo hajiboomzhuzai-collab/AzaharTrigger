@@ -2,7 +2,7 @@ name: citra-build
 
 on:
   push:
-    branches: [ "Rework-Net-Log" ]
+    branches: [ "hajiboomzhuzai-collab-patch-3" ]
     tags: [ "1.0.0" ]
   pull_request:
     branches: [ "*" ]
