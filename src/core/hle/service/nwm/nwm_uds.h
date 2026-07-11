@@ -633,9 +633,12 @@ private:
     friend class boost::serialization::access;
 };
 
-Node* FindNodeByNodeId(u16 node_id);
+    Node* FindNodeByNodeId(u16 node_id);
 
     std::map<MacAddress, Node> node_map;
+
+    std::chrono::steady_clock::time_point last_packet_time =
+    std::chrono::steady_clock::now();
 
     // Fast lookup: node_id -> MAC address
     std::array<boost::optional<MacAddress>, UDSMaxNodes + 1> node_lookup{};
