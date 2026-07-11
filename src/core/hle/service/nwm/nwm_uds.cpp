@@ -379,38 +379,48 @@ if (existing != node_map.end() &&
 
         if (eapol_start.packet.connection_type == ConnectionType::Client) {
             // Get an unused network node id
-            u16 node_id = GetNextAvailableNodeId();
-            node.network_node_id = node_id;
+            u16 node_id;
 
-            connection_status.node_bitmask |= 1 << (node_id - 1);
+if (is_reconnect) {
+    node_id = existing->second.node_id;
+
+    LOG_ERROR(Service_NWM,
+              "HOST RECONNECT: reusing node_id={}",
+              node_id);
+} else {
+    node_id = GetNextAvailableNodeId();
+
+    LOG_ERROR(Service_NWM,
+              "HOST NEW CLIENT: assigning node_id={}",
+              node_id);
+
+    connection_status.total_nodes++;
+    network_info.total_nodes++;
+}
+
+node.network_node_id = node_id;
+
+connection_status.node_bitmask |= 1 << (node_id - 1);
 connection_status.changed_nodes |= 1 << (node_id - 1);
-connection_status.nodes[node_id - 1] = node.network_node_id;
-
-LOG_ERROR(Service_NWM,
-          "HOST JOIN: MAC {:02X}:{:02X}:{:02X}:{:02X}:{:02X}:{:02X} total_nodes {} -> {}",
-          packet.transmitter_address[0],
-          packet.transmitter_address[1],
-          packet.transmitter_address[2],
-          packet.transmitter_address[3],
-          packet.transmitter_address[4],
-          packet.transmitter_address[5],
-          connection_status.total_nodes,
-          connection_status.total_nodes + 1);
-
-connection_status.total_nodes++;
+connection_status.nodes[node_id - 1] = node_id;
 
 node_info[node_id - 1] = node;
-network_info.total_nodes++;
 
-            auto& host_node = node_map[packet.transmitter_address];
-host_node.node_id = node.network_node_id;
+auto& host_node = node_map[packet.transmitter_address];
+host_node.node_id = node_id;
 host_node.connected = true;
 host_node.reconnecting = false;
 host_node.spec = false;
 host_node.last_seen = std::chrono::steady_clock::now();
-            node_lookup[node.network_node_id] = packet.transmitter_address;
 
-            BroadcastNodeMap();
+node_lookup[node_id] = packet.transmitter_address;
+
+LOG_ERROR(Service_NWM,
+          "HOST STATE: total_nodes={} bitmask=0x{:X}",
+          connection_status.total_nodes,
+          connection_status.node_bitmask);
+
+BroadcastNodeMap();
             LOG_ERROR(Service_NWM,
           "HOST AFTER JOIN: total_nodes={} node_map={} bitmask=0x{:X}",
           connection_status.total_nodes,
