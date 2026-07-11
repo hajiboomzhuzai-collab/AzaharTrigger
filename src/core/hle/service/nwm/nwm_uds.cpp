@@ -363,6 +363,20 @@ void NWM_UDS::HandleEAPoLPacket(const Network::WifiPacket& packet) {
 
         auto node = DeserializeNodeInfo(eapol_start.packet.node);
 
+        bool is_reconnect = false;
+
+auto existing = node_map.find(packet.transmitter_address);
+if (existing != node_map.end() &&
+    existing->second.reconnecting &&
+    existing->second.node_id != NodeIDSpec) {
+
+    is_reconnect = true;
+
+    LOG_ERROR(Service_NWM,
+              "HOST: reconnect request old_node_id={}",
+              existing->second.node_id);
+}
+
         if (eapol_start.packet.connection_type == ConnectionType::Client) {
             // Get an unused network node id
             u16 node_id = GetNextAvailableNodeId();
@@ -518,19 +532,24 @@ connection_status.total_nodes = logoff.connected_nodes;
               logoff.max_nodes);
 
     network_info.total_nodes = logoff.connected_nodes;
-    LOG_ERROR(Service_NWM,
-          "CLIENT: total_nodes {} -> {} (received EAPOL)",
-          connection_status.total_nodes,
-          logoff.connected_nodes);
+network_info.max_nodes = logoff.max_nodes;
 
 connection_status.total_nodes = logoff.connected_nodes;
-    std::memset(connection_status.nodes, 0, sizeof(connection_status.nodes));
+connection_status.max_nodes = logoff.max_nodes;
 
-    const auto old_bitmask = connection_status.node_bitmask;
-    connection_status.node_bitmask = 0;
+LOG_ERROR(Service_NWM,
+          "CLIENT: total_nodes {} -> {} max_nodes={}",
+          connection_status.total_nodes,
+          logoff.connected_nodes,
+          logoff.max_nodes);
 
-    node_info.clear();
-    node_info.resize(network_info.max_nodes);
+std::memset(connection_status.nodes, 0, sizeof(connection_status.nodes));
+
+const auto old_bitmask = connection_status.node_bitmask;
+connection_status.node_bitmask = 0;
+
+node_info.clear();
+node_info.resize(connection_status.max_nodes);;
 
     for (const auto& node : logoff.nodes) {
         const u16 index = node.network_node_id;
