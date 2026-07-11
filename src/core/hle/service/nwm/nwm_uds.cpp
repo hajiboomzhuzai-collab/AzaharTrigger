@@ -126,6 +126,11 @@ void NWM_UDS::BroadcastNodeMap() {
             offset += sizeof(node.first) + sizeof(node.second.node_id);
         }
     }
+    LOG_ERROR(Service_NWM,
+    "HOST >>> Sending NodeMap packet type={} entries={} bytes={}",
+    static_cast<int>(packet.type),
+    num_entries,
+    packet.data.size());
 
     SendPacket(packet);
 }
@@ -541,7 +546,11 @@ void NWM_UDS::OnWifiPacketReceived(const Network::WifiPacket& packet) {
     if (!initialized) {
         return;
     }
-    switch (packet.type) {
+    LOG_ERROR(Service_NWM,
+    "RX SWITCH packet.type={}",
+    static_cast<int>(packet.type));
+
+switch (packet.type) {
     case Network::WifiPacket::PacketType::Beacon:
         HandleBeaconFrame(packet);
         break;
