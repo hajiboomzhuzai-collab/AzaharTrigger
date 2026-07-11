@@ -30,12 +30,6 @@
 SERIALIZE_EXPORT_IMPL(Service::NWM::NWM_UDS)
 SERVICE_CONSTRUCT_IMPL(Service::NWM::NWM_UDS)
 
-namespace {
-
-constexpr auto NODE_TIMEOUT = std::chrono::seconds(15);
-
-} // anonymous namespace
-
 namespace Service::NWM {
 
 template <class Archive>
@@ -85,52 +79,13 @@ std::list<Network::WifiPacket> NWM_UDS::GetReceivedBeacons(const MacAddress& sen
 
 /// Sends a WifiPacket to the room we're currently connected to.
 void SendPacket(Network::WifiPacket& packet) {
-    if (packet.type == Network::WifiPacket::PacketType::Deauthentication) {
-        LOG_ERROR(Service_NWM,
-            ">>> Sending DEAUTH to {:02X}:{:02X}:{:02X}:{:02X}:{:02X}:{:02X}",
-            packet.destination_address[0],
-            packet.destination_address[1],
-            packet.destination_address[2],
-            packet.destination_address[3],
-            packet.destination_address[4],
-            packet.destination_address[5]);
-    }
-    LOG_DEBUG(Service_NWM,
-              "TX WifiPacket type={} to {:02X}:{:02X}:{:02X}:{:02X}:{:02X}:{:02X}",
-              static_cast<int>(packet.type),
-              packet.destination_address[0],
-              packet.destination_address[1],
-              packet.destination_address[2],
-              packet.destination_address[3],
-              packet.destination_address[4],
-              packet.destination_address[5]);
-
     if (auto room_member = Network::GetRoomMember().lock()) {
         if (room_member->GetState() == Network::RoomMember::State::Joined ||
             room_member->GetState() == Network::RoomMember::State::Moderator) {
 
             packet.transmitter_address = room_member->GetMacAddress();
-
-            if (packet.type == Network::WifiPacket::PacketType::Deauthentication) {
-                LOG_ERROR(Service_NWM,
-                    ">>> DEAUTH sender {:02X}:{:02X}:{:02X}:{:02X}:{:02X}:{:02X}",
-                        packet.transmitter_address[0],
-                        packet.transmitter_address[1],
-                        packet.transmitter_address[2],
-                        packet.transmitter_address[3],
-                        packet.transmitter_address[4],
-                        packet.transmitter_address[5]);
-            }
-
             room_member->SendWifiPacket(packet);
-        } else {
-            LOG_WARNING(Service_NWM,
-                        "SendPacket(): RoomMember not joined (state={})",
-                        static_cast<int>(room_member->GetState()));
         }
-    } else {
-        LOG_WARNING(Service_NWM,
-                    "SendPacket(): No RoomMember available");
     }
 }
 
@@ -177,48 +132,22 @@ void NWM_UDS::BroadcastNodeMap() {
 
 void NWM_UDS::HandleNodeMapPacket(const Network::WifiPacket& packet) {
     std::scoped_lock lock(connection_status_mutex);
-
     if (connection_status.status == NetworkStatus::ConnectedAsHost) {
         LOG_DEBUG(Service_NWM, "Ignored NodeMapPacket since connection_status is host");
         return;
     }
 
-    std::size_t num_entries;
-    std::memcpy(&num_entries, packet.data.data(), sizeof(num_entries));
-
-    LOG_ERROR(Service_NWM,
-              "Received NodeMapPacket: entries={}, old node_map size={}",
-              num_entries, node_map.size());
-
     node_map.clear();
-node_lookup.fill(boost::none);
-
+    std::size_t num_entries;
     Network::MacAddress address;
     u16 id;
+    std::memcpy(&num_entries, packet.data.data(), sizeof(num_entries));
     std::size_t offset = sizeof(num_entries);
-
     for (std::size_t i = 0; i < num_entries; ++i) {
         std::memcpy(&address, packet.data.data() + offset, sizeof(address));
         std::memcpy(&id, packet.data.data() + offset + sizeof(address), sizeof(id));
-
-        LOG_ERROR(Service_NWM,
-                  "NodeMap[{}]: id={} mac={:02X}:{:02X}:{:02X}:{:02X}:{:02X}:{:02X}",
-                  i, id,
-                  address[0], address[1], address[2],
-                  address[3], address[4], address[5]);
-
-        auto& node = node_map[address];
-
-node.connected = true;
-node.spec = false;               // NodeMap only contains normal clients
-node.reconnecting = false;       // We heard from the host again
-node.node_id = id;
-node.last_seen = std::chrono::steady_clock::now();
-
-if (id != NodeIDSpec && id <= UDSMaxNodes) {
-    node_lookup[id] = address;
-}
-
+        node_map[address].connected = true;
+        node_map[address].node_id = id;
         offset += sizeof(address) + sizeof(id);
     }
 }
@@ -297,54 +226,29 @@ void NWM_UDS::HandleEAPoLPacket(const Network::WifiPacket& packet) {
         auto eapol_start = ParseCompatibleEAPoLStart(packet.data);
 
         auto node = DeserializeNodeInfo(eapol_start.packet.node);
-
+        
         if (eapol_start.packet.connection_type == ConnectionType::Client) {
             // Get an unused network node id
             u16 node_id = GetNextAvailableNodeId();
             node.network_node_id = node_id;
 
             connection_status.node_bitmask |= 1 << (node_id - 1);
-connection_status.changed_nodes |= 1 << (node_id - 1);
-connection_status.nodes[node_id - 1] = node.network_node_id;
+            connection_status.changed_nodes |= 1 << (node_id - 1);
+            connection_status.nodes[node_id - 1] = node.network_node_id;
+            connection_status.total_nodes++;
 
-LOG_ERROR(Service_NWM,
-          "HOST JOIN: MAC {:02X}:{:02X}:{:02X}:{:02X}:{:02X}:{:02X} total_nodes {} -> {}",
-          packet.transmitter_address[0],
-          packet.transmitter_address[1],
-          packet.transmitter_address[2],
-          packet.transmitter_address[3],
-          packet.transmitter_address[4],
-          packet.transmitter_address[5],
-          connection_status.total_nodes,
-          connection_status.total_nodes + 1);
+            node_info[node_id - 1] = node;
+            network_info.total_nodes++;
 
-connection_status.total_nodes++;
-
-node_info[node_id - 1] = node;
-network_info.total_nodes++;
-
-            auto& host_node = node_map[packet.transmitter_address];
-host_node.node_id = node.network_node_id;
-host_node.connected = true;
-host_node.reconnecting = false;
-host_node.spec = false;
-host_node.last_seen = std::chrono::steady_clock::now();
-            node_lookup[node.network_node_id] = packet.transmitter_address;
+            node_map[packet.transmitter_address].node_id = node.network_node_id;
+            node_map[packet.transmitter_address].connected = true;
+            node_map[packet.transmitter_address].spec = false;
 
             BroadcastNodeMap();
-            LOG_ERROR(Service_NWM,
-          "HOST AFTER JOIN: total_nodes={} node_map={} bitmask=0x{:X}",
-          connection_status.total_nodes,
-          node_map.size(),
-          connection_status.node_bitmask);
         } else if (eapol_start.packet.connection_type == ConnectionType::Spectator) {
-            auto& spec_node = node_map[packet.transmitter_address];
-spec_node.node_id = NodeIDSpec;
-spec_node.connected = true;
-spec_node.reconnecting = false;
-spec_node.spec = true;
-spec_node.last_seen = std::chrono::steady_clock::now();
-
+            node_map[packet.transmitter_address].node_id = NodeIDSpec;
+            node_map[packet.transmitter_address].connected = true;
+            node_map[packet.transmitter_address].spec = true;
         } else {
             LOG_ERROR(Service_NWM, "Client tried connecting with unknown connection type: 0x{:x}",
                       static_cast<u32>(eapol_start.packet.connection_type));
@@ -374,26 +278,11 @@ spec_node.last_seen = std::chrono::steady_clock::now();
         auto logoff = ParseEAPoLLogoffFrame(packet.data);
 
         network_info.host_mac_address = packet.transmitter_address;
-        LOG_ERROR(Service_NWM,
-          "EAPOL UPDATE: connected_nodes={} assigned_node={} bitmask(before)=0x{:X}",
-          logoff.connected_nodes,
-          connection_status.network_node_id,
-          connection_status.node_bitmask);
         network_info.total_nodes = logoff.connected_nodes;
         network_info.max_nodes = logoff.max_nodes;
 
         connection_status.network_node_id = logoff.assigned_node_id;
-
-LOG_ERROR(Service_NWM,
-          "CLIENT ASSIGNED NODE: {}",
-          connection_status.network_node_id);
-
-LOG_ERROR(Service_NWM,
-          "CLIENT: total_nodes {} -> {} (received EAPOL)",
-          connection_status.total_nodes,
-          logoff.connected_nodes);
-
-connection_status.total_nodes = logoff.connected_nodes;
+        connection_status.total_nodes = logoff.connected_nodes;
         connection_status.max_nodes = logoff.max_nodes;
 
         node_info.clear();
@@ -419,12 +308,6 @@ connection_status.total_nodes = logoff.connected_nodes;
             LOG_ERROR(Service_NWM, "Unknown connection type: 0x{:x}", static_cast<u32>(conn_type));
         }
 
-        if (auto* node = FindNodeByNodeId(connection_status.network_node_id)) {
-    node->connected = true;
-    node->reconnecting = false;
-    node->last_seen = std::chrono::steady_clock::now();
-        }
-
         // We're now connected, signal the application
         connection_status.status_change_reason = NetworkStatusChangeReason::ConnectionEstablished;
         // Some games require ConnectToNetwork to block, for now it doesn't
@@ -433,110 +316,55 @@ connection_status.total_nodes = logoff.connected_nodes;
         connection_status_event->Signal();
         connection_event->Signal();
     } else if (connection_status.status == NetworkStatus::ConnectedAsClient ||
-           connection_status.status == NetworkStatus::ConnectedAsSpectator) {
+               connection_status.status == NetworkStatus::ConnectedAsSpectator) {
+        // TODO(B3N30): Remove that section and send/receive a proper connection_status packet
+        // On a 3ds this packet wouldn't be addressed to already connected clients
+        // We use this information because in the current implementation the host
+        // isn't broadcasting the node information
+        auto logoff = ParseEAPoLLogoffFrame(packet.data);
 
-    LOG_ERROR(Service_NWM,
-              "EAPOL UPDATE START: status={} total_nodes(before)={} bitmask(before)=0x{:X}",
-              static_cast<u32>(connection_status.status),
-              connection_status.total_nodes,
-              connection_status.node_bitmask);
+        network_info.total_nodes = logoff.connected_nodes;
+        connection_status.total_nodes = logoff.connected_nodes;
+        std::memset(connection_status.nodes, 0, sizeof(connection_status.nodes));
 
-    // TODO(B3N30): Remove that section and send/receive a proper connection_status packet
-    // On a 3ds this packet wouldn't be addressed to already connected clients
-    // We use this information because in the current implementation the host
-    // isn't broadcasting the node information
-    auto logoff = ParseEAPoLLogoffFrame(packet.data);
+        const auto old_bitmask = connection_status.node_bitmask;
+        connection_status.node_bitmask = 0;
 
-    LOG_ERROR(Service_NWM,
-              "EAPOL host says total_nodes={} max_nodes={}",
-              logoff.connected_nodes,
-              logoff.max_nodes);
+        node_info.clear();
+        node_info.resize(network_info.max_nodes);
+        for (const auto& node : logoff.nodes) {
+            const u16 index = node.network_node_id;
+            if (!index) {
+                continue;
+            }
 
-    network_info.total_nodes = logoff.connected_nodes;
-    LOG_ERROR(Service_NWM,
-          "CLIENT: total_nodes {} -> {} (received EAPOL)",
-          connection_status.total_nodes,
-          logoff.connected_nodes);
+            connection_status.node_bitmask |= 1 << (index - 1);
+            connection_status.nodes[index - 1] = index;
 
-connection_status.total_nodes = logoff.connected_nodes;
-    std::memset(connection_status.nodes, 0, sizeof(connection_status.nodes));
-
-    const auto old_bitmask = connection_status.node_bitmask;
-    connection_status.node_bitmask = 0;
-
-    node_info.clear();
-    node_info.resize(network_info.max_nodes);
-
-    for (const auto& node : logoff.nodes) {
-        const u16 index = node.network_node_id;
-        if (!index) {
-            continue;
+            node_info[index - 1] = DeserializeNodeInfo(node);
         }
+        connection_status.changed_nodes = old_bitmask ^ connection_status.node_bitmask;
 
-        LOG_ERROR(Service_NWM,
-                  "EAPOL NODE id={}",
-                  index);
-
-        connection_status.node_bitmask |= 1 << (index - 1);
-        connection_status.nodes[index - 1] = index;
-
-        node_info[index - 1] = DeserializeNodeInfo(node);
+        connection_status_event->Signal();
     }
-
-    connection_status.changed_nodes = old_bitmask ^ connection_status.node_bitmask;
-        
-    LOG_ERROR(Service_NWM,
-              "EAPOL UPDATE DONE: total_nodes={} bitmask(after)=0x{:X} changed=0x{:X}",
-              connection_status.total_nodes,
-              connection_status.node_bitmask,
-              connection_status.changed_nodes);
-    if (auto* node = FindNodeByNodeId(connection_status.network_node_id)) {
-    node->connected = true;
-    node->reconnecting = false;
-    node->last_seen = std::chrono::steady_clock::now();
-    }
-        
-    connection_status_event->Signal();
-}
-}
-
-NWM_UDS::Node* NWM_UDS::FindNodeByNodeId(u16 node_id) {
-    if (node_id == 0 || node_id > UDSMaxNodes)
-        return nullptr;
-
-    if (!node_lookup[node_id])
-        return nullptr;
-
-    auto it = node_map.find(*node_lookup[node_id]);
-    if (it == node_map.end())
-        return nullptr;
-
-    return &it->second;
 }
 
 void NWM_UDS::HandleSecureDataPacket(const Network::WifiPacket& packet) {
     const auto secure_data = ParseSecureDataHeader(packet.data);
-
     std::scoped_lock lock{connection_status_mutex, system.Kernel().GetHLELock()};
-    // Refresh timeout for the sender whenever we receive a valid packet.
- // Refresh timeout for the sender whenever we receive a valid packet.
-if (auto* node = FindNodeByNodeId(secure_data.src_node_id)) {
-    node->last_seen = std::chrono::steady_clock::now();
 
-    // If this node was temporarily disconnected, it is alive again.
-    node->connected = true;
-    node->reconnecting = false;
-}
+    if (connection_status.status != NetworkStatus::ConnectedAsHost &&
+        connection_status.status != NetworkStatus::ConnectedAsClient &&
+        connection_status.status != NetworkStatus::ConnectedAsSpectator) {
+        LOG_TRACE(Service_NWM, "Ignored SecureDataPacket because connection status is {}",
+                  static_cast<u32>(connection_status.status));
+        return;
+    }
 
-    LOG_ERROR(Service_NWM,
-          "DROP: invalid connection status=%u",
-          static_cast<u32>(connection_status.status));
-return;
-
-    LOG_ERROR(Service_NWM,
-          "DROP: invalid connection status={}",
-          static_cast<u16>(connection_status.status));
-return;
+    if (secure_data.src_node_id == connection_status.network_node_id) {
+        // Ignore packets that came from ourselves.
+        return;
+    }
 
     if (secure_data.dest_node_id != connection_status.network_node_id &&
         secure_data.dest_node_id != BroadcastNetworkNodeId) {
@@ -545,10 +373,7 @@ return;
         // case just ignore it.
         if (packet.destination_address != Network::BroadcastMac &&
             connection_status.status != NetworkStatus::ConnectedAsHost) {
-            LOG_ERROR(Service_NWM,
-          "DROP: addressed to another node dst={} me={}",
-          static_cast<u32>(secure_data.dest_node_id),
-          static_cast<u32>(static_cast<u16>(connection_status.network_node_id)));
+            LOG_ERROR(Service_NWM, "Received packet addressed to others but we're not a host");
             return;
         }
 
@@ -569,53 +394,22 @@ return;
     ASSERT(!secure_data.is_management);
 
     // TODO(B3N30): Allow more than one bind node per channel.
-auto channel_info = channel_data.find(secure_data.data_channel);
+    auto channel_info = channel_data.find(secure_data.data_channel);
+    // Ignore packets from channels we're not interested in.
+    if (channel_info == channel_data.end()) {
+        return;
+    }
 
-LOG_ERROR(Service_NWM,
-          "DATA src={} dst={} channel={} found_channel={}",
-          static_cast<u32>(secure_data.src_node_id),
-          static_cast<u32>(secure_data.dest_node_id),
-          static_cast<u32>(secure_data.data_channel),
-          channel_info != channel_data.end());
+    if (channel_info->second.network_node_id != BroadcastNetworkNodeId &&
+        channel_info->second.network_node_id != secure_data.src_node_id) {
+        return;
+    }
 
-// Ignore packets from channels we're not interested in.
-if (channel_info == channel_data.end()) {
-    LOG_ERROR(Service_NWM,
-              "DROP unknown channel=%u",
-              static_cast<u32>(secure_data.data_channel));
-    return;
-}
+    // Add the received packet to the data queue.
+    channel_info->second.received_packets.emplace_back(packet.data);
 
-// Ignore packets that come from a node this channel isn't bound to.
-if (channel_info->second.network_node_id != BroadcastNetworkNodeId &&
-    channel_info->second.network_node_id != secure_data.src_node_id) {
-
-    LOG_ERROR(Service_NWM,
-              "DROP bind mismatch expected=%u got=%u",
-              static_cast<u32>(channel_info->second.network_node_id),
-              static_cast<u32>(secure_data.src_node_id));
-
-    return;
-}
-
-// Add the received packet to the data queue.
-LOG_ERROR(Service_NWM,
-          "QUEUE channel=%u size_before=%zu",
-          static_cast<u32>(secure_data.data_channel),
-          channel_info->second.received_packets.size());
-
-channel_info->second.received_packets.emplace_back(packet.data);
-
-LOG_ERROR(Service_NWM,
-          "QUEUE size_after=%zu",
-          channel_info->second.received_packets.size());
-
-// Signal the data event. We can do this directly because we locked hle_lock
-channel_info->second.event->Signal();
-
-LOG_ERROR(Service_NWM,
-          "EVENT signaled for channel=%u",
-          static_cast<u32>(secure_data.data_channel));
+    // Signal the data event. We can do this directly because we locked hle_lock
+    channel_info->second.event->Signal();
 }
 
 void NWM_UDS::StartConnectionSequence(const MacAddress& server) {
@@ -665,187 +459,92 @@ void NWM_UDS::SendAssociationResponseFrame(const MacAddress& address) {
 void NWM_UDS::HandleAuthenticationFrame(const Network::WifiPacket& packet) {
     // Only the SEQ1 auth frame is handled here, the SEQ2 frame doesn't need any special behavior
     if (GetAuthenticationSeqNumber(packet.data) == AuthenticationSeq::SEQ1) {
-
-        LOG_ERROR(Service_NWM,
-                  "AUTH START: RX authentication request from "
-                  "{:02X}:{:02X}:{:02X}:{:02X}:{:02X}:{:02X}",
-                  packet.transmitter_address[0],
-                  packet.transmitter_address[1],
-                  packet.transmitter_address[2],
-                  packet.transmitter_address[3],
-                  packet.transmitter_address[4],
-                  packet.transmitter_address[5]);
-
         using Network::WifiPacket;
-
         AuthenticationFrame auth_request;
         memcpy(&auth_request, packet.data.data(), sizeof(auth_request));
-
         WifiPacket auth_response;
-
         {
             std::scoped_lock lock(connection_status_mutex);
-
-            LOG_ERROR(Service_NWM,
-                      "AUTH STATE: status={} total_nodes={}/{} node_map={}",
-                      static_cast<u32>(connection_status.status),
-                      connection_status.total_nodes,
-                      connection_status.max_nodes,
-                      node_map.size());
-
             if (connection_status.status != NetworkStatus::ConnectedAsHost) {
                 LOG_ERROR(Service_NWM,
-                          "AUTH ABORT: not hosting (status={})",
+                          "Connection sequence aborted, because connection status is {}",
                           static_cast<u32>(connection_status.status));
                 return;
             }
+            if (node_map.find(packet.transmitter_address) != node_map.end()) {
+                LOG_ERROR(Service_NWM, "Connection sequence aborted, because there is already a "
+                                       "connected client with that MAC-Adress");
+                return;
+            }
 
-            auto it = node_map.find(packet.transmitter_address);
-
-if (it != node_map.end()) {
-    const auto now = std::chrono::steady_clock::now();
-
-    LOG_ERROR(Service_NWM,
-        "AUTH: Existing node for %02X:%02X:%02X:%02X:%02X:%02X "
-        "connected=%d node_id=%u",
-        packet.transmitter_address[0],
-        packet.transmitter_address[1],
-        packet.transmitter_address[2],
-        packet.transmitter_address[3],
-        packet.transmitter_address[4],
-        packet.transmitter_address[5],
-        it->second.connected,
-        static_cast<u32>(it->second.node_id));
-
-    if (it->second.connected &&
-        (now - it->second.last_seen) < NODE_TIMEOUT) {
-
-        LOG_ERROR(Service_NWM,
-                  "AUTH REJECT: Node still alive, refusing reconnect.");
-        return;
-    }
-
-    LOG_ERROR(Service_NWM,
-              "AUTH: Existing node timed out, removing stale entry.");
-
-    // Remove stale lookup entry
-    if (it->second.node_id != 0 &&
-        it->second.node_id < node_lookup.size()) {
-        node_lookup[it->second.node_id].reset();
-    }
-
-    node_map.erase(it);
-}
-
-if (connection_status.max_nodes == connection_status.total_nodes) {
-    LOG_ERROR(Service_NWM,
-              "AUTH ABORT: maximum nodes reached ({}/{})",
-              connection_status.total_nodes,
-              connection_status.max_nodes);
-    return;
-}
-
-            LOG_ERROR(Service_NWM,
-                      "AUTH ACCEPT: inserting temporary node into node_map");
-
+            if (connection_status.max_nodes == connection_status.total_nodes) {
+                // Reject connection attempt
+                LOG_ERROR(Service_NWM, "Reached maximum nodes, but reject packet wasn't sent.");
+                // TODO(B3N30): Figure out what packet is sent here
+                return;
+            }
             // Respond with an authentication response frame with SEQ2
             auth_response.channel = network_channel;
-            auth_response.data =
-                GenerateAuthenticationFrame(AuthenticationSeq::SEQ2);
+            auth_response.data = GenerateAuthenticationFrame(AuthenticationSeq::SEQ2);
             auth_response.destination_address = packet.transmitter_address;
             auth_response.type = WifiPacket::PacketType::Authentication;
-
             node_map[packet.transmitter_address].connected = false;
-            node_map[packet.transmitter_address].last_seen =
-            std::chrono::steady_clock::now();
-
-            LOG_ERROR(Service_NWM,
-                      "AUTH NODE_MAP after insert: size={}",
-                      node_map.size());
         }
-
-        LOG_ERROR(Service_NWM,
-                  "AUTH TX: Sending Authentication SEQ2");
-
         SendPacket(auth_response);
 
-        LOG_ERROR(Service_NWM,
-                  "AUTH TX: Sending Association Response");
-
         SendAssociationResponseFrame(packet.transmitter_address);
-
-        LOG_ERROR(Service_NWM,
-                  "AUTH END");
     }
 }
 
 void NWM_UDS::HandleDeauthenticationFrame(const Network::WifiPacket& packet) {
-    LOG_ERROR(Service_NWM,
-              "Ignoring DEAUTH from {:02X}:{:02X}:{:02X}:{:02X}:{:02X}:{:02X} (timeout test)",
-              packet.transmitter_address[0],
-              packet.transmitter_address[1],
-              packet.transmitter_address[2],
-              packet.transmitter_address[3],
-              packet.transmitter_address[4],
-              packet.transmitter_address[5]);
-
+    LOG_DEBUG(Service_NWM, "called");
     std::scoped_lock lock{connection_status_mutex, system.Kernel().GetHLELock()};
 
     if (connection_status.status != NetworkStatus::ConnectedAsHost) {
-        LOG_ERROR(Service_NWM, "Ignoring DEAUTH because we are not the host");
+        LOG_ERROR(Service_NWM, "Got deauthentication frame but we are not the host");
+        return;
+    }
+    if (node_map.find(packet.transmitter_address) == node_map.end()) {
+        LOG_ERROR(Service_NWM, "Got deauthentication frame from unknown node");
         return;
     }
 
-    auto node_it = node_map.find(packet.transmitter_address);
-    if (node_it == node_map.end()) {
-        LOG_ERROR(Service_NWM, "Ignoring DEAUTH from unknown node");
+    Node node = node_map[packet.transmitter_address];
+    node_map.erase(packet.transmitter_address);
+
+    if (!node.connected) {
+        LOG_DEBUG(Service_NWM, "Received DeauthenticationFrame from a not connected MAC Address");
         return;
     }
 
-    const Node& node = node_it->second;
+    auto node_it = std::find_if(node_info.begin(), node_info.end(), [&node](const NodeInfo& info) {
+        return info.network_node_id == node.node_id;
+    });
+    if (node_it == node_info.end()) {
+        LOG_ERROR(Service_NWM, "node_it is last node of node_info");
+        return;
+    }
 
-    LOG_ERROR(Service_NWM,
-              "DEAUTH ignored from node {}. Waiting for timeout instead.",
-              node.node_id);
+    if (!node.spec) {
+        connection_status.node_bitmask &= ~(1 << (node.node_id - 1));
+        connection_status.changed_nodes |= 1 << (node.node_id - 1);
+        connection_status.total_nodes--;
+        connection_status.nodes[node.node_id - 1] = 0;
 
-    // ============================================================
-    // Timeout experiment:
-    // Do NOT erase the node.
-    // Do NOT call Reset().
-    // Do NOT signal connection_status_event.
-    //
-    // We want to see if the game disconnects the player naturally
-    // after missing keepalive/heartbeat packets.
-    // ============================================================
-
-    return;
+        network_info.total_nodes--;
+        // TODO(B3N30): broadcast new connection_status to clients
+    }
+    node_it->Reset();
+    connection_status_event->Signal();
 }
 
 void NWM_UDS::HandleDataFrame(const Network::WifiPacket& packet) {
-    LOG_DEBUG(Service_NWM,
-        "HandleDataFrame(): from {:02X}:{:02X}:{:02X}:{:02X}:{:02X}:{:02X} size={}",
-            packet.transmitter_address[0],
-            packet.transmitter_address[1],
-            packet.transmitter_address[2],
-            packet.transmitter_address[3],
-            packet.transmitter_address[4],
-            packet.transmitter_address[5],
-            packet.data.size());
-
     switch (GetFrameEtherType(packet.data)) {
     case EtherType::EAPoL:
-        LOG_DEBUG(Service_NWM, "HandleDataFrame(): EAPoL");
         HandleEAPoLPacket(packet);
         break;
-
     case EtherType::SecureData:
-        LOG_DEBUG(Service_NWM, "HandleDataFrame(): SecureData");
         HandleSecureDataPacket(packet);
-        break;
-
-    default:
-        LOG_WARNING(Service_NWM,
-            "HandleDataFrame(): Unknown EtherType");
         break;
     }
 }
@@ -855,43 +554,22 @@ void NWM_UDS::OnWifiPacketReceived(const Network::WifiPacket& packet) {
     if (!initialized) {
         return;
     }
-
-    // Refresh last seen time for this node.
-    auto node = node_map.find(packet.transmitter_address);
-    if (node != node_map.end()) {
-        node->second.last_seen = std::chrono::steady_clock::now();
-    }
-
     switch (packet.type) {
     case Network::WifiPacket::PacketType::Beacon:
         HandleBeaconFrame(packet);
         break;
-
     case Network::WifiPacket::PacketType::Authentication:
         HandleAuthenticationFrame(packet);
         break;
-
     case Network::WifiPacket::PacketType::AssociationResponse:
         HandleAssociationResponseFrame(packet);
         break;
-
     case Network::WifiPacket::PacketType::Data:
         HandleDataFrame(packet);
         break;
-
     case Network::WifiPacket::PacketType::Deauthentication:
-        LOG_ERROR(Service_NWM,
-            "RX -> DEAUTH from {:02X}:{:02X}:{:02X}:{:02X}:{:02X}:{:02X}",
-            packet.transmitter_address[0],
-            packet.transmitter_address[1],
-            packet.transmitter_address[2],
-            packet.transmitter_address[3],
-            packet.transmitter_address[4],
-            packet.transmitter_address[5]);
-
         HandleDeauthenticationFrame(packet);
         break;
-
     case Network::WifiPacket::PacketType::NodeMap:
         HandleNodeMapPacket(packet);
         break;
@@ -1769,131 +1447,54 @@ void NWM_UDS::ConnectToNetworkDeprecated(Kernel::HLERequestContext& ctx) {
 
 ResultStatus NWM_UDS::DisconnectNetworkHLE() {
     using Network::WifiPacket;
-
-    LOG_ERROR(Service_NWM,
-              "DisconnectNetworkHLE() ENTER "
-              "status={} total_nodes={} node_id={} host_mac={:02X}:{:02X}:{:02X}:{:02X}:{:02X}:{:02X}",
-              static_cast<u32>(connection_status.status),
-              connection_status.total_nodes,
-              connection_status.network_node_id,
-              network_info.host_mac_address[0],
-              network_info.host_mac_address[1],
-              network_info.host_mac_address[2],
-              network_info.host_mac_address[3],
-              network_info.host_mac_address[4],
-              network_info.host_mac_address[5]);
-
     WifiPacket deauth;
-
     {
         std::scoped_lock lock(connection_status_mutex);
-
-        LOG_ERROR(Service_NWM,
-                  "DisconnectNetworkHLE() LOCKED "
-                  "status={} node_map={} total_nodes={}",
-                  static_cast<u32>(connection_status.status),
-                  node_map.size(),
-                  connection_status.total_nodes);
-
         if (connection_status.status == NetworkStatus::ConnectedAsHost) {
-            LOG_ERROR(Service_NWM,
-                      "DisconnectNetworkHLE() CALLED AS HOST");
-
-            // A real 3DS makes strange things here. We do the same.
+            // A real 3ds makes strange things here. We do the same
             u16_le tmp_node_id = connection_status.network_node_id;
-
             connection_status = {};
             connection_status.status = NetworkStatus::ConnectedAsHost;
             connection_status.network_node_id = tmp_node_id;
-
             node_map.clear();
-
-            LOG_ERROR(Service_NWM,
-                      "DisconnectNetworkHLE() HOST RESET COMPLETE");
-
             return ResultStatus::DisconError_CalledAsHost;
         }
-
-        LOG_ERROR(Service_NWM,
-                  "DisconnectNetworkHLE() CLIENT/SPECTATOR DISCONNECT");
-
         u16_le tmp_node_id = connection_status.network_node_id;
-
         connection_status = {};
         connection_status.status = NetworkStatus::NotConnected;
         connection_status.network_node_id = tmp_node_id;
-
         node_map.clear();
-
         connection_status_event->Signal();
 
         deauth.channel = network_channel;
+        // TODO(B3N30): Add disconnect reason
         deauth.data = {};
         deauth.destination_address = network_info.host_mac_address;
         deauth.type = WifiPacket::PacketType::Deauthentication;
-
-        LOG_ERROR(Service_NWM,
-                  "DisconnectNetworkHLE() Prepared DEAUTH packet");
     }
-
-    LOG_ERROR(Service_NWM,
-              "DisconnectNetworkHLE() >>> Sending DEAUTH to "
-              "{:02X}:{:02X}:{:02X}:{:02X}:{:02X}:{:02X}",
-              deauth.destination_address[0],
-              deauth.destination_address[1],
-              deauth.destination_address[2],
-              deauth.destination_address[3],
-              deauth.destination_address[4],
-              deauth.destination_address[5]);
 
     SendPacket(deauth);
 
-    LOG_ERROR(Service_NWM,
-              "DisconnectNetworkHLE() DEAUTH SENT");
-
     for (auto& bind_node : channel_data) {
-        LOG_ERROR(Service_NWM,
-                  "DisconnectNetworkHLE() Signaling channel event");
         bind_node.second.event->Signal();
     }
-
     channel_data.clear();
-
-    LOG_ERROR(Service_NWM,
-              "DisconnectNetworkHLE() EXIT");
 
     return ResultStatus::ResultSuccess;
 }
 
 void NWM_UDS::DisconnectNetwork(Kernel::HLERequestContext& ctx) {
-    LOG_ERROR(Service_NWM,
-              "DisconnectNetwork() called status={} node_id={} total_nodes={}",
-              static_cast<int>(connection_status.status),
-              connection_status.network_node_id,
-              connection_status.total_nodes);
-
+    LOG_DEBUG(Service_NWM, "disconnecting from network");
     IPC::RequestParser rp(ctx);
     IPC::RequestBuilder rb = rp.MakeBuilder(1, 0);
 
     auto res = DisconnectNetworkHLE();
-
-    LOG_ERROR(Service_NWM,
-              "DisconnectNetwork() returned res={}",
-              static_cast<int>(res));
-
     if (res == ResultStatus::DisconError_CalledAsHost) {
-        LOG_ERROR(Service_NWM,
-                  "DisconnectNetwork() called as HOST");
-
-        rb.Push(Result(ErrCodes::WrongStatus,
-                       ErrorModule::UDS,
-                       ErrorSummary::InvalidState,
+        LOG_DEBUG(Service_NWM, "called as a host");
+        rb.Push(Result(ErrCodes::WrongStatus, ErrorModule::UDS, ErrorSummary::InvalidState,
                        ErrorLevel::Status));
         return;
     }
-
-    LOG_ERROR(Service_NWM,
-              "DisconnectNetwork() success");
 
     rb.Push(ResultSuccess);
 }
