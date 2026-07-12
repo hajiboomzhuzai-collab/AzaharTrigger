@@ -650,7 +650,19 @@ void NWM_UDS::HandleSecureDataPacket(const Network::WifiPacket& packet) {
     const auto secure_data = ParseSecureDataHeader(packet.data);
     std::scoped_lock lock{connection_status_mutex, system.Kernel().GetHLELock()};
 
-    if (auto* node = FindNodeByNodeId(secure_data.src_node_id)) {
+    auto* node = FindNodeByNodeId(secure_data.src_node_id);
+
+if (!node) {
+    LOG_ERROR(Service_NWM,
+              "Unknown source node {}, trying reconnect recovery",
+              secure_data.src_node_id);
+
+    node_lookup[secure_data.src_node_id] = packet.transmitter_address;
+
+    return;
+}
+
+{
         node->last_seen = std::chrono::steady_clock::now();
         node->connected = true;
         node->reconnecting = false;
