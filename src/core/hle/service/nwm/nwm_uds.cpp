@@ -2040,6 +2040,12 @@ void NWM_UDS::ConnectToNetworkDeprecated(Kernel::HLERequestContext& ctx) {
 }
 
 ResultStatus NWM_UDS::DisconnectNetworkHLE() {
+
+    LOG_ERROR(Service_NWM, "BLOCKING DISCONNECT TEST");
+
+    return ResultStatus::ResultSuccess;
+
+}
     using Network::WifiPacket;
 
     LOG_ERROR(Service_NWM,
