@@ -1355,6 +1355,12 @@ std::pair<ResultStatus, std::shared_ptr<Kernel::Event>> NWM_UDS::BindHLE(u32 bin
     ASSERT(channel_data.find(data_channel) == channel_data.end());
     // TODO(B3N30): Support more than one bind node per channel.
     channel_data[data_channel] = {bind_node_id, data_channel, network_node_id, event};
+    LOG_ERROR(Service_NWM,
+          "BIND channel={} bind_node={} network_node={} total_channels={}",
+          static_cast<u32>(data_channel),
+          bind_node_id,
+          network_node_id,
+          channel_data.size());
     return std::make_pair(ResultStatus::ResultSuccess, std::move(event));
 }
 
