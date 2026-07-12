@@ -2045,7 +2045,6 @@ ResultStatus NWM_UDS::DisconnectNetworkHLE() {
 
     return ResultStatus::ResultSuccess;
 
-}
     using Network::WifiPacket;
 
     LOG_ERROR(Service_NWM,
