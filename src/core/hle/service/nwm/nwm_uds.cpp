@@ -844,62 +844,56 @@ void NWM_UDS::HandleAuthenticationFrame(const Network::WifiPacket& packet) {
 
             auto it = node_map.find(packet.transmitter_address);
 
-if (it != node_map.end()) {
-    const auto now = std::chrono::steady_clock::now();
+            // Remove previous entry if this device is reconnecting.
+            if (it != node_map.end()) {
 
-    LOG_ERROR(Service_NWM,
-        "AUTH: Existing node for %02X:%02X:%02X:%02X:%02X:%02X "
-        "connected=%d node_id=%u",
-        packet.transmitter_address[0],
-        packet.transmitter_address[1],
-        packet.transmitter_address[2],
-        packet.transmitter_address[3],
-        packet.transmitter_address[4],
-        packet.transmitter_address[5],
-        it->second.connected,
-        static_cast<u32>(it->second.node_id));
+                LOG_ERROR(Service_NWM,
+                          "AUTH: Removing existing node before reconnect "
+                          "{:02X}:{:02X}:{:02X}:{:02X}:{:02X}:{:02X} "
+                          "node_id={}",
+                          packet.transmitter_address[0],
+                          packet.transmitter_address[1],
+                          packet.transmitter_address[2],
+                          packet.transmitter_address[3],
+                          packet.transmitter_address[4],
+                          packet.transmitter_address[5],
+                          static_cast<u32>(it->second.node_id));
 
-    if (it->second.connected &&
-        (now - it->second.last_seen) < NODE_TIMEOUT) {
+                if (it->second.node_id != 0 &&
+                    it->second.node_id < node_lookup.size()) {
 
-        LOG_ERROR(Service_NWM,
-                  "AUTH REJECT: Node still alive, refusing reconnect.");
-        return;
-    }
+                    node_lookup[it->second.node_id].reset();
+                }
 
-    LOG_ERROR(Service_NWM,
-              "AUTH: Existing node timed out, removing stale entry.");
+                node_map.erase(it);
+            }
 
-    // Remove stale lookup entry
-    if (it->second.node_id != 0 &&
-        it->second.node_id < node_lookup.size()) {
-        node_lookup[it->second.node_id].reset();
-    }
-
-    node_map.erase(it);
-}
-
-if (connection_status.max_nodes == connection_status.total_nodes) {
-    LOG_ERROR(Service_NWM,
-              "AUTH ABORT: maximum nodes reached ({}/{})",
-              connection_status.total_nodes,
-              connection_status.max_nodes);
-    return;
-}
+            if (connection_status.max_nodes == connection_status.total_nodes) {
+                LOG_ERROR(Service_NWM,
+                          "AUTH ABORT: maximum nodes reached ({}/{})",
+                          connection_status.total_nodes,
+                          connection_status.max_nodes);
+                return;
+            }
 
             LOG_ERROR(Service_NWM,
                       "AUTH ACCEPT: inserting temporary node into node_map");
 
-            // Respond with an authentication response frame with SEQ2
+            // Respond with authentication response frame SEQ2
             auth_response.channel = network_channel;
             auth_response.data =
                 GenerateAuthenticationFrame(AuthenticationSeq::SEQ2);
-            auth_response.destination_address = packet.transmitter_address;
-            auth_response.type = WifiPacket::PacketType::Authentication;
+            auth_response.destination_address =
+                packet.transmitter_address;
+            auth_response.type =
+                WifiPacket::PacketType::Authentication;
 
-            node_map[packet.transmitter_address].connected = false;
-            node_map[packet.transmitter_address].last_seen =
-            std::chrono::steady_clock::now();
+            auto& node = node_map[packet.transmitter_address];
+
+            node.connected = false;
+            node.reconnecting = false;
+            node.spec = false;
+            node.last_seen = std::chrono::steady_clock::now();
 
             LOG_ERROR(Service_NWM,
                       "AUTH NODE_MAP after insert: size={}",
