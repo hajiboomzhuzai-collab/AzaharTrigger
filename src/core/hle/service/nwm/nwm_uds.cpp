@@ -692,29 +692,51 @@ NWM_UDS::Node* NWM_UDS::FindNodeByNodeId(u16 node_id) {
 
 void NWM_UDS::HandleSecureDataPacket(const Network::WifiPacket& packet) {
     const auto secure_data = ParseSecureDataHeader(packet.data);
+
     std::scoped_lock lock{connection_status_mutex, system.Kernel().GetHLELock()};
 
     auto* node = FindNodeByNodeId(secure_data.src_node_id);
 
-if (!node) {
-    LOG_ERROR(Service_NWM,
-              "Unknown source node {}, trying reconnect recovery",
-              secure_data.src_node_id);
+    if (!node) {
+        LOG_ERROR(Service_NWM,
+                  "Unknown source node {}, attempting reconnect recovery",
+                  static_cast<u16>(secure_data.src_node_id));
 
-    node_lookup[secure_data.src_node_id] = packet.transmitter_address;
+        // Recover missing node information from packet source.
+        auto& recovered_node = node_map[packet.transmitter_address];
 
-    return;
-}
+        recovered_node.connected = true;
+        recovered_node.reconnecting = false;
+        recovered_node.spec = false;
+        recovered_node.node_id = secure_data.src_node_id;
+        recovered_node.last_seen = std::chrono::steady_clock::now();
 
-{
-        node->last_seen = std::chrono::steady_clock::now();
-        node->connected = true;
-        node->reconnecting = false;
+        if (secure_data.src_node_id <= UDSMaxNodes) {
+            node_lookup[static_cast<u16>(secure_data.src_node_id)] =
+                packet.transmitter_address;
+        }
+
+        LOG_ERROR(Service_NWM,
+                  "Recovered node id={} mac={:02X}:{:02X}:{:02X}:{:02X}:{:02X}:{:02X}",
+                  static_cast<u16>(secure_data.src_node_id),
+                  packet.transmitter_address[0],
+                  packet.transmitter_address[1],
+                  packet.transmitter_address[2],
+                  packet.transmitter_address[3],
+                  packet.transmitter_address[4],
+                  packet.transmitter_address[5]);
+
+        node = &recovered_node;
     }
+
+    node->last_seen = std::chrono::steady_clock::now();
+    node->connected = true;
+    node->reconnecting = false;
 
     if (connection_status.status != NetworkStatus::ConnectedAsHost &&
         connection_status.status != NetworkStatus::ConnectedAsClient &&
         connection_status.status != NetworkStatus::ConnectedAsSpectator) {
+
         LOG_TRACE(Service_NWM,
                   "Ignored SecureDataPacket because connection status is {}",
                   static_cast<u32>(connection_status.status));
@@ -730,6 +752,7 @@ if (!node) {
 
         if (packet.destination_address != Network::BroadcastMac &&
             connection_status.status != NetworkStatus::ConnectedAsHost) {
+
             LOG_ERROR(Service_NWM,
                       "Received packet addressed to others but we're not a host");
             return;
@@ -737,73 +760,65 @@ if (!node) {
 
         if (connection_status.status == NetworkStatus::ConnectedAsHost &&
             secure_data.dest_node_id != BroadcastNetworkNodeId) {
-            // Broadcast the packet so the right receiver can get it.
-            // TODO(B3N30): Is there a flag that makes this kind of routing be unicast instead of
-            // multicast? Perhaps this is a way to allow spectators to see some of the packets.
+
             Network::WifiPacket out_packet = packet;
             out_packet.destination_address = Network::BroadcastMac;
             SendPacket(out_packet);
         }
+
         return;
     }
 
-    // The packet is addressed to us (or to everyone using the broadcast node id), handle it.
-    // TODO(B3N30): We don't currently send nor handle management frames.
     ASSERT(!secure_data.is_management);
 
-    // TODO(B3N30): Allow more than one bind node per channel.
-auto channel_info = channel_data.find(secure_data.data_channel);
+    auto channel_info = channel_data.find(secure_data.data_channel);
 
-LOG_ERROR(Service_NWM,
-          "SECUREDATA src={} dst={} channel={} found_channel={} status={} node_map={} total_nodes={} lookup_ready={}",
-          static_cast<u32>(secure_data.src_node_id),
-          static_cast<u32>(secure_data.dest_node_id),
-          static_cast<u32>(secure_data.data_channel),
-          channel_info != channel_data.end(),
-          static_cast<u32>(connection_status.status),
-          node_map.size(),
-          connection_status.total_nodes,
-          std::count_if(node_lookup.begin(), node_lookup.end(),
-                        [](const auto& e) { return e.has_value(); }));
-
-// Ignore packets from channels we're not interested in.
-if (channel_info == channel_data.end()) {
     LOG_ERROR(Service_NWM,
-              "DROP unknown channel=%u",
+              "SECUREDATA src={} dst={} channel={} found_channel={} status={} node_map={} total_nodes={} lookup_ready={}",
+              static_cast<u32>(secure_data.src_node_id),
+              static_cast<u32>(secure_data.dest_node_id),
+              static_cast<u32>(secure_data.data_channel),
+              channel_info != channel_data.end(),
+              static_cast<u32>(connection_status.status),
+              node_map.size(),
+              connection_status.total_nodes,
+              std::count_if(node_lookup.begin(), node_lookup.end(),
+                            [](const auto& e) { return e.has_value(); }));
+
+    if (channel_info == channel_data.end()) {
+        LOG_ERROR(Service_NWM,
+                  "DROP unknown channel={}",
+                  static_cast<u32>(secure_data.data_channel));
+        return;
+    }
+
+    if (channel_info->second.network_node_id != BroadcastNetworkNodeId &&
+        channel_info->second.network_node_id != secure_data.src_node_id) {
+
+        LOG_ERROR(Service_NWM,
+                  "DROP bind mismatch expected={} got={}",
+                  static_cast<u32>(channel_info->second.network_node_id),
+                  static_cast<u32>(secure_data.src_node_id));
+
+        return;
+    }
+
+    LOG_ERROR(Service_NWM,
+              "QUEUE channel={} size_before={}",
+              static_cast<u32>(secure_data.data_channel),
+              channel_info->second.received_packets.size());
+
+    channel_info->second.received_packets.emplace_back(packet.data);
+
+    LOG_ERROR(Service_NWM,
+              "QUEUE size_after={}",
+              channel_info->second.received_packets.size());
+
+    channel_info->second.event->Signal();
+
+    LOG_ERROR(Service_NWM,
+              "EVENT signaled for channel={}",
               static_cast<u32>(secure_data.data_channel));
-    return;
-}
-
-// Ignore packets that come from a node this channel isn't bound to.
-if (channel_info->second.network_node_id != BroadcastNetworkNodeId &&
-    channel_info->second.network_node_id != secure_data.src_node_id) {
-
-    LOG_ERROR(Service_NWM,
-              "DROP bind mismatch expected=%u got=%u",
-              static_cast<u32>(channel_info->second.network_node_id),
-              static_cast<u32>(secure_data.src_node_id));
-
-    return;
-}
-
-// Add the received packet to the data queue.
-LOG_ERROR(Service_NWM,
-          "QUEUE channel=%u size_before=%zu",
-          static_cast<u32>(secure_data.data_channel),
-          channel_info->second.received_packets.size());
-
-channel_info->second.received_packets.emplace_back(packet.data);
-
-LOG_ERROR(Service_NWM,
-          "QUEUE size_after=%zu",
-          channel_info->second.received_packets.size());
-
-// Signal the data event. We can do this directly because we locked hle_lock
-channel_info->second.event->Signal();
-
-LOG_ERROR(Service_NWM,
-          "EVENT signaled for channel=%u",
-          static_cast<u32>(secure_data.data_channel));
 }
 
 void NWM_UDS::StartConnectionSequence(const MacAddress& server) {
