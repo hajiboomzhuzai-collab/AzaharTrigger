@@ -1010,7 +1010,7 @@ void NWM_UDS::OnWifiPacketReceived(const Network::WifiPacket& packet) {
     "RX SWITCH packet.type={}",
     static_cast<int>(packet.type));
 
-switch (packet.type) }
+switch (packet.type) {
     case Network::WifiPacket::PacketType::Beacon:
         HandleBeaconFrame(packet);
         break;
