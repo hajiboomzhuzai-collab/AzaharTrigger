@@ -202,16 +202,41 @@ void NWM_UDS::HandleNodeMapPacket(const Network::WifiPacket& packet) {
     std::memcpy(&num_entries, packet.data.data(), sizeof(num_entries));
 
     LOG_ERROR(Service_NWM,
-              "CLIENT <<< NodeMap entries={} current_nodes={}",
+              "CLIENT <<< NodeMap entries={} current_nodes={} status={} node_map_before={} ",
               num_entries,
+              connection_status.total_nodes,
+              static_cast<u32>(connection_status.status),
               node_map.size());
 
     // Ignore empty broadcasts.
     if (num_entries == 0) {
         LOG_ERROR(Service_NWM,
                   "CLIENT ignoring empty NodeMap");
+
+        for (u16 i = 1; i <= UDSMaxNodes; i++) {
+            if (node_lookup[i]) {
+                LOG_ERROR(Service_NWM,
+                          "LOOKUP EMPTY NODEMAP id={} still={:02X}:{:02X}:{:02X}:{:02X}:{:02X}:{:02X}",
+                          i,
+                          (*node_lookup[i])[0],
+                          (*node_lookup[i])[1],
+                          (*node_lookup[i])[2],
+                          (*node_lookup[i])[3],
+                          (*node_lookup[i])[4],
+                          (*node_lookup[i])[5]);
+            } else {
+                LOG_ERROR(Service_NWM,
+                          "LOOKUP EMPTY NODEMAP id={} EMPTY",
+                          i);
+            }
+        }
+
         return;
     }
+
+    LOG_ERROR(Service_NWM,
+              "CLIENT clearing old node_map={} lookup",
+              node_map.size());
 
     node_map.clear();
     node_lookup.fill(boost::none);
@@ -241,7 +266,8 @@ void NWM_UDS::HandleNodeMapPacket(const Network::WifiPacket& packet) {
         }
 
         LOG_ERROR(Service_NWM,
-                  "CLIENT NodeMap id={} mac={:02X}:{:02X}:{:02X}:{:02X}:{:02X}:{:02X}",
+                  "CLIENT NodeMap entry={} id={} mac={:02X}:{:02X}:{:02X}:{:02X}:{:02X}:{:02X}",
+                  i,
                   id,
                   address[0],
                   address[1],
@@ -254,8 +280,26 @@ void NWM_UDS::HandleNodeMapPacket(const Network::WifiPacket& packet) {
     }
 
     LOG_ERROR(Service_NWM,
-              "CLIENT NodeMap DONE node_map={}",
+              "CLIENT NodeMap DONE node_map={} lookup:",
               node_map.size());
+
+    for (u16 i = 1; i <= UDSMaxNodes; i++) {
+        if (node_lookup[i]) {
+            LOG_ERROR(Service_NWM,
+                      "LOOKUP AFTER NODEMAP id={} mac={:02X}:{:02X}:{:02X}:{:02X}:{:02X}:{:02X}",
+                      i,
+                      (*node_lookup[i])[0],
+                      (*node_lookup[i])[1],
+                      (*node_lookup[i])[2],
+                      (*node_lookup[i])[3],
+                      (*node_lookup[i])[4],
+                      (*node_lookup[i])[5]);
+        } else {
+            LOG_ERROR(Service_NWM,
+                      "LOOKUP AFTER NODEMAP id={} EMPTY",
+                      i);
+        }
+    }
 }
 
 void NWM_UDS::HandleBeaconFrame(const Network::WifiPacket& packet) {
