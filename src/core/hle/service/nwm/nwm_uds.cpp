@@ -43,6 +43,7 @@ void NWM_UDS::serialize(Archive& ar, const unsigned int) {
     DEBUG_SERIALIZATION_POINT;
     ar& boost::serialization::base_object<Kernel::SessionRequestHandler>(*this);
     ar & node_map;
+    ar & node_lookup;
     ar & connection_event;
     ar & received_beacons;
     // wifi_packet_received set in constructor
@@ -67,65 +68,90 @@ constexpr u16 HostDestNodeId = 1;
 
 std::list<Network::WifiPacket> NWM_UDS::GetReceivedBeacons(const MacAddress& sender) {
     std::scoped_lock lock(beacon_mutex);
+
     if (sender != Network::BroadcastMac) {
         std::list<Network::WifiPacket> filtered_list;
-        const auto beacon = std::find_if(received_beacons.begin(), received_beacons.end(),
-                                         [&sender](const Network::WifiPacket& packet) {
-                                             return packet.transmitter_address == sender;
-                                         });
+
+        const auto beacon = std::find_if(
+            received_beacons.begin(),
+            received_beacons.end(),
+            [&sender](const Network::WifiPacket& packet) {
+                return packet.transmitter_address == sender;
+            });
+
         if (beacon != received_beacons.end()) {
             filtered_list.push_back(*beacon);
-            // TODO(B3N30): Check if the complete deque is cleared or just the fetched entries
             received_beacons.erase(beacon);
         }
+
         return filtered_list;
     }
-    return std::move(received_beacons);
+
+    std::list<Network::WifiPacket> result(
+        received_beacons.begin(),
+        received_beacons.end());
+
+    received_beacons.clear();
+
+    return result;
 }
 
 /// Sends a WifiPacket to the room we're currently connected to.
 void SendPacket(Network::WifiPacket& packet) {
-    LOG_ERROR(Service_NWM,
-        "TX type={} ch={} size={} dst={:02X}:{:02X}:{:02X}:{:02X}:{:02X}:{:02X}",
-        static_cast<u32>(packet.type),
-        packet.channel,
-        packet.data.size(),
-        packet.destination_address[0],
-        packet.destination_address[1],
-        packet.destination_address[2],
-        packet.destination_address[3],
-        packet.destination_address[4],
-        packet.destination_address[5]);
+    const bool important_packet =
+        packet.type != Network::WifiPacket::PacketType::Data;
+
+    if (important_packet) {
+        LOG_ERROR(Service_NWM,
+                  "TX type={} ch={} size={} dst={:02X}:{:02X}:{:02X}:{:02X}:{:02X}:{:02X}",
+                  static_cast<u32>(packet.type),
+                  packet.channel,
+                  packet.data.size(),
+                  packet.destination_address[0],
+                  packet.destination_address[1],
+                  packet.destination_address[2],
+                  packet.destination_address[3],
+                  packet.destination_address[4],
+                  packet.destination_address[5]);
+    }
 
     if (auto room_member = Network::GetRoomMember().lock()) {
-        if (room_member->GetState() == Network::RoomMember::State::Joined ||
-            room_member->GetState() == Network::RoomMember::State::Moderator) {
+        const auto state = room_member->GetState();
+
+        if (state == Network::RoomMember::State::Joined ||
+            state == Network::RoomMember::State::Moderator) {
 
             packet.transmitter_address = room_member->GetMacAddress();
 
-            LOG_ERROR(Service_NWM,
-                "TX sender={:02X}:{:02X}:{:02X}:{:02X}:{:02X}:{:02X}",
-                packet.transmitter_address[0],
-                packet.transmitter_address[1],
-                packet.transmitter_address[2],
-                packet.transmitter_address[3],
-                packet.transmitter_address[4],
-                packet.transmitter_address[5]);
+            if (important_packet) {
+                LOG_ERROR(Service_NWM,
+                          "TX sender={:02X}:{:02X}:{:02X}:{:02X}:{:02X}:{:02X}",
+                          packet.transmitter_address[0],
+                          packet.transmitter_address[1],
+                          packet.transmitter_address[2],
+                          packet.transmitter_address[3],
+                          packet.transmitter_address[4],
+                          packet.transmitter_address[5]);
+            }
 
             room_member->SendWifiPacket(packet);
 
-            LOG_ERROR(Service_NWM,
-                "TX SENT type={} size={}",
-                static_cast<u32>(packet.type),
-                packet.data.size());
+            if (important_packet) {
+                LOG_ERROR(Service_NWM,
+                          "TX SENT type={} size={}",
+                          static_cast<u32>(packet.type),
+                          packet.data.size());
+            }
 
         } else {
             LOG_ERROR(Service_NWM,
-                "TX FAILED room state={}",
-                static_cast<u32>(room_member->GetState()));
+                      "TX FAILED room state={}",
+                      static_cast<u32>(state));
         }
+
     } else {
-        LOG_ERROR(Service_NWM, "TX FAILED no RoomMember");
+        LOG_ERROR(Service_NWM,
+                  "TX FAILED no RoomMember");
     }
 }
 
@@ -202,7 +228,7 @@ void NWM_UDS::HandleNodeMapPacket(const Network::WifiPacket& packet) {
     std::memcpy(&num_entries, packet.data.data(), sizeof(num_entries));
 
     LOG_ERROR(Service_NWM,
-              "CLIENT <<< NodeMap entries={} current_nodes={} status={} node_map_before={} ",
+              "CLIENT <<< NodeMap entries={} total_nodes={} status={} node_map_before={}",
               num_entries,
               connection_status.total_nodes,
               static_cast<u32>(connection_status.status),
@@ -213,30 +239,8 @@ void NWM_UDS::HandleNodeMapPacket(const Network::WifiPacket& packet) {
         LOG_ERROR(Service_NWM,
                   "CLIENT ignoring empty NodeMap");
 
-        for (u16 i = 1; i <= UDSMaxNodes; i++) {
-            if (node_lookup[i]) {
-                LOG_ERROR(Service_NWM,
-                          "LOOKUP EMPTY NODEMAP id={} still={:02X}:{:02X}:{:02X}:{:02X}:{:02X}:{:02X}",
-                          i,
-                          (*node_lookup[i])[0],
-                          (*node_lookup[i])[1],
-                          (*node_lookup[i])[2],
-                          (*node_lookup[i])[3],
-                          (*node_lookup[i])[4],
-                          (*node_lookup[i])[5]);
-            } else {
-                LOG_ERROR(Service_NWM,
-                          "LOOKUP EMPTY NODEMAP id={} EMPTY",
-                          i);
-            }
-        }
-
         return;
     }
-
-    LOG_ERROR(Service_NWM,
-              "CLIENT clearing old node_map={} lookup",
-              node_map.size());
 
     node_map.clear();
     node_lookup.fill(boost::none);
@@ -246,6 +250,14 @@ void NWM_UDS::HandleNodeMapPacket(const Network::WifiPacket& packet) {
     std::size_t offset = sizeof(num_entries);
 
     for (std::size_t i = 0; i < num_entries; i++) {
+        if (offset + sizeof(address) + sizeof(id) > packet.data.size()) {
+            LOG_ERROR(Service_NWM,
+                      "CLIENT NodeMap packet truncated offset={} size={}",
+                      offset,
+                      packet.data.size());
+            return;
+        }
+
         std::memcpy(&address,
                     packet.data.data() + offset,
                     sizeof(address));
@@ -255,6 +267,7 @@ void NWM_UDS::HandleNodeMapPacket(const Network::WifiPacket& packet) {
                     sizeof(id));
 
         auto& node = node_map[address];
+
         node.connected = true;
         node.reconnecting = false;
         node.spec = false;
@@ -263,6 +276,10 @@ void NWM_UDS::HandleNodeMapPacket(const Network::WifiPacket& packet) {
 
         if (id != NodeIDSpec && id <= UDSMaxNodes) {
             node_lookup[id] = address;
+
+            LOG_ERROR(Service_NWM,
+                      "CLIENT lookup updated id={} reconnect_ready=true",
+                      id);
         }
 
         LOG_ERROR(Service_NWM,
@@ -280,13 +297,19 @@ void NWM_UDS::HandleNodeMapPacket(const Network::WifiPacket& packet) {
     }
 
     LOG_ERROR(Service_NWM,
-              "CLIENT NodeMap DONE node_map={} lookup:",
-              node_map.size());
+              "CLIENT NodeMap DONE node_map={} lookup_ready={}",
+              node_map.size(),
+              std::count_if(node_lookup.begin(),
+                            node_lookup.end(),
+                            [](const auto& e) {
+                                return e.has_value();
+                            }));
 
+    // Print only valid lookup entries
     for (u16 i = 1; i <= UDSMaxNodes; i++) {
         if (node_lookup[i]) {
             LOG_ERROR(Service_NWM,
-                      "LOOKUP AFTER NODEMAP id={} mac={:02X}:{:02X}:{:02X}:{:02X}:{:02X}:{:02X}",
+                      "LOOKUP id={} mac={:02X}:{:02X}:{:02X}:{:02X}:{:02X}:{:02X}",
                       i,
                       (*node_lookup[i])[0],
                       (*node_lookup[i])[1],
@@ -294,10 +317,6 @@ void NWM_UDS::HandleNodeMapPacket(const Network::WifiPacket& packet) {
                       (*node_lookup[i])[3],
                       (*node_lookup[i])[4],
                       (*node_lookup[i])[5]);
-        } else {
-            LOG_ERROR(Service_NWM,
-                      "LOOKUP AFTER NODEMAP id={} EMPTY",
-                      i);
         }
     }
 }
@@ -979,38 +998,43 @@ void NWM_UDS::OnWifiPacketReceived(const Network::WifiPacket& packet) {
         return;
     }
 
-    LOG_ERROR(Service_NWM,
-        "RX type={} ch={} size={} from {:02X}:{:02X}:{:02X}:{:02X}:{:02X}:{:02X}",
-        static_cast<u32>(packet.type),
-        packet.channel,
-        packet.data.size(),
-        packet.transmitter_address[0],
-        packet.transmitter_address[1],
-        packet.transmitter_address[2],
-        packet.transmitter_address[3],
-        packet.transmitter_address[4],
-        packet.transmitter_address[5]);
+    // Only log important packets.
+    if (packet.type == Network::WifiPacket::PacketType::Deauthentication ||
+        packet.type == Network::WifiPacket::PacketType::NodeMap ||
+        packet.type == Network::WifiPacket::PacketType::Authentication ||
+        packet.type == Network::WifiPacket::PacketType::AssociationResponse) {
 
-    // Refresh last seen time for this node.
+        LOG_ERROR(Service_NWM,
+                  "RX type={} ch={} size={} from {:02X}:{:02X}:{:02X}:{:02X}:{:02X}:{:02X}",
+                  static_cast<u32>(packet.type),
+                  packet.channel,
+                  packet.data.size(),
+                  packet.transmitter_address[0],
+                  packet.transmitter_address[1],
+                  packet.transmitter_address[2],
+                  packet.transmitter_address[3],
+                  packet.transmitter_address[4],
+                  packet.transmitter_address[5]);
+    }
+
+    // Refresh node heartbeat.
     auto node = node_map.find(packet.transmitter_address);
     if (node != node_map.end()) {
         node->second.last_seen = std::chrono::steady_clock::now();
     }
 
-    LOG_ERROR(Service_NWM,
-    "RX SWITCH packet.type={}",
-    static_cast<int>(packet.type));
-
-switch (packet.type) {
+    switch (packet.type) {
     case Network::WifiPacket::PacketType::Beacon:
         HandleBeaconFrame(packet);
         break;
 
     case Network::WifiPacket::PacketType::Authentication:
+        LOG_ERROR(Service_NWM, "RX AUTH frame");
         HandleAuthenticationFrame(packet);
         break;
 
     case Network::WifiPacket::PacketType::AssociationResponse:
+        LOG_ERROR(Service_NWM, "RX ASSOC RESPONSE");
         HandleAssociationResponseFrame(packet);
         break;
 
@@ -1020,18 +1044,19 @@ switch (packet.type) {
 
     case Network::WifiPacket::PacketType::Deauthentication:
         LOG_ERROR(Service_NWM,
-            "RX -> DEAUTH from {:02X}:{:02X}:{:02X}:{:02X}:{:02X}:{:02X}",
-            packet.transmitter_address[0],
-            packet.transmitter_address[1],
-            packet.transmitter_address[2],
-            packet.transmitter_address[3],
-            packet.transmitter_address[4],
-            packet.transmitter_address[5]);
+                  "RX DEAUTH from {:02X}:{:02X}:{:02X}:{:02X}:{:02X}:{:02X}",
+                  packet.transmitter_address[0],
+                  packet.transmitter_address[1],
+                  packet.transmitter_address[2],
+                  packet.transmitter_address[3],
+                  packet.transmitter_address[4],
+                  packet.transmitter_address[5]);
 
         HandleDeauthenticationFrame(packet);
         break;
 
     case Network::WifiPacket::PacketType::NodeMap:
+        LOG_ERROR(Service_NWM, "RX NODEMAP");
         HandleNodeMapPacket(packet);
         break;
     }
