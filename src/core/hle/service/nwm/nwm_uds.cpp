@@ -2205,11 +2205,13 @@ ResultStatus NWM_UDS::DisconnectNetworkHLE() {
 }
 
 void NWM_UDS::DisconnectNetwork(Kernel::HLERequestContext& ctx) {
+
     LOG_ERROR(Service_NWM,
-              "DisconnectNetwork() called status={} node_id={} total_nodes={}",
-              static_cast<int>(connection_status.status),
+              "GAME CALLED DisconnectNetwork status={} node={} total_nodes={} node_map={}",
+              static_cast<u32>(connection_status.status),
               connection_status.network_node_id,
-              connection_status.total_nodes);
+              connection_status.total_nodes,
+              node_map.size());
 
     IPC::RequestParser rp(ctx);
     IPC::RequestBuilder rb = rp.MakeBuilder(1, 0);
