@@ -2102,11 +2102,6 @@ void NWM_UDS::ConnectToNetworkDeprecated(Kernel::HLERequestContext& ctx) {
 }
 
 ResultStatus NWM_UDS::DisconnectNetworkHLE() {
-
-    LOG_ERROR(Service_NWM, "BLOCKING DISCONNECT TEST");
-
-    return ResultStatus::ResultSuccess;
-
     using Network::WifiPacket;
 
     LOG_ERROR(Service_NWM,
@@ -2114,7 +2109,7 @@ ResultStatus NWM_UDS::DisconnectNetworkHLE() {
               "status={} total_nodes={} node_id={} host_mac={:02X}:{:02X}:{:02X}:{:02X}:{:02X}:{:02X}",
               static_cast<u32>(connection_status.status),
               connection_status.total_nodes,
-              connection_status.network_node_id,
+              static_cast<u16>(connection_status.network_node_id),
               network_info.host_mac_address[0],
               network_info.host_mac_address[1],
               network_info.host_mac_address[2],
@@ -2138,7 +2133,6 @@ ResultStatus NWM_UDS::DisconnectNetworkHLE() {
             LOG_ERROR(Service_NWM,
                       "DisconnectNetworkHLE() CALLED AS HOST");
 
-            // A real 3DS makes strange things here. We do the same.
             u16_le tmp_node_id = connection_status.network_node_id;
 
             connection_status = {};
@@ -2146,6 +2140,7 @@ ResultStatus NWM_UDS::DisconnectNetworkHLE() {
             connection_status.network_node_id = tmp_node_id;
 
             node_map.clear();
+            node_lookup.fill(boost::none);
 
             LOG_ERROR(Service_NWM,
                       "DisconnectNetworkHLE() HOST RESET COMPLETE");
@@ -2163,6 +2158,7 @@ ResultStatus NWM_UDS::DisconnectNetworkHLE() {
         connection_status.network_node_id = tmp_node_id;
 
         node_map.clear();
+        node_lookup.fill(boost::none);
 
         connection_status_event->Signal();
 
