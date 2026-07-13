@@ -1607,7 +1607,6 @@ void NWM_UDS::Bind(Kernel::HLERequestContext& ctx) {
 }
 
 void NWM_UDS::UnbindHLE(u32 bind_node_id) {
-void NWM_UDS::UnbindHLE(u32 bind_node_id) {
 
     std::scoped_lock lock(connection_status_mutex);
 
@@ -1919,55 +1918,133 @@ void NWM_UDS::SendTo(Kernel::HLERequestContext& ctx) {
     rb.Push(ResultSuccess);
 }
 
-ResultStatus NWM_UDS::SendToHLE(u32 dest_node_id, u8 data_channel, u32 data_size, u8 flags,
-                                std::vector<u8> input_buffer) {
+ResultStatus NWM_UDS::SendToHLE(u32 dest_node_id, u8 data_channel, u32 data_size,
+                                u8 flags, std::vector<u8> input_buffer) {
     ASSERT(input_buffer.size() >= data_size);
+
     input_buffer.resize(data_size);
 
+
     std::scoped_lock lock(connection_status_mutex);
+
+
+
+    /*
+     * Allow normal connected states.
+     *
+     * DisconnectNetworkHLE() keeps the client state alive,
+     * so packet loss should not block sending.
+     */
     if (connection_status.status != NetworkStatus::ConnectedAsClient &&
         connection_status.status != NetworkStatus::ConnectedAsHost) {
-        LOG_ERROR(Service_NWM,
-                  "You are not connected as a client or a host. (you are connected as type {})",
-                  connection_status.status);
+
+        LOG_WARNING(Service_NWM,
+                    "SendToHLE blocked status={}",
+                    static_cast<u32>(connection_status.status));
+
         return ResultStatus::SendError_NotConnected;
     }
 
-    // There should never be a dest_node_id of 0
+
+
+    /*
+     * There should never be node 0.
+     */
     if (dest_node_id == 0) {
-        LOG_ERROR(Service_NWM, "dest_node_id is 0");
+
+        LOG_ERROR(Service_NWM,
+                  "SendToHLE invalid destination node=0");
+
         return ResultStatus::SendError_BadNode;
     }
 
+
+
+    /*
+     * Cannot send to ourselves.
+     */
     if (dest_node_id == connection_status.network_node_id) {
-        LOG_ERROR(Service_NWM, "tried to send packet to itself");
+
+        LOG_ERROR(Service_NWM,
+                  "SendToHLE tried sending to itself node={}",
+                  dest_node_id);
+
         return ResultStatus::SendError_BadNode;
     }
+
+
 
     if (flags >> 2) {
-        LOG_ERROR(Service_NWM, "Unexpected flags 0x{:02X}", flags);
+
+        LOG_WARNING(Service_NWM,
+                    "SendToHLE unexpected flags=0x{:02X}",
+                    flags);
     }
 
-    auto dest_address = GetNodeMacAddress(dest_node_id, flags);
+
+
+    auto dest_address =
+        GetNodeMacAddress(dest_node_id, flags);
+
+
     if (!dest_address) {
-        LOG_ERROR(Service_NWM, "Destination address was 0");
+
+        LOG_ERROR(Service_NWM,
+                  "SendToHLE destination MAC not found node={}",
+                  dest_node_id);
+
         return ResultStatus::SendError_BadMacAddress;
     }
 
+
+
     constexpr std::size_t MaxSize = 0x5C6;
+
+
     if (data_size > MaxSize) {
-        LOG_ERROR(Service_NWM, "Data size was greater than the max packet size {} > {}", data_size,
+
+        LOG_ERROR(Service_NWM,
+                  "SendToHLE packet too large size={} max={}",
+                  data_size,
                   MaxSize);
+
         return ResultStatus::SendError_PacketSizeTooLarge;
     }
-    // TODO(B3N30): Increment the sequence number after each sent packet.
-    u16 sequence_number = 0;
-    std::vector<u8> data_payload =
-        GenerateDataPayload(input_buffer, data_channel, dest_node_id,
-                            connection_status.network_node_id, sequence_number);
 
-    // TODO(B3N30): Use the MAC address of the dest_node_id and our own to encrypt
-    // and encapsulate the payload.
+
+
+    /*
+     * Temporary recovery handling.
+     *
+     * If the node exists but is reconnecting,
+     * still allow traffic.
+     */
+    auto node = FindNodeByNodeId(dest_node_id);
+
+    if (node && node->reconnecting) {
+
+        LOG_WARNING(Service_NWM,
+                    "SendToHLE sending while node reconnecting id={}",
+                    dest_node_id);
+    }
+
+
+
+    /*
+     * TODO:
+     * Sequence number is currently not implemented.
+     */
+    u16 sequence_number = 0;
+
+
+    std::vector<u8> data_payload =
+        GenerateDataPayload(input_buffer,
+                            data_channel,
+                            dest_node_id,
+                            connection_status.network_node_id,
+                            sequence_number);
+
+
 
     Network::WifiPacket packet;
 
@@ -1976,7 +2053,19 @@ ResultStatus NWM_UDS::SendToHLE(u32 dest_node_id, u8 data_channel, u32 data_size
     packet.data = std::move(data_payload);
     packet.type = Network::WifiPacket::PacketType::Data;
 
+
+
+    LOG_DEBUG(Service_NWM,
+              "SendToHLE TX channel={} dest_node={} size={}",
+              static_cast<u32>(data_channel),
+              dest_node_id,
+              data_size);
+
+
+
     SendPacket(packet);
+
+
 
     return ResultStatus::ResultSuccess;
 }
@@ -2261,98 +2350,104 @@ void NWM_UDS::ConnectToNetworkDeprecated(Kernel::HLERequestContext& ctx) {
 
 ResultStatus NWM_UDS::DisconnectNetworkHLE() {
     LOG_ERROR(Service_NWM,
-              "DisconnectNetworkHLE ENTER status={} node={} total_nodes={} nodes={} channels={}",
+              "DisconnectNetworkHLE ENTER status={} node={} total_nodes={} channels={}",
               static_cast<u32>(connection_status.status),
               static_cast<u16>(connection_status.network_node_id),
               connection_status.total_nodes,
-              node_map.size(),
               channel_data.size());
 
-
     std::scoped_lock lock(connection_status_mutex);
-
 
     const u16_le node_id = connection_status.network_node_id;
 
 
     /*
-     * Emulator mitigation:
+     * Host disconnect:
      *
-     * Real 3DS:
-     * - close connection
-     * - deauthenticate peers
-     * - destroy state
-     *
-     * Emulator:
-     * - temporary packet loss should not kill netplay
-     * - keep everything alive
+     * Keep original behavior.
+     * Host leaving means the room is actually gone.
      */
-
-
     if (connection_status.status == NetworkStatus::ConnectedAsHost) {
 
         LOG_ERROR(Service_NWM,
-                  "DisconnectNetworkHLE HOST IGNORE");
+                  "DisconnectNetworkHLE HOST RESET");
+
+        connection_status = {};
+
+        connection_status.status =
+            NetworkStatus::ConnectedAsHost;
+
+        connection_status.network_node_id =
+            node_id;
 
 
-        /*
-         * Do not destroy host state.
-         * Some games call disconnect internally during recovery.
-         */
+        node_map.clear();
+        node_lookup.fill(boost::none);
+        channel_data.clear();
 
 
-        connection_status.status = NetworkStatus::ConnectedAsHost;
-        connection_status.network_node_id = node_id;
+        connection_status_event->Signal();
 
-
-    } else if (connection_status.status == NetworkStatus::ConnectedAsClient) {
 
         LOG_ERROR(Service_NWM,
-                  "DisconnectNetworkHLE CLIENT RECOVERY");
+                  "DisconnectNetworkHLE HOST DONE");
 
 
-        connection_status.status = NetworkStatus::ConnectedAsClient;
-        connection_status.network_node_id = node_id;
-
-
-    } else {
-
-        LOG_ERROR(Service_NWM,
-                  "DisconnectNetworkHLE unexpected status={}",
-                  static_cast<u32>(connection_status.status));
+        return ResultStatus::DisconError_CalledAsHost;
     }
 
 
 
     /*
-     * Keep nodes alive.
+     * Client disconnect:
+     *
+     * This is treated as temporary packet loss.
+     *
+     * Do NOT:
+     * - clear nodes
+     * - clear channels
+     * - send deauthentication
+     *
+     * The game may recover after missing packets.
      */
+
+    LOG_ERROR(Service_NWM,
+              "DisconnectNetworkHLE CLIENT RECOVERY");
+
+
+    connection_status.status =
+        NetworkStatus::ConnectedAsClient;
+
+
+    connection_status.status_change_reason =
+        NetworkStatusChangeReason::ConnectionLost;
+
+
+    connection_status.network_node_id =
+        node_id;
+
+
 
     for (auto& [mac, node] : node_map) {
 
-        node.connected = true;
-        node.reconnecting = false;
-        node.last_seen = std::chrono::steady_clock::now();
+        node.reconnecting = true;
+
+        node.last_seen =
+            std::chrono::steady_clock::now();
 
 
         LOG_ERROR(Service_NWM,
-                  "KEEP NODE id={} connected={}",
+                  "DisconnectNetworkHLE KEEP NODE id={} connected={} reconnecting={}",
                   node.node_id,
-                  node.connected);
+                  node.connected,
+                  node.reconnecting);
     }
 
 
 
     /*
-     * Do NOT:
-     *
-     * - clear node_map
-     * - clear node_lookup
-     * - clear channel_data
-     * - send deauth
+     * Notify the game.
      */
-
-
     connection_status.changed_nodes |=
         connection_status.node_bitmask;
 
@@ -2360,10 +2455,18 @@ ResultStatus NWM_UDS::DisconnectNetworkHLE() {
     connection_status_event->Signal();
 
 
+
+    /*
+     * Wake existing channel listeners.
+     *
+     * IMPORTANT:
+     *
+     * Do not erase channel_data.
+     */
     for (auto& [channel, data] : channel_data) {
 
         LOG_ERROR(Service_NWM,
-                  "SIGNAL CHANNEL ch={} bind={} node={}",
+                  "DisconnectNetworkHLE KEEP CHANNEL ch={} bind={} node={}",
                   static_cast<u32>(channel),
                   data.bind_node_id,
                   data.network_node_id);
@@ -2375,14 +2478,14 @@ ResultStatus NWM_UDS::DisconnectNetworkHLE() {
 
 
     LOG_ERROR(Service_NWM,
-              "DisconnectNetworkHLE EXIT kept nodes={} channels={}",
+              "DisconnectNetworkHLE CLIENT RECOVERY COMPLETE nodes={} channels={}",
               node_map.size(),
               channel_data.size());
 
 
     return ResultStatus::ResultSuccess;
 }
-
+    
 void NWM_UDS::DisconnectNetwork(Kernel::HLERequestContext& ctx) {
 
     LOG_ERROR(Service_NWM,
