@@ -493,6 +493,7 @@ private:
                                                       void* secure_data_out);
     ConnectionStatus GetConnectionStatusHLE();
     ResultStatus DisconnectNetworkHLE();
+    void RecoverChannels();
     std::pair<ResultStatus, std::shared_ptr<Kernel::Event>> BindHLE(u32 bind_node_id,
                                                                     u32 recv_buffer_size,
                                                                     u8 data_channel,
@@ -590,13 +591,13 @@ private:
     ConnectionType conn_type;
 
     struct BindNodeData {
-        u32 bind_node_id;    ///< Id of the bind node associated with this data.
-        u8 channel;          ///< Channel that this bind node was bound to.
-        u16 network_node_id; ///< Node id this bind node is associated with, only packets from this
-                             /// network node will be received.
-        std::shared_ptr<Kernel::Event> event;         ///< Receive event for this bind node.
-        std::deque<std::vector<u8>> received_packets; ///< List of packets received on this channel.
-    };
+    u32 bind_node_id;
+    u8 channel;
+    u16 network_node_id;
+    u32 recv_buffer_size;
+    std::shared_ptr<Kernel::Event> event;
+    std::deque<std::vector<u8>> received_packets;
+};
 
     // Mapping of data channels to their internal data.
     std::unordered_map<u32, BindNodeData> channel_data;
