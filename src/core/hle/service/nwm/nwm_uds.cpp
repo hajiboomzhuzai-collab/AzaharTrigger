@@ -242,8 +242,12 @@ void NWM_UDS::HandleNodeMapPacket(const Network::WifiPacket& packet) {
         return;
     }
 
-    node_map.clear();
-    node_lookup.fill(boost::none);
+    // Do not clear here.
+    // SecureData may recover nodes before NodeMap arrives.
+    // Clearing would delete recovered nodes.
+    LOG_ERROR(Service_NWM,
+              "CLIENT merging NodeMap existing_nodes={}",
+              node_map.size());
 
     Network::MacAddress address;
     u16 id;
@@ -268,13 +272,20 @@ void NWM_UDS::HandleNodeMapPacket(const Network::WifiPacket& packet) {
 
         auto& node = node_map[address];
 
+        if (node.connected && node.node_id != id) {
+            LOG_ERROR(Service_NWM,
+                      "CLIENT NodeMap updating MAC old_id={} new_id={}",
+                      node.node_id,
+                      id);
+        }
+
         node.connected = true;
         node.reconnecting = false;
         node.spec = false;
         node.node_id = id;
         node.last_seen = std::chrono::steady_clock::now();
 
-        if (id != NodeIDSpec && id <= UDSMaxNodes) {
+        if (id != NodeIDSpec && id < UDSMaxNodes) {
             node_lookup[id] = address;
 
             LOG_ERROR(Service_NWM,
@@ -306,7 +317,7 @@ void NWM_UDS::HandleNodeMapPacket(const Network::WifiPacket& packet) {
                             }));
 
     // Print only valid lookup entries
-    for (u16 i = 1; i <= UDSMaxNodes; i++) {
+    for (u16 i = 1; i < UDSMaxNodes; i++) {
         if (node_lookup[i]) {
             LOG_ERROR(Service_NWM,
                       "LOOKUP id={} mac={:02X}:{:02X}:{:02X}:{:02X}:{:02X}:{:02X}",
