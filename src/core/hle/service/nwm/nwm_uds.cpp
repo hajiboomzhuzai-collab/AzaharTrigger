@@ -234,26 +234,31 @@ void NWM_UDS::HandleNodeMapPacket(const Network::WifiPacket& packet) {
               static_cast<u32>(connection_status.status),
               node_map.size());
 
-    // Ignore empty broadcasts.
+
     if (num_entries == 0) {
         LOG_ERROR(Service_NWM,
                   "CLIENT ignoring empty NodeMap");
-
         return;
     }
 
-    // Do not clear here.
-    // SecureData may recover nodes before NodeMap arrives.
-    // Clearing would delete recovered nodes.
+
     LOG_ERROR(Service_NWM,
               "CLIENT merging NodeMap existing_nodes={}",
               node_map.size());
+
 
     Network::MacAddress address;
     u16 id;
     std::size_t offset = sizeof(num_entries);
 
+
+    u16 new_bitmask = 0;
+    u16 new_changed_nodes = 0;
+    u8 new_total_nodes = 0;
+
+
     for (std::size_t i = 0; i < num_entries; i++) {
+
         if (offset + sizeof(address) + sizeof(id) > packet.data.size()) {
             LOG_ERROR(Service_NWM,
                       "CLIENT NodeMap packet truncated offset={} size={}",
@@ -261,6 +266,7 @@ void NWM_UDS::HandleNodeMapPacket(const Network::WifiPacket& packet) {
                       packet.data.size());
             return;
         }
+
 
         std::memcpy(&address,
                     packet.data.data() + offset,
@@ -270,7 +276,9 @@ void NWM_UDS::HandleNodeMapPacket(const Network::WifiPacket& packet) {
                     packet.data.data() + offset + sizeof(address),
                     sizeof(id));
 
+
         auto& node = node_map[address];
+
 
         if (node.connected && node.node_id != id) {
             LOG_ERROR(Service_NWM,
@@ -279,19 +287,31 @@ void NWM_UDS::HandleNodeMapPacket(const Network::WifiPacket& packet) {
                       id);
         }
 
+
         node.connected = true;
         node.reconnecting = false;
         node.spec = false;
         node.node_id = id;
         node.last_seen = std::chrono::steady_clock::now();
 
-        if (id != NodeIDSpec && id < UDSMaxNodes) {
+
+
+        if (id != NodeIDSpec && id <= UDSMaxNodes) {
+
             node_lookup[id] = address;
+
+            new_bitmask |= (1 << id);
+            new_changed_nodes |= (1 << id);
+
+            new_total_nodes++;
+
 
             LOG_ERROR(Service_NWM,
                       "CLIENT lookup updated id={} reconnect_ready=true",
                       id);
         }
+
+
 
         LOG_ERROR(Service_NWM,
                   "CLIENT NodeMap entry={} id={} mac={:02X}:{:02X}:{:02X}:{:02X}:{:02X}:{:02X}",
@@ -304,23 +324,46 @@ void NWM_UDS::HandleNodeMapPacket(const Network::WifiPacket& packet) {
                   address[4],
                   address[5]);
 
+
         offset += sizeof(address) + sizeof(id);
     }
 
+
+    /*
+     * Sync connection status.
+     *
+     * This fixes the case:
+     *
+     * status=6 node_id=1 total_nodes=0
+     *
+     * where SecureData arrives before status knows about nodes.
+     */
+
+    connection_status.total_nodes = new_total_nodes;
+    connection_status.node_bitmask = new_bitmask;
+    connection_status.changed_nodes = new_changed_nodes;
+
+
+
     LOG_ERROR(Service_NWM,
-              "CLIENT NodeMap DONE node_map={} lookup_ready={}",
+              "CLIENT NodeMap DONE node_map={} total_nodes={} bitmask=0x{:X} lookup_ready={}",
               node_map.size(),
+              connection_status.total_nodes,
+              static_cast<u16>(connection_status.node_bitmask),
               std::count_if(node_lookup.begin(),
                             node_lookup.end(),
                             [](const auto& e) {
                                 return e.has_value();
                             }));
 
-    // Print only valid lookup entries
-    for (u16 i = 1; i < UDSMaxNodes; i++) {
+
+
+    for (u16 i = 1; i <= UDSMaxNodes; i++) {
+
         if (node_lookup[i]) {
+
             LOG_ERROR(Service_NWM,
-                      "LOOKUP id={} mac={:02X}:{:02X}:{:02X}:{:02X}:{:02X}:{:02X}",
+                      "LOOKUP id={} mac={:02X}:{:02X}:{:02X}:{02X}:{02X}:{02X}",
                       i,
                       (*node_lookup[i])[0],
                       (*node_lookup[i])[1],
@@ -330,6 +373,9 @@ void NWM_UDS::HandleNodeMapPacket(const Network::WifiPacket& packet) {
                       (*node_lookup[i])[5]);
         }
     }
+
+
+    connection_status_event->Signal();
 }
 
 void NWM_UDS::HandleBeaconFrame(const Network::WifiPacket& packet) {
@@ -2174,23 +2220,27 @@ ResultStatus NWM_UDS::DisconnectNetworkHLE() {
                                 }));
 
 
+        const u16_le node_id = connection_status.network_node_id;
+
+
         if (connection_status.status == NetworkStatus::ConnectedAsHost) {
 
             LOG_ERROR(Service_NWM,
                       "DisconnectNetworkHLE HOST RESET");
 
-            const u16_le node_id = connection_status.network_node_id;
 
             connection_status = {};
             connection_status.status = NetworkStatus::ConnectedAsHost;
             connection_status.network_node_id = node_id;
 
+
             node_map.clear();
             node_lookup.fill(boost::none);
 
+
             LOG_ERROR(Service_NWM,
-                      "DisconnectNetworkHLE HOST DONE channels_kept={}",
-                      channel_data.size());
+                      "DisconnectNetworkHLE HOST DONE");
+
 
             return ResultStatus::DisconError_CalledAsHost;
         }
@@ -2200,25 +2250,33 @@ ResultStatus NWM_UDS::DisconnectNetworkHLE() {
                   "DisconnectNetworkHLE CLIENT RESET");
 
 
-        const u16_le node_id = connection_status.network_node_id;
-
+        /*
+         * Keep current_node information.
+         *
+         * Do not destroy node_info because reconnect may immediately
+         * receive secure packets from the previous session.
+         */
 
         connection_status = {};
+
         connection_status.status = NetworkStatus::NotConnected;
         connection_status.network_node_id = node_id;
-
-
-        node_map.clear();
-        node_lookup.fill(boost::none);
-
-        node_info.clear();
-        node_info.push_back(current_node);
 
         connection_status.total_nodes = 0;
         connection_status.changed_nodes = 0;
         connection_status.node_bitmask = 0;
 
+
+        node_map.clear();
+        node_lookup.fill(boost::none);
+
+
+        node_info.clear();
+        node_info.push_back(current_node);
+
+
         connection_status_event->Signal();
+
 
         deauth.channel = network_channel;
         deauth.data = {};
@@ -2227,7 +2285,13 @@ ResultStatus NWM_UDS::DisconnectNetworkHLE() {
 
 
         LOG_ERROR(Service_NWM,
-                  "DisconnectNetworkHLE prepared DEAUTH");
+                  "DisconnectNetworkHLE prepared DEAUTH host={:02X}:{:02X}:{:02X}:{:02X}:{:02X}:{:02X}",
+                  network_info.host_mac_address[0],
+                  network_info.host_mac_address[1],
+                  network_info.host_mac_address[2],
+                  network_info.host_mac_address[3],
+                  network_info.host_mac_address[4],
+                  network_info.host_mac_address[5]);
     }
 
 
@@ -2245,6 +2309,7 @@ ResultStatus NWM_UDS::DisconnectNetworkHLE() {
     {
         std::scoped_lock lock(connection_status_mutex);
 
+
         for (auto& [channel, data] : channel_data) {
 
             LOG_ERROR(Service_NWM,
@@ -2253,27 +2318,26 @@ ResultStatus NWM_UDS::DisconnectNetworkHLE() {
                       data.bind_node_id,
                       data.network_node_id);
 
+
             data.event->Signal();
         }
 
 
         /*
-         * Do not immediately erase channels.
+         * Keep channel_data alive.
          *
-         * The game may reconnect very quickly and still send
-         * secure packets using the old bind.
-         *
-         * Let Bind()/new connection replace them.
+         * Fast reconnect can reuse old channel.
          */
 
         LOG_ERROR(Service_NWM,
-                  "DisconnectNetworkHLE leaving channel_data size={}",
+                  "DisconnectNetworkHLE KEEP channels={}",
                   channel_data.size());
     }
 
 
     LOG_ERROR(Service_NWM,
               "DisconnectNetworkHLE EXIT");
+
 
     return ResultStatus::ResultSuccess;
 }
