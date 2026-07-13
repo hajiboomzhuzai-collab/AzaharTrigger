@@ -889,115 +889,139 @@ void NWM_UDS::SendAssociationResponseFrame(const MacAddress& address) {
 }
 
 void NWM_UDS::HandleAuthenticationFrame(const Network::WifiPacket& packet) {
-    // Only the SEQ1 auth frame is handled here, the SEQ2 frame doesn't need any special behavior
-    if (GetAuthenticationSeqNumber(packet.data) == AuthenticationSeq::SEQ1) {
+    // Only the SEQ1 auth frame is handled here
+    if (GetAuthenticationSeqNumber(packet.data) != AuthenticationSeq::SEQ1) {
+        return;
+    }
+
+    LOG_ERROR(Service_NWM,
+              "AUTH START: RX authentication request from "
+              "{:02X}:{:02X}:{:02X}:{:02X}:{:02X}:{:02X}",
+              packet.transmitter_address[0],
+              packet.transmitter_address[1],
+              packet.transmitter_address[2],
+              packet.transmitter_address[3],
+              packet.transmitter_address[4],
+              packet.transmitter_address[5]);
+
+    using Network::WifiPacket;
+
+    WifiPacket auth_response;
+
+    {
+        std::scoped_lock lock(connection_status_mutex);
 
         LOG_ERROR(Service_NWM,
-                  "AUTH START: RX authentication request from "
-                  "{:02X}:{:02X}:{:02X}:{:02X}:{:02X}:{:02X}",
-                  packet.transmitter_address[0],
-                  packet.transmitter_address[1],
-                  packet.transmitter_address[2],
-                  packet.transmitter_address[3],
-                  packet.transmitter_address[4],
-                  packet.transmitter_address[5]);
+                  "AUTH STATE: status={} total_nodes={}/{} node_map={}",
+                  static_cast<u32>(connection_status.status),
+                  connection_status.total_nodes,
+                  connection_status.max_nodes,
+                  node_map.size());
 
-        using Network::WifiPacket;
 
-        AuthenticationFrame auth_request;
-        memcpy(&auth_request, packet.data.data(), sizeof(auth_request));
+        if (connection_status.status != NetworkStatus::ConnectedAsHost) {
+            LOG_ERROR(Service_NWM,
+                      "AUTH ABORT: not hosting");
+            return;
+        }
 
-        WifiPacket auth_response;
 
-        {
-            std::scoped_lock lock(connection_status_mutex);
+        auto it = node_map.find(packet.transmitter_address);
+
+
+        if (it != node_map.end()) {
+
+            Node& node = it->second;
 
             LOG_ERROR(Service_NWM,
-                      "AUTH STATE: status={} total_nodes={}/{} node_map={}",
-                      static_cast<u32>(connection_status.status),
-                      connection_status.total_nodes,
-                      connection_status.max_nodes,
-                      node_map.size());
+                      "AUTH RECONNECT: existing node={} connected={} reconnecting={}",
+                      node.node_id,
+                      node.connected,
+                      node.reconnecting);
 
-            if (connection_status.status != NetworkStatus::ConnectedAsHost) {
+
+            // Keep node id.
+            // Only restore connection state.
+
+            node.connected = true;
+            node.reconnecting = false;
+            node.last_seen = std::chrono::steady_clock::now();
+
+
+            if (node.node_id > 0 &&
+                node.node_id <= UDSMaxNodes) {
+
+                connection_status.changed_nodes |=
+                    static_cast<u16>(1 << (node.node_id - 1));
+            }
+
+
+        } else {
+
+            if (connection_status.max_nodes ==
+                connection_status.total_nodes) {
+
                 LOG_ERROR(Service_NWM,
-                          "AUTH ABORT: not hosting (status={})",
-                          static_cast<u32>(connection_status.status));
+                          "AUTH ABORT: maximum nodes reached");
                 return;
             }
 
-            auto it = node_map.find(packet.transmitter_address);
-
-            // Remove previous entry if this device is reconnecting.
-            if (it != node_map.end()) {
-
-                LOG_ERROR(Service_NWM,
-                          "AUTH: Removing existing node before reconnect "
-                          "{:02X}:{:02X}:{:02X}:{:02X}:{:02X}:{:02X} "
-                          "node_id={}",
-                          packet.transmitter_address[0],
-                          packet.transmitter_address[1],
-                          packet.transmitter_address[2],
-                          packet.transmitter_address[3],
-                          packet.transmitter_address[4],
-                          packet.transmitter_address[5],
-                          static_cast<u32>(it->second.node_id));
-
-                if (it->second.node_id != 0 &&
-                    it->second.node_id < node_lookup.size()) {
-
-                    node_lookup[it->second.node_id].reset();
-                }
-
-                node_map.erase(it);
-            }
-
-            if (connection_status.max_nodes == connection_status.total_nodes) {
-                LOG_ERROR(Service_NWM,
-                          "AUTH ABORT: maximum nodes reached ({}/{})",
-                          connection_status.total_nodes,
-                          connection_status.max_nodes);
-                return;
-            }
 
             LOG_ERROR(Service_NWM,
-                      "AUTH ACCEPT: inserting temporary node into node_map");
+                      "AUTH NEW NODE: inserting node");
 
-            // Respond with authentication response frame SEQ2
-            auth_response.channel = network_channel;
-            auth_response.data =
-                GenerateAuthenticationFrame(AuthenticationSeq::SEQ2);
-            auth_response.destination_address =
-                packet.transmitter_address;
-            auth_response.type =
-                WifiPacket::PacketType::Authentication;
 
             auto& node = node_map[packet.transmitter_address];
 
-            node.connected = false;
+            node.connected = true;
             node.reconnecting = false;
             node.spec = false;
+            node.node_id = GetNextAvailableNodeId();
             node.last_seen = std::chrono::steady_clock::now();
 
-            LOG_ERROR(Service_NWM,
-                      "AUTH NODE_MAP after insert: size={}",
-                      node_map.size());
+
+            node_lookup[node.node_id] =
+                packet.transmitter_address;
+
+
+            connection_status.total_nodes++;
+
+            connection_status.changed_nodes |=
+                static_cast<u16>(1 << (node.node_id - 1));
         }
 
-        LOG_ERROR(Service_NWM,
-                  "AUTH TX: Sending Authentication SEQ2");
 
-        SendPacket(auth_response);
+        auth_response.channel = network_channel;
 
-        LOG_ERROR(Service_NWM,
-                  "AUTH TX: Sending Association Response");
+        auth_response.data =
+            GenerateAuthenticationFrame(AuthenticationSeq::SEQ2);
 
-        SendAssociationResponseFrame(packet.transmitter_address);
+        auth_response.destination_address =
+            packet.transmitter_address;
 
-        LOG_ERROR(Service_NWM,
-                  "AUTH END");
+        auth_response.type =
+            WifiPacket::PacketType::Authentication;
     }
-}
+
+
+    LOG_ERROR(Service_NWM,
+              "AUTH TX: Sending Authentication SEQ2");
+
+    SendPacket(auth_response);
+
+
+    LOG_ERROR(Service_NWM,
+              "AUTH TX: Sending Association Response");
+
+    SendAssociationResponseFrame(packet.transmitter_address);
+
+
+    connection_status_event->Signal();
+
+
+    LOG_ERROR(Service_NWM,
+              "AUTH END");
+}            
 
 void NWM_UDS::HandleDeauthenticationFrame(const Network::WifiPacket& packet) {
     LOG_ERROR(Service_NWM,
@@ -1011,7 +1035,6 @@ void NWM_UDS::HandleDeauthenticationFrame(const Network::WifiPacket& packet) {
 
     std::scoped_lock lock{connection_status_mutex, system.Kernel().GetHLELock()};
 
-
     auto node_it = node_map.find(packet.transmitter_address);
 
     if (node_it == node_map.end()) {
@@ -1020,42 +1043,43 @@ void NWM_UDS::HandleDeauthenticationFrame(const Network::WifiPacket& packet) {
         return;
     }
 
-
     Node& node = node_it->second;
 
-
     LOG_ERROR(Service_NWM,
-              "DEAUTH soft handling node={} connected={} spec={}",
+              "DEAUTH before state node={} connected={} reconnecting={} spec={}",
               node.node_id,
               node.connected,
+              node.reconnecting,
               node.spec);
 
 
     /*
-     * Compatibility mode:
+     * Soft disconnect:
      *
-     * Do NOT erase node.
-     * Do NOT remove node_lookup.
-     * Do NOT reset node_info.
+     * Keep:
+     * - node_map entry
+     * - node_lookup
+     * - node_info
      *
-     * Allow HandleSecureDataPacket()
-     * to recover the node when packets return.
+     * Remove:
+     * - connected state
+     *
+     * This allows the client to authenticate again
+     * without destroying the session.
      */
 
-
+    node.connected = false;
     node.reconnecting = true;
     node.last_seen = std::chrono::steady_clock::now();
 
 
-    /*
-     * Keep connection status alive.
-     */
     if (connection_status.status == NetworkStatus::ConnectedAsHost) {
 
-        if (!node.spec && node.node_id <= UDSMaxNodes) {
+        if (!node.spec && node.node_id > 0 &&
+            node.node_id <= UDSMaxNodes) {
 
             connection_status.changed_nodes |=
-                1 << (node.node_id - 1);
+                static_cast<u16>(1 << (node.node_id - 1));
 
 
             LOG_ERROR(Service_NWM,
@@ -1065,10 +1089,16 @@ void NWM_UDS::HandleDeauthenticationFrame(const Network::WifiPacket& packet) {
     }
 
 
+    LOG_ERROR(Service_NWM,
+              "DEAUTH after state node={} connected={} reconnecting={} spec={}",
+              node.node_id,
+              node.connected,
+              node.reconnecting,
+              node.spec);
+
+
     connection_status_event->Signal();
 
-
-    return;
 }
 
 void NWM_UDS::HandleDataFrame(const Network::WifiPacket& packet) {
