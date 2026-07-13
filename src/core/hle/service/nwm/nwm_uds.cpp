@@ -363,14 +363,14 @@ void NWM_UDS::HandleNodeMapPacket(const Network::WifiPacket& packet) {
         if (node_lookup[i]) {
 
             LOG_ERROR(Service_NWM,
-                      "LOOKUP id={} mac={:02X}:{:02X}:{:02X}:{02X}:{02X}:{02X}",
-                      i,
-                      (*node_lookup[i])[0],
-                      (*node_lookup[i])[1],
-                      (*node_lookup[i])[2],
-                      (*node_lookup[i])[3],
-                      (*node_lookup[i])[4],
-                      (*node_lookup[i])[5]);
+          "LOOKUP id={0} mac={1:02X}:{2:02X}:{3:02X}:{4:02X}:{5:02X}:{6:02X}",
+          static_cast<u32>(i),
+          static_cast<u32>((*node_lookup[i])[0]),
+          static_cast<u32>((*node_lookup[i])[1]),
+          static_cast<u32>((*node_lookup[i])[2]),
+          static_cast<u32>((*node_lookup[i])[3]),
+          static_cast<u32>((*node_lookup[i])[4]),
+          static_cast<u32>((*node_lookup[i])[5]));
         }
     }
 
