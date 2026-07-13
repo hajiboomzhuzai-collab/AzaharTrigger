@@ -1001,7 +1001,7 @@ void NWM_UDS::HandleAuthenticationFrame(const Network::WifiPacket& packet) {
 
 void NWM_UDS::HandleDeauthenticationFrame(const Network::WifiPacket& packet) {
     LOG_ERROR(Service_NWM,
-              "Ignoring DEAUTH from {:02X}:{:02X}:{:02X}:{:02X}:{:02X}:{:02X} (timeout test)",
+              "DEAUTH received from {:02X}:{:02X}:{:02X}:{:02X}:{:02X}:{:02X}",
               packet.transmitter_address[0],
               packet.transmitter_address[1],
               packet.transmitter_address[2],
@@ -1011,32 +1011,62 @@ void NWM_UDS::HandleDeauthenticationFrame(const Network::WifiPacket& packet) {
 
     std::scoped_lock lock{connection_status_mutex, system.Kernel().GetHLELock()};
 
-    if (connection_status.status != NetworkStatus::ConnectedAsHost) {
-        LOG_ERROR(Service_NWM, "Ignoring DEAUTH because we are not the host");
-        return;
-    }
 
     auto node_it = node_map.find(packet.transmitter_address);
+
     if (node_it == node_map.end()) {
-        LOG_ERROR(Service_NWM, "Ignoring DEAUTH from unknown node");
+        LOG_ERROR(Service_NWM,
+                  "DEAUTH unknown node - ignoring");
         return;
     }
 
-    const Node& node = node_it->second;
+
+    Node& node = node_it->second;
+
 
     LOG_ERROR(Service_NWM,
-              "DEAUTH ignored from node {}. Waiting for timeout instead.",
-              node.node_id);
+              "DEAUTH soft handling node={} connected={} spec={}",
+              node.node_id,
+              node.connected,
+              node.spec);
 
-    // ============================================================
-    // Timeout experiment:
-    // Do NOT erase the node.
-    // Do NOT call Reset().
-    // Do NOT signal connection_status_event.
-    //
-    // We want to see if the game disconnects the player naturally
-    // after missing keepalive/heartbeat packets.
-    // ============================================================
+
+    /*
+     * Compatibility mode:
+     *
+     * Do NOT erase node.
+     * Do NOT remove node_lookup.
+     * Do NOT reset node_info.
+     *
+     * Allow HandleSecureDataPacket()
+     * to recover the node when packets return.
+     */
+
+
+    node.reconnecting = true;
+    node.last_seen = std::chrono::steady_clock::now();
+
+
+    /*
+     * Keep connection status alive.
+     */
+    if (connection_status.status == NetworkStatus::ConnectedAsHost) {
+
+        if (!node.spec && node.node_id <= UDSMaxNodes) {
+
+            connection_status.changed_nodes |=
+                1 << (node.node_id - 1);
+
+
+            LOG_ERROR(Service_NWM,
+                      "DEAUTH marked node {} reconnecting",
+                      node.node_id);
+        }
+    }
+
+
+    connection_status_event->Signal();
+
 
     return;
 }
@@ -2196,64 +2226,79 @@ ResultStatus NWM_UDS::DisconnectNetworkHLE() {
                                     return x != boost::none;
                                 }));
 
-
         const u16_le node_id = connection_status.network_node_id;
 
 
+        /*
+         * Host disconnect:
+         * Keep original behavior for now.
+         */
         if (connection_status.status == NetworkStatus::ConnectedAsHost) {
 
             LOG_ERROR(Service_NWM,
                       "DisconnectNetworkHLE HOST RESET");
 
-
             connection_status = {};
             connection_status.status = NetworkStatus::ConnectedAsHost;
             connection_status.network_node_id = node_id;
 
-
             node_map.clear();
             node_lookup.fill(boost::none);
 
-
             LOG_ERROR(Service_NWM,
                       "DisconnectNetworkHLE HOST DONE");
-
 
             return ResultStatus::DisconError_CalledAsHost;
         }
 
 
+        /*
+         * Client disconnect:
+         *
+         * Do NOT destroy room state.
+         * Monster Hunter can recover after temporary packet loss.
+         */
+
         LOG_ERROR(Service_NWM,
-                  "DisconnectNetworkHLE CLIENT RESET");
+                  "DisconnectNetworkHLE CLIENT SOFT RESET");
+
+
+        connection_status.status = NetworkStatus::ConnectedAsClient;
+        connection_status.network_node_id = node_id;
 
 
         /*
-         * Keep current_node information.
-         *
-         * Do not destroy node_info because reconnect may immediately
-         * receive secure packets from the previous session.
+         * Keep:
+         * - node_map
+         * - node_lookup
+         * - node_info
+         * - channel_data
          */
 
-        connection_status = {};
 
-        connection_status.status = NetworkStatus::NotConnected;
-        connection_status.network_node_id = node_id;
+        for (auto& [mac, node] : node_map) {
 
-        connection_status.total_nodes = 0;
-        connection_status.changed_nodes = 0;
-        connection_status.node_bitmask = 0;
+            node.reconnecting = true;
+            node.last_seen = std::chrono::steady_clock::now();
+
+            LOG_ERROR(Service_NWM,
+                      "DisconnectNetworkHLE KEEP NODE id={} connected={}",
+                      node.node_id,
+                      node.connected);
+        }
 
 
-        node_map.clear();
-        node_lookup.fill(boost::none);
-
-
-        node_info.clear();
-        node_info.push_back(current_node);
+        connection_status.changed_nodes |=
+            connection_status.node_bitmask;
 
 
         connection_status_event->Signal();
 
+
+        /*
+         * Still send deauth.
+         * The other side can ignore it through the same soft handling.
+         */
 
         deauth.channel = network_channel;
         deauth.data = {};
@@ -2286,7 +2331,6 @@ ResultStatus NWM_UDS::DisconnectNetworkHLE() {
     {
         std::scoped_lock lock(connection_status_mutex);
 
-
         for (auto& [channel, data] : channel_data) {
 
             LOG_ERROR(Service_NWM,
@@ -2295,16 +2339,9 @@ ResultStatus NWM_UDS::DisconnectNetworkHLE() {
                       data.bind_node_id,
                       data.network_node_id);
 
-
             data.event->Signal();
         }
 
-
-        /*
-         * Keep channel_data alive.
-         *
-         * Fast reconnect can reuse old channel.
-         */
 
         LOG_ERROR(Service_NWM,
                   "DisconnectNetworkHLE KEEP channels={}",
