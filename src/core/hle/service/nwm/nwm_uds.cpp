@@ -737,27 +737,25 @@ void NWM_UDS::HandleSecureDataPacket(const Network::WifiPacket& packet) {
 
     auto channel_info = channel_data.find(secure_data.data_channel);
 
-    if (channel_info == channel_data.end()) {
+if (channel_info == channel_data.end()) {
+
+    LOG_ERROR(Service_NWM,
+              "SECUREDATA UNKNOWN CHANNEL={} status={} node={} total_nodes={} channel_count={}",
+              static_cast<u32>(secure_data.data_channel),
+              static_cast<u32>(connection_status.status),
+              static_cast<u32>(connection_status.network_node_id),
+              connection_status.total_nodes,
+              channel_data.size());
+
+    for (const auto& [ch, data] : channel_data) {
         LOG_ERROR(Service_NWM,
-                  "SECUREDATA unknown channel={}",
-                  static_cast<u32>(secure_data.data_channel));
-        return;
+                  "CHANNEL TABLE ch={} bind={} node={}",
+                  static_cast<u32>(ch),
+                  data.bind_node_id,
+                  data.network_node_id);
     }
 
-    if (channel_info->second.network_node_id != BroadcastNetworkNodeId &&
-        channel_info->second.network_node_id != secure_data.src_node_id) {
-
-        LOG_ERROR(Service_NWM,
-                  "SECUREDATA bind mismatch expected={} got={}",
-                  static_cast<u32>(channel_info->second.network_node_id),
-                  static_cast<u32>(secure_data.src_node_id));
-
-        return;
-    }
-
-    channel_info->second.received_packets.emplace_back(packet.data);
-
-    channel_info->second.event->Signal();
+    return;
 }
 
 void NWM_UDS::StartConnectionSequence(const MacAddress& server) {
@@ -992,66 +990,56 @@ void NWM_UDS::OnWifiPacketReceived(const Network::WifiPacket& packet) {
         return;
     }
 
-    // Only log important packets.
-    if (packet.type == Network::WifiPacket::PacketType::Deauthentication ||
-        packet.type == Network::WifiPacket::PacketType::NodeMap ||
-        packet.type == Network::WifiPacket::PacketType::Authentication ||
-        packet.type == Network::WifiPacket::PacketType::AssociationResponse) {
+    LOG_ERROR(Service_NWM,
+              "RX PACKET type={} ch={} size={} node_map={} channels={}",
+              static_cast<u32>(packet.type),
+              packet.channel,
+              packet.data.size(),
+              node_map.size(),
+              channel_data.size());
 
-        LOG_ERROR(Service_NWM,
-                  "RX type={} ch={} size={} from {:02X}:{:02X}:{:02X}:{:02X}:{:02X}:{:02X}",
-                  static_cast<u32>(packet.type),
-                  packet.channel,
-                  packet.data.size(),
-                  packet.transmitter_address[0],
-                  packet.transmitter_address[1],
-                  packet.transmitter_address[2],
-                  packet.transmitter_address[3],
-                  packet.transmitter_address[4],
-                  packet.transmitter_address[5]);
-    }
-
-    // Refresh node heartbeat.
-    auto node = node_map.find(packet.transmitter_address);
-    if (node != node_map.end()) {
-        node->second.last_seen = std::chrono::steady_clock::now();
-    }
 
     switch (packet.type) {
+
     case Network::WifiPacket::PacketType::Beacon:
         HandleBeaconFrame(packet);
         break;
+
 
     case Network::WifiPacket::PacketType::Authentication:
         LOG_ERROR(Service_NWM, "RX AUTH frame");
         HandleAuthenticationFrame(packet);
         break;
 
+
     case Network::WifiPacket::PacketType::AssociationResponse:
         LOG_ERROR(Service_NWM, "RX ASSOC RESPONSE");
         HandleAssociationResponseFrame(packet);
         break;
 
+
     case Network::WifiPacket::PacketType::Data:
         HandleDataFrame(packet);
         break;
 
+
     case Network::WifiPacket::PacketType::Deauthentication:
         LOG_ERROR(Service_NWM,
-                  "RX DEAUTH from {:02X}:{:02X}:{:02X}:{:02X}:{:02X}:{:02X}",
-                  packet.transmitter_address[0],
-                  packet.transmitter_address[1],
-                  packet.transmitter_address[2],
-                  packet.transmitter_address[3],
-                  packet.transmitter_address[4],
-                  packet.transmitter_address[5]);
-
+                  "RX DEAUTH");
         HandleDeauthenticationFrame(packet);
         break;
 
+
     case Network::WifiPacket::PacketType::NodeMap:
-        LOG_ERROR(Service_NWM, "RX NODEMAP");
+        LOG_ERROR(Service_NWM,
+                  "RX NODEMAP before channels={}",
+                  channel_data.size());
+
         HandleNodeMapPacket(packet);
+
+        LOG_ERROR(Service_NWM,
+                  "RX NODEMAP after channels={}",
+                  channel_data.size());
         break;
     }
 }
@@ -1335,43 +1323,103 @@ void NWM_UDS::GetNodeInformation(Kernel::HLERequestContext& ctx) {
     LOG_DEBUG(Service_NWM, "called");
 }
 
-std::pair<ResultStatus, std::shared_ptr<Kernel::Event>> NWM_UDS::BindHLE(u32 bind_node_id,
-                                                                         u32 recv_buffer_size,
-                                                                         u8 data_channel,
-                                                                         u16 network_node_id) {
+std::pair<ResultStatus, std::shared_ptr<Kernel::Event>> NWM_UDS::BindHLE(
+    u32 bind_node_id,
+    u32 recv_buffer_size,
+    u8 data_channel,
+    u16 network_node_id) {
+
     if (data_channel == 0 || bind_node_id == 0) {
-        LOG_WARNING(Service_NWM, "data_channel = {}, bind_node_id = {}", data_channel,
+        LOG_WARNING(Service_NWM,
+                    "BIND invalid args channel={} bind_node={}",
+                    static_cast<u32>(data_channel),
                     bind_node_id);
+
         return std::make_pair(ResultStatus::BindError_ArgsZero, nullptr);
     }
 
+
     constexpr std::size_t MaxBindNodes = 16;
+
     if (channel_data.size() >= MaxBindNodes) {
-        LOG_WARNING(Service_NWM, "max bind nodes");
+        LOG_WARNING(Service_NWM,
+                    "BIND failed: max bind nodes reached size={}",
+                    channel_data.size());
+
         return std::make_pair(ResultStatus::BindError_MaxBinds, nullptr);
     }
 
+
     constexpr u32 MinRecvBufferSize = 0x5F4;
+
     if (recv_buffer_size < MinRecvBufferSize) {
-        LOG_WARNING(Service_NWM, "MinRecvBufferSize");
-        return std::make_pair(ResultStatus::BindError_RecvBufferTooLarge, nullptr);
+        LOG_WARNING(Service_NWM,
+                    "BIND failed: recv buffer too small size={}",
+                    recv_buffer_size);
+
+        return std::make_pair(ResultStatus::BindError_RecvBufferTooLarge,
+                              nullptr);
     }
 
-    // Create a new event for this bind node.
-    auto event = system.Kernel().CreateEvent(Kernel::ResetType::OneShot,
-                                             "NWM::BindNodeEvent" + std::to_string(bind_node_id));
-    std::scoped_lock lock(connection_status_mutex);
 
-    ASSERT(channel_data.find(data_channel) == channel_data.end());
-    // TODO(B3N30): Support more than one bind node per channel.
-    channel_data[data_channel] = {bind_node_id, data_channel, network_node_id, event};
-    LOG_ERROR(Service_NWM,
-          "BIND channel={} bind_node={} network_node={} total_channels={}",
-          static_cast<u32>(data_channel),
-          bind_node_id,
-          network_node_id,
-          channel_data.size());
-    return std::make_pair(ResultStatus::ResultSuccess, std::move(event));
+    auto event = system.Kernel().CreateEvent(
+        Kernel::ResetType::OneShot,
+        "NWM::BindNodeEvent" + std::to_string(bind_node_id));
+
+
+    {
+        std::scoped_lock lock(connection_status_mutex);
+
+
+        auto old_channel = channel_data.find(data_channel);
+
+        if (old_channel != channel_data.end()) {
+
+            LOG_ERROR(Service_NWM,
+                      "BIND replacing existing channel={} "
+                      "old_bind={} old_node={}",
+                      static_cast<u32>(data_channel),
+                      old_channel->second.bind_node_id,
+                      old_channel->second.network_node_id);
+
+
+            old_channel->second.event->Signal();
+            channel_data.erase(old_channel);
+        }
+
+
+        channel_data[data_channel] = {
+            bind_node_id,
+            data_channel,
+            network_node_id,
+            event
+        };
+
+
+        LOG_ERROR(Service_NWM,
+                  "BIND SUCCESS channel={} bind={} node={} total_channels={}",
+                  static_cast<u32>(data_channel),
+                  bind_node_id,
+                  network_node_id,
+                  channel_data.size());
+
+
+        LOG_ERROR(Service_NWM,
+                  "BIND CHANNEL TABLE:");
+
+        for (const auto& [ch, data] : channel_data) {
+
+            LOG_ERROR(Service_NWM,
+                      "  ch={} bind={} node={}",
+                      static_cast<u32>(ch),
+                      data.bind_node_id,
+                      data.network_node_id);
+        }
+    }
+
+
+    return std::make_pair(ResultStatus::ResultSuccess,
+                          std::move(event));
 }
 
 void NWM_UDS::Bind(Kernel::HLERequestContext& ctx) {
@@ -2042,17 +2090,11 @@ ResultStatus NWM_UDS::DisconnectNetworkHLE() {
     using Network::WifiPacket;
 
     LOG_ERROR(Service_NWM,
-              "DisconnectNetworkHLE() ENTER "
-              "status={} total_nodes={} node_id={} host_mac={:02X}:{:02X}:{:02X}:{:02X}:{:02X}:{:02X}",
+              "DisconnectNetworkHLE ENTER status={} node={} total_nodes={} channels={}",
               static_cast<u32>(connection_status.status),
-              connection_status.total_nodes,
               static_cast<u16>(connection_status.network_node_id),
-              network_info.host_mac_address[0],
-              network_info.host_mac_address[1],
-              network_info.host_mac_address[2],
-              network_info.host_mac_address[3],
-              network_info.host_mac_address[4],
-              network_info.host_mac_address[5]);
+              connection_status.total_nodes,
+              channel_data.size());
 
     WifiPacket deauth;
 
@@ -2060,79 +2102,110 @@ ResultStatus NWM_UDS::DisconnectNetworkHLE() {
         std::scoped_lock lock(connection_status_mutex);
 
         LOG_ERROR(Service_NWM,
-                  "DisconnectNetworkHLE() LOCKED "
-                  "status={} node_map={} total_nodes={}",
-                  static_cast<u32>(connection_status.status),
+                  "DisconnectNetworkHLE LOCKED node_map={} lookup_ready={}",
                   node_map.size(),
-                  connection_status.total_nodes);
+                  std::count_if(node_lookup.begin(),
+                                node_lookup.end(),
+                                [](const auto& x) {
+                                    return x != boost::none;
+                                }));
+
 
         if (connection_status.status == NetworkStatus::ConnectedAsHost) {
-            LOG_ERROR(Service_NWM,
-                      "DisconnectNetworkHLE() CALLED AS HOST");
 
-            u16_le tmp_node_id = connection_status.network_node_id;
+            LOG_ERROR(Service_NWM,
+                      "DisconnectNetworkHLE HOST RESET");
+
+            const u16_le node_id = connection_status.network_node_id;
 
             connection_status = {};
             connection_status.status = NetworkStatus::ConnectedAsHost;
-            connection_status.network_node_id = tmp_node_id;
+            connection_status.network_node_id = node_id;
 
             node_map.clear();
             node_lookup.fill(boost::none);
 
             LOG_ERROR(Service_NWM,
-                      "DisconnectNetworkHLE() HOST RESET COMPLETE");
+                      "DisconnectNetworkHLE HOST DONE channels_kept={}",
+                      channel_data.size());
 
             return ResultStatus::DisconError_CalledAsHost;
         }
 
-        LOG_ERROR(Service_NWM,
-                  "DisconnectNetworkHLE() CLIENT/SPECTATOR DISCONNECT");
 
-        u16_le tmp_node_id = connection_status.network_node_id;
+        LOG_ERROR(Service_NWM,
+                  "DisconnectNetworkHLE CLIENT RESET");
+
+
+        const u16_le node_id = connection_status.network_node_id;
+
 
         connection_status = {};
         connection_status.status = NetworkStatus::NotConnected;
-        connection_status.network_node_id = tmp_node_id;
+        connection_status.network_node_id = node_id;
+
 
         node_map.clear();
         node_lookup.fill(boost::none);
 
+
         connection_status_event->Signal();
+
 
         deauth.channel = network_channel;
         deauth.data = {};
         deauth.destination_address = network_info.host_mac_address;
         deauth.type = WifiPacket::PacketType::Deauthentication;
 
+
         LOG_ERROR(Service_NWM,
-                  "DisconnectNetworkHLE() Prepared DEAUTH packet");
+                  "DisconnectNetworkHLE prepared DEAUTH");
     }
 
+
     LOG_ERROR(Service_NWM,
-              "DisconnectNetworkHLE() >>> Sending DEAUTH to "
-              "{:02X}:{:02X}:{:02X}:{:02X}:{:02X}:{:02X}",
-              deauth.destination_address[0],
-              deauth.destination_address[1],
-              deauth.destination_address[2],
-              deauth.destination_address[3],
-              deauth.destination_address[4],
-              deauth.destination_address[5]);
+              "DisconnectNetworkHLE sending DEAUTH");
+
 
     SendPacket(deauth);
 
-    LOG_ERROR(Service_NWM,
-              "DisconnectNetworkHLE() DEAUTH SENT");
 
-    for (auto& bind_node : channel_data) {
+    LOG_ERROR(Service_NWM,
+              "DisconnectNetworkHLE DEAUTH sent");
+
+
+    {
+        std::scoped_lock lock(connection_status_mutex);
+
+        for (auto& [channel, data] : channel_data) {
+
+            LOG_ERROR(Service_NWM,
+                      "DisconnectNetworkHLE signaling channel={} bind={} node={}",
+                      static_cast<u32>(channel),
+                      data.bind_node_id,
+                      data.network_node_id);
+
+            data.event->Signal();
+        }
+
+
+        /*
+         * Do not immediately erase channels.
+         *
+         * The game may reconnect very quickly and still send
+         * secure packets using the old bind.
+         *
+         * Let Bind()/new connection replace them.
+         */
+
         LOG_ERROR(Service_NWM,
-                  "DisconnectNetworkHLE() Signaling channel event");
-        bind_node.second.event->Signal();
+                  "DisconnectNetworkHLE leaving channel_data size={}",
+                  channel_data.size());
     }
 
-    channel_data.clear();
 
     LOG_ERROR(Service_NWM,
-              "DisconnectNetworkHLE() EXIT");
+              "DisconnectNetworkHLE EXIT");
 
     return ResultStatus::ResultSuccess;
 }
