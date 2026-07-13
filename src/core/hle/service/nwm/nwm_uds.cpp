@@ -1507,34 +1507,21 @@ std::pair<ResultStatus, std::shared_ptr<Kernel::Event>> NWM_UDS::BindHLE(
 
     if (data_channel == 0 || bind_node_id == 0) {
         LOG_WARNING(Service_NWM,
-                    "BIND invalid args channel={} bind_node={}",
+                    "BindHLE invalid args channel={} bind_node={}",
                     static_cast<u32>(data_channel),
                     bind_node_id);
 
-        return std::make_pair(ResultStatus::BindError_ArgsZero, nullptr);
+        return {ResultStatus::BindError_ArgsZero, nullptr};
     }
-
-
-    constexpr std::size_t MaxBindNodes = 16;
-
-    if (channel_data.size() >= MaxBindNodes) {
-        LOG_WARNING(Service_NWM,
-                    "BIND failed: max bind nodes reached size={}",
-                    channel_data.size());
-
-        return std::make_pair(ResultStatus::BindError_MaxBinds, nullptr);
-    }
-
 
     constexpr u32 MinRecvBufferSize = 0x5F4;
 
     if (recv_buffer_size < MinRecvBufferSize) {
         LOG_WARNING(Service_NWM,
-                    "BIND failed: recv buffer too small size={}",
+                    "BindHLE recv buffer too small size={}",
                     recv_buffer_size);
 
-        return std::make_pair(ResultStatus::BindError_RecvBufferTooLarge,
-                              nullptr);
+        return {ResultStatus::BindError_RecvBufferTooLarge, nullptr};
     }
 
 
@@ -1547,55 +1534,40 @@ std::pair<ResultStatus, std::shared_ptr<Kernel::Event>> NWM_UDS::BindHLE(
         std::scoped_lock lock(connection_status_mutex);
 
 
-        auto old_channel = channel_data.find(data_channel);
+        auto itr = channel_data.find(data_channel);
 
-        if (old_channel != channel_data.end()) {
+        if (itr != channel_data.end()) {
 
-            LOG_ERROR(Service_NWM,
-                      "BIND replacing existing channel={} "
-                      "old_bind={} old_node={}",
-                      static_cast<u32>(data_channel),
-                      old_channel->second.bind_node_id,
-                      old_channel->second.network_node_id);
+            LOG_WARNING(Service_NWM,
+                        "BindHLE channel already exists channel={} old_bind={} old_node={}",
+                        static_cast<u32>(data_channel),
+                        itr->second.bind_node_id,
+                        itr->second.network_node_id);
 
-
-            old_channel->second.event->Signal();
-            channel_data.erase(old_channel);
+            return {ResultStatus::BindError_AlreadyBound, nullptr};
         }
 
 
-        channel_data[data_channel] = {
-            bind_node_id,
+        channel_data.emplace(
             data_channel,
-            network_node_id,
-            event
-        };
+            ChannelData{
+                bind_node_id,
+                data_channel,
+                network_node_id,
+                event
+            });
 
 
-        LOG_ERROR(Service_NWM,
-                  "BIND SUCCESS channel={} bind={} node={} total_channels={}",
+        LOG_DEBUG(Service_NWM,
+                  "BindHLE success channel={} bind={} node={} channels={}",
                   static_cast<u32>(data_channel),
                   bind_node_id,
                   network_node_id,
                   channel_data.size());
-
-
-        LOG_ERROR(Service_NWM,
-                  "BIND CHANNEL TABLE:");
-
-        for (const auto& [ch, data] : channel_data) {
-
-            LOG_ERROR(Service_NWM,
-                      "  ch={} bind={} node={}",
-                      static_cast<u32>(ch),
-                      data.bind_node_id,
-                      data.network_node_id);
-        }
     }
 
 
-    return std::make_pair(ResultStatus::ResultSuccess,
-                          std::move(event));
+    return {ResultStatus::ResultSuccess, std::move(event)};
 }
 
 void NWM_UDS::Bind(Kernel::HLERequestContext& ctx) {
@@ -1636,18 +1608,38 @@ void NWM_UDS::Bind(Kernel::HLERequestContext& ctx) {
 }
 
 void NWM_UDS::UnbindHLE(u32 bind_node_id) {
+
     std::scoped_lock lock(connection_status_mutex);
 
-    auto itr =
-        std::find_if(channel_data.begin(), channel_data.end(), [bind_node_id](const auto& data) {
-            return data.second.bind_node_id == bind_node_id;
+
+    auto itr = std::find_if(
+        channel_data.begin(),
+        channel_data.end(),
+        [bind_node_id](const auto& pair) {
+            return pair.second.bind_node_id == bind_node_id;
         });
 
-    if (itr != channel_data.end()) {
-        // TODO(B3N30): Check out what Unbind does if the bind_node_id wasn't in the map
-        itr->second.event->Signal();
-        channel_data.erase(itr);
+
+    if (itr == channel_data.end()) {
+
+        LOG_WARNING(Service_NWM,
+                    "UnbindHLE bind node not found bind={}",
+                    bind_node_id);
+
+        return;
     }
+
+
+    LOG_DEBUG(Service_NWM,
+              "UnbindHLE removing channel={} bind={} node={}",
+              static_cast<u32>(itr->first),
+              itr->second.bind_node_id,
+              itr->second.network_node_id);
+
+
+    itr->second.event->Signal();
+
+    channel_data.erase(itr);
 }
 
 void NWM_UDS::Unbind(Kernel::HLERequestContext& ctx) {
@@ -2273,6 +2265,7 @@ ResultStatus NWM_UDS::DisconnectNetworkHLE() {
               channel_data.size());
 
     WifiPacket deauth;
+    bool send_deauth = false;
 
     {
         std::scoped_lock lock(connection_status_mutex);
@@ -2290,8 +2283,7 @@ ResultStatus NWM_UDS::DisconnectNetworkHLE() {
 
 
         /*
-         * Host disconnect:
-         * Keep original behavior for now.
+         * Host disconnect
          */
         if (connection_status.status == NetworkStatus::ConnectedAsHost) {
 
@@ -2299,55 +2291,71 @@ ResultStatus NWM_UDS::DisconnectNetworkHLE() {
                       "DisconnectNetworkHLE HOST RESET");
 
             connection_status = {};
-            connection_status.status = NetworkStatus::ConnectedAsHost;
+            connection_status.status =
+                NetworkStatus::ConnectedAsHost;
             connection_status.network_node_id = node_id;
+
 
             node_map.clear();
             node_lookup.fill(boost::none);
+            channel_data.clear();
+
 
             LOG_ERROR(Service_NWM,
                       "DisconnectNetworkHLE HOST DONE");
+
 
             return ResultStatus::DisconError_CalledAsHost;
         }
 
 
         /*
-         * Client disconnect:
+         * Client disconnect
          *
-         * Do NOT destroy room state.
-         * Monster Hunter can recover after temporary packet loss.
+         * Treat this as temporary.
+         * Do not destroy nodes.
+         * Do not destroy channels.
+         * Do not force deauthentication.
          */
+
 
         LOG_ERROR(Service_NWM,
                   "DisconnectNetworkHLE CLIENT SOFT RESET");
 
 
-        connection_status.status = NetworkStatus::ConnectedAsClient;
+        connection_status.status =
+            NetworkStatus::ConnectedAsClient;
+
         connection_status.network_node_id = node_id;
-
-
-        /*
-         * Keep:
-         * - node_map
-         * - node_lookup
-         * - node_info
-         * - channel_data
-         */
 
 
         for (auto& [mac, node] : node_map) {
 
-            node.reconnecting = true;
-            node.last_seen = std::chrono::steady_clock::now();
-
             LOG_ERROR(Service_NWM,
-                      "DisconnectNetworkHLE KEEP NODE id={} connected={}",
+                      "DisconnectNetworkHLE KEEP NODE id={} connected={} reconnecting={}",
                       node.node_id,
-                      node.connected);
+                      node.connected,
+                      node.reconnecting);
+
+
+            /*
+             * Only mark disconnected nodes.
+             * Do not break active nodes.
+             */
+            if (!node.connected) {
+                node.reconnecting = true;
+            }
+
+
+            node.last_seen =
+                std::chrono::steady_clock::now();
         }
 
 
+        /*
+         * Tell the game state changed,
+         * but keep channels.
+         */
         connection_status.changed_nodes |=
             connection_status.node_bitmask;
 
@@ -2356,62 +2364,45 @@ ResultStatus NWM_UDS::DisconnectNetworkHLE() {
 
 
         /*
-         * Still send deauth.
-         * The other side can ignore it through the same soft handling.
+         * Keep channel events alive.
          */
-
-        deauth.channel = network_channel;
-        deauth.data = {};
-        deauth.destination_address = network_info.host_mac_address;
-        deauth.type = WifiPacket::PacketType::Deauthentication;
-
-
-        LOG_ERROR(Service_NWM,
-                  "DisconnectNetworkHLE prepared DEAUTH host={:02X}:{:02X}:{:02X}:{:02X}:{:02X}:{:02X}",
-                  network_info.host_mac_address[0],
-                  network_info.host_mac_address[1],
-                  network_info.host_mac_address[2],
-                  network_info.host_mac_address[3],
-                  network_info.host_mac_address[4],
-                  network_info.host_mac_address[5]);
-    }
-
-
-    LOG_ERROR(Service_NWM,
-              "DisconnectNetworkHLE sending DEAUTH");
-
-
-    SendPacket(deauth);
-
-
-    LOG_ERROR(Service_NWM,
-              "DisconnectNetworkHLE DEAUTH sent");
-
-
-    {
-        std::scoped_lock lock(connection_status_mutex);
-
         for (auto& [channel, data] : channel_data) {
 
             LOG_ERROR(Service_NWM,
-                      "DisconnectNetworkHLE signaling channel={} bind={} node={}",
+                      "DisconnectNetworkHLE SIGNAL CHANNEL={} bind={} node={}",
                       static_cast<u32>(channel),
                       data.bind_node_id,
                       data.network_node_id);
+
 
             data.event->Signal();
         }
 
 
         LOG_ERROR(Service_NWM,
-                  "DisconnectNetworkHLE KEEP channels={}",
+                  "DisconnectNetworkHLE CHANNELS PRESERVED count={}",
                   channel_data.size());
     }
 
 
-    LOG_ERROR(Service_NWM,
-              "DisconnectNetworkHLE EXIT");
+    /*
+     * No DEAUTH here.
+     *
+     * Sending DEAUTH immediately after a soft reset
+     * can create:
+     *
+     * node exists
+     * channel gone
+     * connection_status connected
+     *
+     * which causes:
+     *
+     * SECUREDATA UNKNOWN CHANNEL
+     */
 
+
+    LOG_ERROR(Service_NWM,
+              "DisconnectNetworkHLE EXIT SOFT");
 
     return ResultStatus::ResultSuccess;
 }
