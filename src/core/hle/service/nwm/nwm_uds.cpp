@@ -725,6 +725,7 @@ void NWM_UDS::HandleSecureDataPacket(const Network::WifiPacket& packet) {
 
     auto* node = FindNodeByNodeId(secure_data.src_node_id);
 
+    // Recover node after reconnect/desync
     if (!node) {
         LOG_ERROR(Service_NWM,
                   "RECONNECT: unknown source node id={} recovering",
@@ -738,10 +739,8 @@ void NWM_UDS::HandleSecureDataPacket(const Network::WifiPacket& packet) {
         recovered_node.node_id = secure_data.src_node_id;
         recovered_node.last_seen = std::chrono::steady_clock::now();
 
-        if (secure_data.src_node_id <= UDSMaxNodes) {
-            node_lookup[static_cast<u16>(secure_data.src_node_id)] =
-                packet.transmitter_address;
-        }
+        node_lookup[static_cast<u16>(secure_data.src_node_id)] =
+            packet.transmitter_address;
 
         LOG_ERROR(Service_NWM,
                   "RECONNECT: restored node id={} mac={:02X}:{:02X}:{:02X}:{:02X}:{:02X}:{:02X}",
@@ -756,7 +755,6 @@ void NWM_UDS::HandleSecureDataPacket(const Network::WifiPacket& packet) {
         node = &recovered_node;
     }
 
-
     node->last_seen = std::chrono::steady_clock::now();
     node->connected = true;
     node->reconnecting = false;
@@ -767,33 +765,23 @@ void NWM_UDS::HandleSecureDataPacket(const Network::WifiPacket& packet) {
         connection_status.status != NetworkStatus::ConnectedAsSpectator) {
 
         LOG_ERROR(Service_NWM,
-                  "SECUREDATA DROP: not connected status={}",
+                  "SECUREDATA DROP: invalid status={}",
                   static_cast<u32>(connection_status.status));
-
         return;
     }
 
 
+    // Ignore our own packets
     if (secure_data.src_node_id == connection_status.network_node_id) {
         return;
     }
 
 
+    // Packet is not for us
     if (secure_data.dest_node_id != connection_status.network_node_id &&
         secure_data.dest_node_id != BroadcastNetworkNodeId) {
 
-        if (packet.destination_address != Network::BroadcastMac &&
-            connection_status.status != NetworkStatus::ConnectedAsHost) {
-
-            LOG_ERROR(Service_NWM,
-                      "SECUREDATA DROP: wrong destination dst={} my_node={}",
-                      static_cast<u32>(secure_data.dest_node_id),
-                      static_cast<u32>(connection_status.network_node_id));
-
-            return;
-        }
-
-
+        // Host forwards broadcast traffic
         if (connection_status.status == NetworkStatus::ConnectedAsHost &&
             secure_data.dest_node_id != BroadcastNetworkNodeId) {
 
@@ -816,38 +804,28 @@ void NWM_UDS::HandleSecureDataPacket(const Network::WifiPacket& packet) {
     if (channel_info == channel_data.end()) {
 
         LOG_ERROR(Service_NWM,
-                  "SECUREDATA UNKNOWN CHANNEL={} "
-                  "status={} node={} total_nodes={} channel_count={}",
+                  "SECUREDATA UNKNOWN CHANNEL={} src={} dst={} status={} channels={}",
                   static_cast<u32>(secure_data.data_channel),
+                  static_cast<u32>(secure_data.src_node_id),
+                  static_cast<u32>(secure_data.dest_node_id),
                   static_cast<u32>(connection_status.status),
-                  static_cast<u32>(connection_status.network_node_id),
-                  connection_status.total_nodes,
                   channel_data.size());
-
-
-        for (const auto& [ch, data] : channel_data) {
-
-            LOG_ERROR(Service_NWM,
-                      "CHANNEL TABLE ch={} bind={} node={}",
-                      static_cast<u32>(ch),
-                      data.bind_node_id,
-                      data.network_node_id);
-        }
-
 
         return;
     }
 
 
+    // Repair channel ownership after reconnect
     if (channel_info->second.network_node_id != BroadcastNetworkNodeId &&
         channel_info->second.network_node_id != secure_data.src_node_id) {
 
         LOG_ERROR(Service_NWM,
-                  "SECUREDATA BIND MISMATCH expected={} got={}",
+                  "SECUREDATA REPAIR CHANNEL={} old_node={} new_node={}",
+                  static_cast<u32>(secure_data.data_channel),
                   static_cast<u32>(channel_info->second.network_node_id),
                   static_cast<u32>(secure_data.src_node_id));
 
-        return;
+        channel_info->second.network_node_id = secure_data.src_node_id;
     }
 
 
@@ -855,8 +833,7 @@ void NWM_UDS::HandleSecureDataPacket(const Network::WifiPacket& packet) {
 
 
     LOG_ERROR(Service_NWM,
-              "SECUREDATA QUEUED "
-              "channel={} queue_size={} src={} dst={} size={}",
+              "SECUREDATA QUEUED channel={} queue={} src={} dst={} size={}",
               static_cast<u32>(secure_data.data_channel),
               channel_info->second.received_packets.size(),
               static_cast<u32>(secure_data.src_node_id),
