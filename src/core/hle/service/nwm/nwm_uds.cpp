@@ -940,12 +940,28 @@ void NWM_UDS::HandleAuthenticationFrame(const Network::WifiPacket& packet) {
                       node.reconnecting);
 
 
-            // Keep node id.
-            // Only restore connection state.
+            /*
+             * Do not create a new node.
+             * Preserve node_id.
+             * Restore lookup table.
+             */
 
-            node.connected = true;
-            node.reconnecting = false;
-            node.last_seen = std::chrono::steady_clock::now();
+            if (node.node_id > 0 &&
+                node.node_id < node_lookup.size()) {
+
+                node_lookup[node.node_id] =
+                    packet.transmitter_address;
+
+                LOG_ERROR(Service_NWM,
+                          "AUTH RECONNECT: restored lookup id={}",
+                          node.node_id);
+            }
+
+
+            node.connected = false;
+            node.reconnecting = true;
+            node.last_seen =
+                std::chrono::steady_clock::now();
 
 
             if (node.node_id > 0 &&
@@ -973,18 +989,32 @@ void NWM_UDS::HandleAuthenticationFrame(const Network::WifiPacket& packet) {
 
             auto& node = node_map[packet.transmitter_address];
 
-            node.connected = true;
+
+            node.node_id =
+                GetNextAvailableNodeId();
+
+            node.connected = false;
             node.reconnecting = false;
             node.spec = false;
-            node.node_id = GetNextAvailableNodeId();
-            node.last_seen = std::chrono::steady_clock::now();
+
+            node.last_seen =
+                std::chrono::steady_clock::now();
 
 
-            node_lookup[node.node_id] =
-                packet.transmitter_address;
+            if (node.node_id > 0 &&
+                node.node_id < node_lookup.size()) {
+
+                node_lookup[node.node_id] =
+                    packet.transmitter_address;
+
+                LOG_ERROR(Service_NWM,
+                          "AUTH NEW NODE_LOOKUP insert id={}",
+                          node.node_id);
+            }
 
 
             connection_status.total_nodes++;
+
 
             connection_status.changed_nodes |=
                 static_cast<u16>(1 << (node.node_id - 1));
@@ -1021,7 +1051,7 @@ void NWM_UDS::HandleAuthenticationFrame(const Network::WifiPacket& packet) {
 
     LOG_ERROR(Service_NWM,
               "AUTH END");
-}            
+}
 
 void NWM_UDS::HandleDeauthenticationFrame(const Network::WifiPacket& packet) {
     LOG_ERROR(Service_NWM,
