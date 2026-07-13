@@ -1768,14 +1768,7 @@ void NWM_UDS::PullPacket(Kernel::HLERequestContext& ctx) {
     u32 max_out_buff_size = rp.Pop<u32>();
 
     std::vector<u8> output_buffer;
-    SecureDataHeader secure_data;
-
-    LOG_ERROR(Service_NWM,
-              "IPC PullPacket bind={} max_size={} aligned={}",
-              bind_node_id,
-              max_out_buff_size,
-              max_out_buff_size_aligned);
-
+    SecureDataHeader secure_data{};
 
     auto ret = PullPacketHLE(bind_node_id,
                              max_out_buff_size,
@@ -1783,58 +1776,60 @@ void NWM_UDS::PullPacket(Kernel::HLERequestContext& ctx) {
                              output_buffer,
                              &secure_data);
 
-
-    if (ret.has_value()) {
+    if (ret.has_value() && *ret > 0) {
         LOG_ERROR(Service_NWM,
-                  "PullPacket SUCCESS size={} src_node={} buffer={}",
+                  "PullPacket RX size={} src_node={} bind={} buffer={}",
                   *ret,
                   static_cast<u32>(secure_data.src_node_id),
+                  bind_node_id,
                   output_buffer.size());
-    } else {
+    } else if (!ret.has_value()) {
         LOG_ERROR(Service_NWM,
-                  "PullPacket FAILED error={}",
+                  "PullPacket FAILED bind={} error={}",
+                  bind_node_id,
                   static_cast<u32>(ret.error()));
     }
 
+    if (!ret.has_value()) {
+        switch (ret.error()) {
+        case ResultStatus::RecvError_NotConnected: {
+            IPC::RequestBuilder rb = rp.MakeBuilder(1, 0);
+            rb.Push(Result(ErrorDescription::NotAuthorized,
+                           ErrorModule::UDS,
+                           ErrorSummary::InvalidState,
+                           ErrorLevel::Status));
+            return;
+        }
 
-    switch (ret.error()) {
-    case ResultStatus::RecvError_NotConnected: {
-        IPC::RequestBuilder rb = rp.MakeBuilder(1, 0);
-        rb.Push(Result(ErrorDescription::NotAuthorized,
-                       ErrorModule::UDS,
-                       ErrorSummary::InvalidState,
-                       ErrorLevel::Status));
-        return;
+        case ResultStatus::RecvError_BadNode: {
+            IPC::RequestBuilder rb = rp.MakeBuilder(1, 0);
+            rb.Push(Result(ErrorDescription::NotAuthorized,
+                           ErrorModule::UDS,
+                           ErrorSummary::InvalidState,
+                           ErrorLevel::Status));
+            return;
+        }
+
+        case ResultStatus::RecvError_PacketSizeTooLarge: {
+            IPC::RequestBuilder rb = rp.MakeBuilder(1, 0);
+            rb.Push(Result(ErrorDescription::TooLarge,
+                           ErrorModule::UDS,
+                           ErrorSummary::WrongArgument,
+                           ErrorLevel::Usage));
+            return;
+        }
+
+        default:
+            break;
+        }
     }
-
-    case ResultStatus::RecvError_BadNode: {
-        IPC::RequestBuilder rb = rp.MakeBuilder(1, 0);
-        rb.Push(Result(ErrorDescription::NotAuthorized,
-                       ErrorModule::UDS,
-                       ErrorSummary::InvalidState,
-                       ErrorLevel::Status));
-        return;
-    }
-
-    case ResultStatus::RecvError_PacketSizeTooLarge: {
-        IPC::RequestBuilder rb = rp.MakeBuilder(1, 0);
-        rb.Push(Result(ErrorDescription::TooLarge,
-                       ErrorModule::UDS,
-                       ErrorSummary::WrongArgument,
-                       ErrorLevel::Usage));
-        return;
-    }
-
-    default:
-        break;
-    }
-
 
     IPC::RequestBuilder rb = rp.MakeBuilder(3, 2);
 
     rb.Push(ResultSuccess);
-    rb.Push<u32>(*ret);
+    rb.Push<u32>(ret.value_or(0));
     rb.Push<u16>(secure_data.src_node_id);
+
     rb.PushStaticBuffer(std::move(output_buffer), 0);
 }
 
@@ -1848,14 +1843,6 @@ Common::Expected<int, ResultStatus> NWM_UDS::PullPacketHLE(
     u32 buff_size = std::min<u32>(max_out_buff_size_aligned, 0x172) << 2;
 
     std::scoped_lock lock(connection_status_mutex);
-
-
-    LOG_ERROR(Service_NWM,
-              "PullPacketHLE ENTER bind={} status={} node={} total_nodes={}",
-              bind_node_id,
-              static_cast<u32>(connection_status.status),
-              static_cast<u32>(connection_status.network_node_id),
-              connection_status.total_nodes);
 
 
     if (connection_status.status != NetworkStatus::ConnectedAsHost &&
@@ -1881,30 +1868,24 @@ Common::Expected<int, ResultStatus> NWM_UDS::PullPacketHLE(
     if (channel == channel_data.end()) {
 
         LOG_ERROR(Service_NWM,
-                  "PullPacketHLE FAIL: channel not found bind={}",
+                  "PullPacketHLE FAIL: channel missing bind={}",
                   bind_node_id);
 
         return Common::Unexpected(ResultStatus::RecvError_BadNode);
     }
 
 
-    LOG_ERROR(Service_NWM,
-          "PullPacket channel={} queue_size={}",
-          static_cast<u32>(channel->first),
-          channel->second.received_packets.size());
-
-
+    // No packet available.
+    // Do not log this. The game polls this constantly.
     if (channel->second.received_packets.empty()) {
-
-        LOG_ERROR(Service_NWM,
-                  "PullPacketHLE EMPTY QUEUE");
 
         output_buffer.resize(buff_size);
         return int(0);
     }
 
 
-    const auto& next_packet = channel->second.received_packets.front();
+    const auto& next_packet =
+        channel->second.received_packets.front();
 
 
     auto secure_data = ParseSecureDataHeader(next_packet);
@@ -1912,11 +1893,12 @@ Common::Expected<int, ResultStatus> NWM_UDS::PullPacketHLE(
 
 
     LOG_ERROR(Service_NWM,
-              "PullPacketHLE PACKET src={} dst={} channel={} size={}",
+              "PullPacket RX src={} dst={} channel={} size={} bind={}",
               static_cast<u32>(secure_data.src_node_id),
               static_cast<u32>(secure_data.dest_node_id),
               static_cast<u32>(secure_data.data_channel),
-              data_size);
+              data_size,
+              bind_node_id);
 
 
     if (secure_data_out) {
@@ -1927,7 +1909,7 @@ Common::Expected<int, ResultStatus> NWM_UDS::PullPacketHLE(
     if (data_size > max_out_buff_size) {
 
         LOG_ERROR(Service_NWM,
-                  "PullPacketHLE FAIL: packet too large {} > {}",
+                  "PullPacketHLE FAIL: packet too large size={} max={}",
                   data_size,
                   max_out_buff_size);
 
@@ -1939,7 +1921,8 @@ Common::Expected<int, ResultStatus> NWM_UDS::PullPacketHLE(
 
 
     std::memcpy(output_buffer.data(),
-                next_packet.data() + sizeof(LLCHeader) + sizeof(SecureDataHeader),
+                next_packet.data() + sizeof(LLCHeader) +
+                    sizeof(SecureDataHeader),
                 data_size);
 
 
@@ -1947,7 +1930,7 @@ Common::Expected<int, ResultStatus> NWM_UDS::PullPacketHLE(
 
 
     LOG_ERROR(Service_NWM,
-              "PullPacketHLE SUCCESS remaining_queue={}",
+              "PullPacketHLE DONE remaining={}",
               channel->second.received_packets.size());
 
 
