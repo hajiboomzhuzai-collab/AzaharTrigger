@@ -1241,15 +1241,24 @@ boost::optional<Network::MacAddress> NWM_UDS::GetNodeMacAddress(u16 dest_node_id
 }
 
 void NWM_UDS::ShutdownHLE() {
+    LOG_ERROR(Service_NWM,
+              "ShutdownHLE CALLED channels={} nodes={}",
+              channel_data.size(),
+              node_map.size());
+
     initialized = false;
 
     for (auto& bind_node : channel_data) {
         bind_node.second.event->Signal();
     }
+
     channel_data.clear();
     node_map.clear();
 
     recv_buffer_memory.reset();
+
+    LOG_ERROR(Service_NWM,
+              "ShutdownHLE FINISHED");
 }
 
 void NWM_UDS::Shutdown(Kernel::HLERequestContext& ctx) {
@@ -1355,6 +1364,9 @@ ResultVal<std::shared_ptr<Kernel::Event>> NWM_UDS::Initialize(
         connection_status.status = NetworkStatus::NotConnected;
         node_info.clear();
         node_info.push_back(current_node);
+        LOG_ERROR(Service_NWM,
+          "Initialize CLEARING CHANNELS old_size={}",
+          channel_data.size());
         channel_data.clear();
     }
 
