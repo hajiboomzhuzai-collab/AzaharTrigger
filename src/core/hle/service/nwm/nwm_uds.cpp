@@ -2200,9 +2200,14 @@ ResultStatus NWM_UDS::DisconnectNetworkHLE() {
         node_map.clear();
         node_lookup.fill(boost::none);
 
+        node_info.clear();
+        node_info.push_back(current_node);
+
+        connection_status.total_nodes = 0;
+        connection_status.network_node_bitmask = 0;
+        connection_status.changed_nodes = 0;
 
         connection_status_event->Signal();
-
 
         deauth.channel = network_channel;
         deauth.data = {};
