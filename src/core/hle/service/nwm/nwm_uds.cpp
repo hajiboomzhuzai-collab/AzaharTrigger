@@ -155,32 +155,16 @@ void SendPacket(Network::WifiPacket& packet) {
                           packet.transmitter_address[5]);
             }
 
-            // ★ Retry-on-drop (MH4U hates failed sends)
-            bool sent = room_member->SendWifiPacket(packet);
-            if (!sent) {
-                LOG_ERROR(Service_NWM,
-                          "TX RETRY: first attempt failed, retrying...");
-                std::this_thread::sleep_for(std::chrono::milliseconds(2));
-                sent = room_member->SendWifiPacket(packet);
+            // ★ Azahar: SendWifiPacket returns void, so we just send twice as a "soft retry"
+            room_member->SendWifiPacket(packet);
+            std::this_thread::sleep_for(std::chrono::milliseconds(2));
+            room_member->SendWifiPacket(packet);
 
-                if (!sent) {
-                    LOG_ERROR(Service_NWM,
-                              "TX FAILED after retry type={} size={}",
-                              static_cast<u32>(packet.type),
-                              packet.data.size());
-                } else {
-                    LOG_ERROR(Service_NWM,
-                              "TX RETRY SUCCESS type={} size={}",
-                              static_cast<u32>(packet.type),
-                              packet.data.size());
-                }
-            } else {
-                if (important_packet) {
-                    LOG_ERROR(Service_NWM,
-                              "TX SENT type={} size={}",
-                              static_cast<u32>(packet.type),
-                              packet.data.size());
-                }
+            if (important_packet) {
+                LOG_ERROR(Service_NWM,
+                          "TX SENT (double-send) type={} size={}",
+                          static_cast<u32>(packet.type),
+                          packet.data.size());
             }
 
         } else {
