@@ -2281,6 +2281,57 @@ void NWM_UDS::StartConnectionSequence(const MacAddress& server) {
     LOG_ERROR(Service_NWM, "StartConnectionSequence: initialized (auth SEQ1 + watchdog)");
 }
 
+void NWM_UDS::ReconnectWatchdog() {
+    LOG_ERROR(Service_NWM, "ReconnectWatchdog: started");
+
+    while (true) {
+        std::this_thread::sleep_for(std::chrono::seconds(1));
+
+        std::scoped_lock lock(connection_status_mutex);
+
+        // Only run when connected
+        if (connection_status.status != NetworkStatus::ConnectedAsHost &&
+            connection_status.status != NetworkStatus::ConnectedAsClient &&
+            connection_status.status != NetworkStatus::ConnectedAsSpectator) {
+            continue;
+        }
+
+        auto now = std::chrono::steady_clock::now();
+
+        for (auto& [mac, node] : node_map) {
+            if (!node.reconnecting)
+                continue;
+
+            auto diff = std::chrono::duration_cast<std::chrono::milliseconds>(
+                            now - node.last_seen).count();
+
+            if (diff < 1000)
+                continue;
+
+            LOG_ERROR(Service_NWM,
+                      "WATCHDOG: node_id={} reconnecting ({}ms), sending EAPoL-Start",
+                      node.node_id,
+                      diff);
+
+            Network::WifiPacket pkt;
+            pkt.channel = network_channel;
+            pkt.type = Network::WifiPacket::PacketType::Data;
+            pkt.destination_address = mac;
+            pkt.transmitter_address = GetMacAddress();
+
+            pkt.data = GenerateEAPoLStartFrame(
+                node.node_id,   // association_id
+                conn_type,      // ConnectionType
+                current_node    // NodeInfo
+            );
+
+            SendPacket(pkt);
+
+            node.last_seen = std::chrono::steady_clock::now();
+        }
+    }
+}
+
 ResultStatus NWM_UDS::DisconnectNetworkHLE() {
     LOG_ERROR(Service_NWM,
               "DisconnectNetworkHLE ENTER status={} node={} total_nodes={} channels={}",
