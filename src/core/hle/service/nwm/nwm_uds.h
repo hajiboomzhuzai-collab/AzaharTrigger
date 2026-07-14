@@ -649,6 +649,12 @@ private:
     // Callback identifier for the OnWifiPacketReceived event.
     Network::RoomMember::CallbackHandle<Network::WifiPacket> wifi_packet_received;
 
+    Core::TimingEventType* keepalive_event = nullptr;
+
+    u16 keepalive_sequence_number = 0;
+
+    void KeepAliveCallback(std::uintptr_t user_data, s64 cycles_late);
+
     // Mutex to synchronize access to the connection status between the emulation thread and the
     // network thread.
     std::recursive_mutex connection_status_mutex;
