@@ -242,21 +242,12 @@ for (const auto& [mac, node] : node_map) {
 }
 
 void NWM_UDS::RebuildHostNodeLookup() {
-    LOG_ERROR(Service_NWM, "HOST: rebuilding node_lookup");
-
-    for (auto& entry : node_lookup)
-        entry = {};
+    node_lookup.fill(boost::none);
 
     for (const auto& [mac, node] : node_map) {
-        if (node.node_id == 0 || node.node_id > UDSMaxNodes)
-            continue;
-
-        node_lookup[node.node_id] = mac;
-
-        LOG_ERROR(Service_NWM,
-                  "HOST: node_lookup[{}] = {:02X}:{:02X}:{:02X}:{:02X}:{:02X}:{:02X}",
-                  node.node_id,
-                  mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
+        if (node.node_id > 0 && node.node_id <= UDSMaxNodes) {
+            node_lookup[node.node_id] = mac;
+        }
     }
 }
 
@@ -600,32 +591,40 @@ NWM_UDS::Node* NWM_UDS::FindNodeByNodeId(u16 node_id) {
 }
 
 void NWM_UDS::HandleSecureDataPacket(const Network::WifiPacket& packet) {
+    // --- Parse SecureDataHeader safely ---
     SecureDataHeader secure_data{};
+    if (packet.data.size() < sizeof(SecureDataHeader)) {
+        LOG_ERROR(Service_NWM, "SECUREDATA DROP: header too small ({} bytes)", packet.data.size());
+        return;
+    }
     std::memcpy(&secure_data, packet.data.data(), sizeof(SecureDataHeader));
 
     std::scoped_lock lock{connection_status_mutex, system.Kernel().GetHLELock()};
 
+    const u16 src_id = static_cast<u16>(secure_data.src_node_id);
+    const u16 dst_id = static_cast<u16>(secure_data.dest_node_id);
+    const u16 seq    = static_cast<u16>(secure_data.sequence_number);
+
     // --- Recover node if lookup missing (reconnect-safe) ---
-    auto* node = FindNodeByNodeId(secure_data.src_node_id);
+    auto* node = FindNodeByNodeId(src_id);
     if (!node) {
         LOG_ERROR(Service_NWM,
                   "RECONNECT: unknown source node id={} recovering",
-                  static_cast<u16>(secure_data.src_node_id));
+                  src_id);
 
         auto& recovered_node = node_map[packet.transmitter_address];
 
-        recovered_node.connected = true;
+        recovered_node.connected    = true;
         recovered_node.reconnecting = false;
-        recovered_node.spec = false;
-        recovered_node.node_id = secure_data.src_node_id;
-        recovered_node.last_seen = std::chrono::steady_clock::now();
+        recovered_node.spec         = false;
+        recovered_node.node_id      = src_id;
+        recovered_node.last_seen    = std::chrono::steady_clock::now();
 
-        node_lookup[static_cast<u16>(secure_data.src_node_id)] =
-            packet.transmitter_address;
+        node_lookup[src_id] = packet.transmitter_address;
 
         LOG_ERROR(Service_NWM,
                   "RECONNECT: restored node id={} mac={:02X}:{:02X}:{:02X}:{:02X}:{:02X}:{:02X}",
-                  static_cast<u16>(secure_data.src_node_id),
+                  src_id,
                   packet.transmitter_address[0],
                   packet.transmitter_address[1],
                   packet.transmitter_address[2],
@@ -638,26 +637,26 @@ void NWM_UDS::HandleSecureDataPacket(const Network::WifiPacket& packet) {
 
     // --- Channel cleanup on reconnect ---
     for (auto& [channel_id, ch] : channel_data) {
-        if (ch.network_node_id == secure_data.src_node_id) {
+        if (ch.network_node_id == src_id) {
             LOG_ERROR(Service_NWM,
                       "RECONNECT: clearing channel={} for node_id={}",
                       static_cast<u32>(channel_id),
-                      static_cast<u32>(secure_data.src_node_id));
+                      static_cast<u32>(src_id));
 
             ch.received_packets.clear();
-            ch.network_node_id = secure_data.src_node_id;
+            ch.network_node_id = src_id;
         }
     }
 
     // --- If node was reconnecting, finalize reconnect ---
     if (node->reconnecting) {
-    LOG_ERROR(Service_NWM,
-              "RECONNECT: node_id={} successfully reconnected",
-              static_cast<u16>(secure_data.src_node_id));
+        LOG_ERROR(Service_NWM,
+                  "RECONNECT: node_id={} successfully reconnected",
+                  src_id);
 
-        node->connected = true;
+        node->connected    = true;
         node->reconnecting = false;
-        node->last_seen = std::chrono::steady_clock::now();
+        node->last_seen    = std::chrono::steady_clock::now();
 
         RebuildHostNodeLookup();
         BroadcastNodeMap();
@@ -680,15 +679,15 @@ void NWM_UDS::HandleSecureDataPacket(const Network::WifiPacket& packet) {
     // --- MH4U Heartbeat Stabilizer (100ms) ---
     {
         static auto last_hb = std::chrono::steady_clock::now();
-        auto now = std::chrono::steady_clock::now();
+        auto now  = std::chrono::steady_clock::now();
         auto diff = std::chrono::duration_cast<std::chrono::milliseconds>(now - last_hb).count();
 
         if (diff > 100) {
             Network::WifiPacket hb;
-            hb.channel = network_channel;
-            hb.type = Network::WifiPacket::PacketType::Data;
+            hb.channel             = network_channel;
+            hb.type                = Network::WifiPacket::PacketType::Data;
             hb.destination_address = Network::BroadcastMac;
-            hb.data = { 0x01 };
+            hb.data                = {0x01};
 
             SendPacket(hb);
             last_hb = now;
@@ -698,15 +697,15 @@ void NWM_UDS::HandleSecureDataPacket(const Network::WifiPacket& packet) {
     // --- KeepAlive (1500ms) ---
     {
         static auto last_keepalive = std::chrono::steady_clock::now();
-        auto now = std::chrono::steady_clock::now();
+        auto now  = std::chrono::steady_clock::now();
         auto diff = std::chrono::duration_cast<std::chrono::milliseconds>(now - last_keepalive).count();
 
         if (diff > 1500) {
             Network::WifiPacket ping;
-            ping.channel = network_channel;
-            ping.type = Network::WifiPacket::PacketType::Data;
+            ping.channel             = network_channel;
+            ping.type                = Network::WifiPacket::PacketType::Data;
             ping.destination_address = Network::BroadcastMac;
-            ping.data = { 0x00 };
+            ping.data                = {0x00};
 
             SendPacket(ping);
             last_keepalive = now;
@@ -716,15 +715,15 @@ void NWM_UDS::HandleSecureDataPacket(const Network::WifiPacket& packet) {
     // --- Beacon Refresh (3000ms, host only) ---
     if (connection_status.status == NetworkStatus::ConnectedAsHost) {
         static auto last_beacon_refresh = std::chrono::steady_clock::now();
-        auto now = std::chrono::steady_clock::now();
+        auto now  = std::chrono::steady_clock::now();
         auto diff = std::chrono::duration_cast<std::chrono::milliseconds>(now - last_beacon_refresh).count();
 
         if (diff > 3000) {
             Network::WifiPacket beacon;
-            beacon.channel = network_channel;
-            beacon.type = Network::WifiPacket::PacketType::Beacon;
+            beacon.channel             = network_channel;
+            beacon.type                = Network::WifiPacket::PacketType::Beacon;
             beacon.destination_address = Network::BroadcastMac;
-            beacon.data = {};
+            beacon.data.clear();
 
             SendPacket(beacon);
             last_beacon_refresh = now;
@@ -732,18 +731,17 @@ void NWM_UDS::HandleSecureDataPacket(const Network::WifiPacket& packet) {
     }
 
     // --- Ignore our own packets ---
-    if (secure_data.src_node_id == connection_status.network_node_id)
+    if (src_id == connection_status.network_node_id)
         return;
 
     // --- Packet not for us ---
-    if (secure_data.dest_node_id != connection_status.network_node_id &&
-        secure_data.dest_node_id != BroadcastNetworkNodeId)
+    if (dst_id != connection_status.network_node_id &&
+        dst_id != BroadcastNetworkNodeId)
         return;
 
     // --- Packet Order Guard using sequence_number ---
     {
         static u16 last_seq = 0;
-        const u16 seq = secure_data.sequence_number;
 
         if (seq != 0 && last_seq != 0) {
             if (seq < last_seq && (last_seq - seq) > 1000) {
@@ -764,8 +762,8 @@ void NWM_UDS::HandleSecureDataPacket(const Network::WifiPacket& packet) {
         LOG_ERROR(Service_NWM,
                   "SECUREDATA UNKNOWN CHANNEL={} src={} dst={} status={} channels={}",
                   static_cast<u32>(secure_data.data_channel),
-                  static_cast<u32>(secure_data.src_node_id),
-                  static_cast<u32>(secure_data.dest_node_id),
+                  static_cast<u32>(src_id),
+                  static_cast<u32>(dst_id),
                   static_cast<u32>(connection_status.status),
                   channel_data.size());
         return;
@@ -773,15 +771,15 @@ void NWM_UDS::HandleSecureDataPacket(const Network::WifiPacket& packet) {
 
     // --- Repair channel ownership after reconnect ---
     if (channel_info->second.network_node_id != BroadcastNetworkNodeId &&
-        channel_info->second.network_node_id != secure_data.src_node_id) {
+        channel_info->second.network_node_id != src_id) {
 
         LOG_ERROR(Service_NWM,
                   "SECUREDATA REPAIR CHANNEL={} old_node={} new_node={}",
                   static_cast<u32>(secure_data.data_channel),
                   static_cast<u32>(channel_info->second.network_node_id),
-                  static_cast<u32>(secure_data.src_node_id));
+                  static_cast<u32>(src_id));
 
-        channel_info->second.network_node_id = secure_data.src_node_id;
+        channel_info->second.network_node_id = src_id;
     }
 
     // --- Queue packet ---
@@ -814,13 +812,15 @@ void NWM_UDS::SendAssociationResponseFrame(const MacAddress& address) {
     SendPacket(assoc_response);
 }
 
-ResultStatus NWM_UDS::StartConnectionSequence(const std::array<u8, 6>& mac) {
+void NWM_UDS::StartConnectionSequence(const MacAddress& server) {
     LOG_ERROR(Service_NWM,
               "StartConnectionSequence: target_mac={:02X}:{:02X}:{:02X}:{:02X}:{:02X}:{:02X}",
-              mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
+              server[0], server[1], server[2], server[3], server[4], server[5]);
 
-    network_info.host_mac_address = mac;
+    // Save target MAC
+    network_info.host_mac_address = server;
 
+    // Reset connection status
     connection_status.status = NetworkStatus::Connecting;
     connection_status.status_change_reason = NetworkStatusChangeReason::None;
     connection_status.network_node_id = 0;
@@ -830,22 +830,20 @@ ResultStatus NWM_UDS::StartConnectionSequence(const std::array<u8, 6>& mac) {
     connection_status.changed_nodes = 0;
     std::memset(connection_status.nodes, 0, sizeof(connection_status.nodes));
 
+    // Clear node maps
     node_map.clear();
     node_lookup.fill(boost::none);
     node_info.clear();
     channel_data.clear();
 
     // Start UDS main thread
-    uds_thread = std::thread([this]() { ThreadFunc(); });
-    uds_thread.detach();
+    std::thread([this]() { ThreadFunc(); }).detach();
 
     // Start reconnect watchdog
     watchdog_thread = std::thread([this]() { ReconnectWatchdog(); });
     watchdog_thread.detach();
 
     LOG_ERROR(Service_NWM, "StartConnectionSequence: UDS + watchdog threads started");
-
-    return ResultStatus::ResultSuccess;
 }
 
 void NWM_UDS::ReconnectWatchdog() {
@@ -866,7 +864,6 @@ void NWM_UDS::ReconnectWatchdog() {
         auto now = std::chrono::steady_clock::now();
 
         for (auto& [mac, node] : node_map) {
-
             if (!node.reconnecting)
                 continue;
 
@@ -885,7 +882,12 @@ void NWM_UDS::ReconnectWatchdog() {
             pkt.channel = network_channel;
             pkt.type = Network::WifiPacket::PacketType::Data;
             pkt.destination_address = mac;
-            pkt.data = GenerateEAPoLStartFrame(mac);
+            pkt.transmitter_address = GetMacAddress();
+            pkt.data = GenerateEAPoLStartFrame(
+                node.node_id,   // association_id
+                conn_type,      // ConnectionType
+                current_node    // NodeInfo
+            );
 
             SendPacket(pkt);
 
