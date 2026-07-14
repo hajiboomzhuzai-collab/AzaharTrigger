@@ -2694,63 +2694,69 @@ Network::MacAddress NWM_UDS::GetMacAddress() {
 
 void NWM_UDS::KeepAliveCallback(std::uintptr_t user_data, s64 cycles_late) {
 
-    std::scoped_lock lock(connection_status_mutex);
+    NetworkStatus status;
 
-    if (connection_status.status != NetworkStatus::ConnectedAsHost) {
+    {
+        std::scoped_lock lock(connection_status_mutex);
+        status = connection_status.status;
+    }
+
+
+    if (status != NetworkStatus::ConnectedAsHost &&
+        status != NetworkStatus::ConnectedAsClient) {
+
         return;
     }
 
 
-    // Host sends heartbeat to every connected node.
-    for (u32 node_id = 1; node_id <= connection_status.total_nodes; node_id++) {
-
-        if (node_id == connection_status.network_node_id)
-            continue;
+    using Network::WifiPacket;
 
 
-        auto dest_address = GetNodeMacAddress(node_id, 0);
+    WifiPacket packet;
 
-        if (!dest_address) {
-            LOG_ERROR(Service_NWM,
-                      "KEEPALIVE no mac for node={}",
-                      node_id);
-            continue;
-        }
+    packet.type = WifiPacket::PacketType::Data;
+    packet.channel = network_channel;
+    packet.destination_address = Network::BroadcastMac;
 
 
-        std::vector<u8> heartbeat_data = {
-            0x00
-        };
+    /*
+     * Build a REAL SecureData packet.
+     *
+     * Channel 0 is usually safe for control traffic.
+     * We are not trying to deliver game data.
+     * We only want transport activity.
+     */
+
+    constexpr u8 keepalive_channel = 0;
 
 
-        u16 sequence_number = this->sequence_number++;
+    u16 sequence_number = 0;
 
 
-        std::vector<u8> payload =
-            GenerateDataPayload(
-    heartbeat_data,
-    243,
-    node_id,
-    connection_status.network_node_id,
-    sequence_number);
+    std::array<u8, 1> heartbeat = {
+        0x00
+    };
 
 
-        Network::WifiPacket packet;
-
-        packet.destination_address = *dest_address;
-        packet.channel = network_channel;
-        packet.data = std::move(payload);
-        packet.type = Network::WifiPacket::PacketType::Data;
-
-
-        LOG_ERROR(Service_NWM,
-                  "UDS KEEPALIVE node={} size={}",
-                  node_id,
-                  packet.data.size());
+    packet.data = GenerateDataPayload(
+        heartbeat,
+        keepalive_channel,
+        0xFFFF, // broadcast node
+        connection_status.network_node_id,
+        sequence_number
+    );
 
 
-        SendPacket(packet);
-    }
+    LOG_ERROR(Service_NWM,
+              "UDS KEEPALIVE TX status={} size={} channel={} node={}",
+              static_cast<u32>(status),
+              packet.data.size(),
+              keepalive_channel,
+              connection_status.network_node_id);
+
+
+    SendPacket(packet);
+
 
 
     system.CoreTiming().ScheduleEvent(
@@ -2807,7 +2813,7 @@ NWM_UDS::NWM_UDS(Core::System& system) : ServiceFramework("nwm::UDS"), system(sy
         "UDS::KeepAliveCallback", [this](std::uintptr_t user_data, s64 cycles_late) {
             KeepAliveCallback(user_data, cycles_late);
         });
-
+    
     system.Kernel().GetSharedPageHandler().SetMacAddress(GetMacAddress());
 
     if (auto room_member = Network::GetRoomMember().lock()) {
