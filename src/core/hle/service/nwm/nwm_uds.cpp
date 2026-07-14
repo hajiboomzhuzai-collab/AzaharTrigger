@@ -1445,14 +1445,28 @@ ConnectionStatus NWM_UDS::GetConnectionStatusHLE() {
     std::scoped_lock lock(connection_status_mutex);
 
     LOG_ERROR(Service_NWM,
-              "GetConnectionStatusHLE status={} node_id={} total_nodes={} bitmask=0x{:X} changed=0x{:X}",
+              "GetConnectionStatusHLE CALL "
+              "status={} reason={} node_id={} total_nodes={} "
+              "bitmask=0x{:X} changed=0x{:X}",
               static_cast<u32>(connection_status.status),
-              connection_status.network_node_id,
-              connection_status.total_nodes,
-              connection_status.node_bitmask,
-              connection_status.changed_nodes);
+              static_cast<u32>(connection_status.status_change_reason),
+              static_cast<u16>(connection_status.network_node_id),
+              static_cast<u32>(connection_status.total_nodes),
+              static_cast<u32>(connection_status.node_bitmask),
+              static_cast<u32>(connection_status.changed_nodes));
 
     ConnectionStatus cs_out = connection_status;
+
+    LOG_ERROR(Service_NWM,
+              "GetConnectionStatusHLE RETURN "
+              "status={} reason={} node_id={} total_nodes={} "
+              "bitmask=0x{:X} changed=0x{:X}",
+              static_cast<u32>(cs_out.status),
+              static_cast<u32>(cs_out.status_change_reason),
+              static_cast<u16>(cs_out.network_node_id),
+              static_cast<u32>(cs_out.total_nodes),
+              static_cast<u32>(cs_out.node_bitmask),
+              static_cast<u32>(cs_out.changed_nodes));
 
     // Reset the bitmask of changed nodes after each call to this
     // function to prevent falsely informing games of outstanding
