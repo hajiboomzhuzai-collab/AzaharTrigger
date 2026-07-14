@@ -585,24 +585,22 @@ void NWM_UDS::HandleEAPoLPacket(const Network::WifiPacket& packet) {
     }
 }
 
-NodeInfo* NWM_UDS::FindNodeByNodeId(u16 node_id) {
-    if (node_id == 0) {
+Node* NWM_UDS::FindNodeByNodeId(u16 node_id) {
+    if (node_id == 0 || node_id >= node_lookup.size()) {
         return nullptr;
     }
 
-    // MH4U sometimes uses high IDs (like 150) for temp nodes.
-    auto it = node_lookup.find(node_id);
-    if (it != node_lookup.end() && it->second) {
-        auto mac = *it->second;
-        auto node_it = node_map.find(mac);
-        if (node_it != node_map.end()) {
-            return &node_it->second;
+    // node_lookup is an array of optional MAC addresses
+    if (node_lookup[node_id]) {
+        const auto& mac = *node_lookup[node_id];
+        auto it = node_map.find(mac);
+        if (it != node_map.end()) {
+            return &it->second;
         }
     }
 
     return nullptr;
 }
-
 
     void NWM_UDS::HandleSecureDataPacket(const Network::WifiPacket& packet) {
     // --- Parse SecureDataHeader safely ---
