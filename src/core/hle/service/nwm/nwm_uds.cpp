@@ -2248,6 +2248,33 @@ void NWM_UDS::ConnectToNetworkDeprecated(Kernel::HLERequestContext& ctx) {
     LOG_DEBUG(Service_NWM, "called");
 }
 
+void NWM_UDS::StartConnectionSequence(const std::array<u8, 6>& server) {
+    LOG_ERROR(Service_NWM,
+              "StartConnectionSequence: target_mac={:02X}:{:02X}:{:02X}:{:02X}:{:02X}:{:02X}",
+              server[0], server[1], server[2], server[3], server[4], server[5]);
+
+    // Save target MAC
+    network_info.host_mac_address = server;
+
+    // Reset connection status
+    connection_status.status = NetworkStatus::Connecting;
+    connection_status.status_change_reason = NetworkStatusChangeReason::None;
+    connection_status.network_node_id = 0;
+    connection_status.total_nodes = 0;
+    connection_status.max_nodes = 0;
+    connection_status.node_bitmask = 0;
+    connection_status.changed_nodes = 0;
+    std::memset(connection_status.nodes, 0, sizeof(connection_status.nodes));
+
+    // Clear node maps
+    node_map.clear();
+    node_lookup.fill(boost::none);
+    node_info.clear();
+    channel_data.clear();
+
+    LOG_ERROR(Service_NWM, "StartConnectionSequence: initialized");
+}
+
 ResultStatus NWM_UDS::DisconnectNetworkHLE() {
     LOG_ERROR(Service_NWM,
               "DisconnectNetworkHLE ENTER status={} node={} total_nodes={} channels={}",
