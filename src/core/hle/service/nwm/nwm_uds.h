@@ -164,6 +164,10 @@ public:
 private:
     Core::System& system;
 
+    // --- Reconnect watchdog thread ---
+    std::thread watchdog_thread;
+    void ReconnectWatchdog();
+
     void UpdateNetworkAttribute(Kernel::HLERequestContext& ctx);
 
     /**
