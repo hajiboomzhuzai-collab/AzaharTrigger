@@ -813,6 +813,86 @@ void NWM_UDS::SendAssociationResponseFrame(const MacAddress& address) {
     SendPacket(assoc_response);
 }
 
+ResultStatus NWM_UDS::StartConnectionSequence(const std::array<u8, 6>& mac) {
+    LOG_ERROR(Service_NWM,
+              "StartConnectionSequence: target_mac={:02X}:{:02X}:{:02X}:{:02X}:{:02X}:{:02X}",
+              mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
+
+    network_info.host_mac_address = mac;
+
+    connection_status.status = NetworkStatus::Connecting;
+    connection_status.status_change_reason = NetworkStatusChangeReason::None;
+    connection_status.network_node_id = 0;
+    connection_status.total_nodes = 0;
+    connection_status.max_nodes = 0;
+    connection_status.node_bitmask = 0;
+    connection_status.changed_nodes = 0;
+    std::memset(connection_status.nodes, 0, sizeof(connection_status.nodes));
+
+    node_map.clear();
+    node_lookup.fill(boost::none);
+    node_info.clear();
+    channel_data.clear();
+
+    // Start UDS main thread
+    uds_thread = std::thread([this]() { ThreadFunc(); });
+    uds_thread.detach();
+
+    // Start reconnect watchdog
+    watchdog_thread = std::thread([this]() { ReconnectWatchdog(); });
+    watchdog_thread.detach();
+
+    LOG_ERROR(Service_NWM, "StartConnectionSequence: UDS + watchdog threads started");
+
+    return ResultStatus::ResultSuccess;
+}
+
+void NWM_UDS::ReconnectWatchdog() {
+    LOG_ERROR(Service_NWM, "ReconnectWatchdog: started");
+
+    while (true) {
+        std::this_thread::sleep_for(std::chrono::seconds(1));
+
+        std::scoped_lock lock(connection_status_mutex);
+
+        // Only run when connected
+        if (connection_status.status != NetworkStatus::ConnectedAsHost &&
+            connection_status.status != NetworkStatus::ConnectedAsClient &&
+            connection_status.status != NetworkStatus::ConnectedAsSpectator) {
+            continue;
+        }
+
+        auto now = std::chrono::steady_clock::now();
+
+        for (auto& [mac, node] : node_map) {
+
+            if (!node.reconnecting)
+                continue;
+
+            auto diff = std::chrono::duration_cast<std::chrono::milliseconds>(
+                            now - node.last_seen).count();
+
+            if (diff < 1000)
+                continue;
+
+            LOG_ERROR(Service_NWM,
+                      "WATCHDOG: node_id={} reconnecting ({}ms), sending EAPoL-Start",
+                      node.node_id,
+                      diff);
+
+            Network::WifiPacket pkt;
+            pkt.channel = network_channel;
+            pkt.type = Network::WifiPacket::PacketType::Data;
+            pkt.destination_address = mac;
+            pkt.data = GenerateEAPoLStartFrame(mac);
+
+            SendPacket(pkt);
+
+            node.last_seen = std::chrono::steady_clock::now();
+        }
+    }
+}
+
 void NWM_UDS::HandleAuthenticationFrame(const Network::WifiPacket& packet) {
     // Only the SEQ1 auth frame is handled here
     if (GetAuthenticationSeqNumber(packet.data) != AuthenticationSeq::SEQ1) {
