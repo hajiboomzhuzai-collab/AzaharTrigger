@@ -1619,23 +1619,44 @@ void NWM_UDS::Bind(Kernel::HLERequestContext& ctx) {
 }
 
 void NWM_UDS::UnbindHLE(u32 bind_node_id) {
-
     std::scoped_lock lock(connection_status_mutex);
 
-
-    auto itr = std::find_if(
-        channel_data.begin(),
-        channel_data.end(),
-        [bind_node_id](const auto& pair) {
-            return pair.second.bind_node_id == bind_node_id;
-        });
-
+    auto itr =
+        std::find_if(channel_data.begin(),
+                     channel_data.end(),
+                     [bind_node_id](const auto& data) {
+                         return data.second.bind_node_id == bind_node_id;
+                     });
 
     if (itr == channel_data.end()) {
-
         LOG_WARNING(Service_NWM,
                     "UnbindHLE unknown bind_node={}",
                     bind_node_id);
+        return;
+    }
+
+
+    /*
+     * Emulator recovery mode:
+     *
+     * Monster Hunter calls Unbind after a temporary disconnect.
+     * Removing the channel makes the next packets fail:
+     *
+     * SECUREDATA UNKNOWN CHANNEL=243
+     *
+     * Keep the channel alive.
+     */
+    if (connection_status.status == NetworkStatus::ConnectedAsClient) {
+
+        LOG_ERROR(Service_NWM,
+                  "UnbindHLE SOFT KEEP channel={} bind={} node={}",
+                  static_cast<u32>(itr->second.channel),
+                  itr->second.bind_node_id,
+                  itr->second.network_node_id);
+
+
+        itr->second.received_packets.clear();
+        itr->second.event->Signal();
 
         return;
     }
@@ -1643,13 +1664,12 @@ void NWM_UDS::UnbindHLE(u32 bind_node_id) {
 
     LOG_ERROR(Service_NWM,
               "UnbindHLE removing channel={} bind={} node={}",
-              static_cast<u32>(itr->first),
+              static_cast<u32>(itr->second.channel),
               itr->second.bind_node_id,
               itr->second.network_node_id);
 
 
     itr->second.event->Signal();
-
     channel_data.erase(itr);
 
 
