@@ -2393,14 +2393,7 @@ ResultStatus NWM_UDS::DisconnectNetworkHLE() {
     const u16_le node_id = connection_status.network_node_id;
 
 
-    /*
-     * Host disconnect:
-     *
-     * Keep original behavior.
-     * Host leaving means the room is actually gone.
-     */
     if (connection_status.status == NetworkStatus::ConnectedAsHost) {
-
         LOG_ERROR(Service_NWM,
                   "DisconnectNetworkHLE HOST RESET");
 
@@ -2409,108 +2402,42 @@ ResultStatus NWM_UDS::DisconnectNetworkHLE() {
         connection_status.status =
             NetworkStatus::ConnectedAsHost;
 
-        connection_status.network_node_id =
-            node_id;
-
+        connection_status.network_node_id = node_id;
 
         node_map.clear();
         node_lookup.fill(boost::none);
         channel_data.clear();
 
-
         connection_status_event->Signal();
-
-
-        LOG_ERROR(Service_NWM,
-                  "DisconnectNetworkHLE HOST DONE");
-
 
         return ResultStatus::DisconError_CalledAsHost;
     }
 
 
-
     /*
-     * Client disconnect:
+     * CLIENT:
      *
-     * This is treated as temporary packet loss.
-     *
-     * Do NOT:
-     * - clear nodes
-     * - clear channels
-     * - send deauthentication
-     *
-     * The game may recover after missing packets.
+     * Ignore game disconnect request.
+     * Keep current multiplayer session alive.
      */
 
     LOG_ERROR(Service_NWM,
-              "DisconnectNetworkHLE CLIENT RECOVERY");
+              "DisconnectNetworkHLE CLIENT IGNORE");
 
 
     connection_status.status =
         NetworkStatus::ConnectedAsClient;
 
-
     connection_status.status_change_reason =
-        NetworkStatusChangeReason::ConnectionLost;
+        NetworkStatusChangeReason::None;
 
+    connection_status.changed_nodes = 0;
 
-    connection_status.network_node_id =
-        node_id;
-
-
-
-    for (auto& [mac, node] : node_map) {
-
-        node.reconnecting = true;
-
-        node.last_seen =
-            std::chrono::steady_clock::now();
-
-
-        LOG_ERROR(Service_NWM,
-                  "DisconnectNetworkHLE KEEP NODE id={} connected={} reconnecting={}",
-                  node.node_id,
-                  node.connected,
-                  node.reconnecting);
-    }
-
-
-
-    /*
-     * Notify the game.
-     */
-    connection_status.changed_nodes |=
-        connection_status.node_bitmask;
-
-
-    connection_status_event->Signal();
-
-
-
-    /*
-     * Wake existing channel listeners.
-     *
-     * IMPORTANT:
-     *
-     * Do not erase channel_data.
-     */
-    for (auto& [channel, data] : channel_data) {
-
-        LOG_ERROR(Service_NWM,
-                  "DisconnectNetworkHLE KEEP CHANNEL ch={} bind={} node={}",
-                  static_cast<u32>(channel),
-                  data.bind_node_id,
-                  data.network_node_id);
-
-
-        data.event->Signal();
-    }
-
+    connection_status.network_node_id = node_id;
 
 
     LOG_ERROR(Service_NWM,
-              "DisconnectNetworkHLE CLIENT RECOVERY COMPLETE nodes={} channels={}",
+              "DisconnectNetworkHLE CLIENT KEEP nodes={} channels={}",
               node_map.size(),
               channel_data.size());
 
