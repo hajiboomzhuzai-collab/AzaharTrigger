@@ -2767,7 +2767,6 @@ void NWM_UDS::KeepAliveCallback(std::uintptr_t user_data, s64 cycles_late) {
     NetworkStatus status;
     u16 node_id;
 
-
     {
         std::scoped_lock lock(connection_status_mutex);
 
@@ -2779,23 +2778,17 @@ void NWM_UDS::KeepAliveCallback(std::uintptr_t user_data, s64 cycles_late) {
     if (status != NetworkStatus::ConnectedAsHost &&
         status != NetworkStatus::ConnectedAsClient) {
 
-        system.CoreTiming().ScheduleEvent(
-            msToCycles(1000),
-            keepalive_event,
-            0);
-
         return;
     }
 
 
     using Network::WifiPacket;
 
-
     WifiPacket packet;
 
     packet.type = WifiPacket::PacketType::Data;
-    packet.channel = network_channel;
     packet.destination_address = Network::BroadcastMac;
+    packet.channel = network_channel;
 
 
     constexpr u8 keepalive_channel = 0;
@@ -2806,22 +2799,24 @@ void NWM_UDS::KeepAliveCallback(std::uintptr_t user_data, s64 cycles_late) {
     };
 
 
+    u16 sequence = keepalive_sequence_number++;
+
+
     packet.data = GenerateDataPayload(
         heartbeat,
         keepalive_channel,
-        0xFFFF,
+        BroadcastNetworkNodeId,
         node_id,
-        keepalive_sequence_number++
+        sequence
     );
 
 
     LOG_ERROR(Service_NWM,
-              "UDS KEEPALIVE TX status={} size={} channel={} node={} seq={}",
+              "UDS KEEPALIVE TX status={} seq={} size={} node={}",
               static_cast<u32>(status),
+              sequence,
               packet.data.size(),
-              keepalive_channel,
-              node_id,
-              keepalive_sequence_number);
+              node_id);
 
 
     SendPacket(packet);
