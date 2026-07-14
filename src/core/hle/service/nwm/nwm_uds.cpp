@@ -622,15 +622,11 @@ void NWM_UDS::HandleSecureDataPacket(const Network::WifiPacket& packet) {
             hb.data = { 0x01 }; // heartbeat marker
 
             SendPacket(hb);
-
-            LOG_ERROR(Service_NWM,
-                      "HEARTBEAT >>> sent (100ms)");
-
             last_hb = now;
         }
     }
 
-    // --- KeepAlive (1500ms instead of 500ms) ---
+    // --- KeepAlive (1500ms) ---
     {
         static auto last_keepalive = std::chrono::steady_clock::now();
         auto now = std::chrono::steady_clock::now();
@@ -644,15 +640,11 @@ void NWM_UDS::HandleSecureDataPacket(const Network::WifiPacket& packet) {
             ping.data = { 0x00 };
 
             SendPacket(ping);
-
-            LOG_ERROR(Service_NWM,
-                      "KEEPALIVE >>> sent (1500ms)");
-
             last_keepalive = now;
         }
     }
 
-    // --- Beacon Refresh (3000ms instead of 1000ms) ---
+    // --- Beacon Refresh (3000ms) ---
     if (connection_status.status == NetworkStatus::ConnectedAsHost) {
         static auto last_beacon_refresh = std::chrono::steady_clock::now();
         auto now = std::chrono::steady_clock::now();
@@ -666,10 +658,6 @@ void NWM_UDS::HandleSecureDataPacket(const Network::WifiPacket& packet) {
             beacon.data = {};
 
             SendPacket(beacon);
-
-            LOG_ERROR(Service_NWM,
-                      "BEACON >>> refreshed (3000ms)");
-
             last_beacon_refresh = now;
         }
     }
@@ -679,28 +667,32 @@ void NWM_UDS::HandleSecureDataPacket(const Network::WifiPacket& packet) {
         return;
     }
 
-    // --- Packet not for us (NO FORWARDING!) ---
+    // --- Packet not for us ---
     if (secure_data.dest_node_id != connection_status.network_node_id &&
         secure_data.dest_node_id != BroadcastNetworkNodeId) {
         return;
     }
 
-    // --- Packet Order Guard (MH4U hates out-of-order packets) ---
+    // --- Packet Order Guard using sequence_number ---
     {
-        static u64 last_timestamp = 0;
-        if (secure_data.timestamp < last_timestamp) {
-            LOG_ERROR(Service_NWM,
-                      "SECUREDATA DROP: out-of-order packet ts={} last={}",
-                      secure_data.timestamp,
-                      last_timestamp);
-            return;
+        static u16 last_seq = 0;
+        const u16 seq = secure_data.sequence_number;
+
+        if (seq != 0 && last_seq != 0) {
+            if (seq < last_seq && (last_seq - seq) > 1000) {
+                LOG_ERROR(Service_NWM,
+                          "SECUREDATA DROP: out-of-order seq={} last={}",
+                          static_cast<u32>(seq),
+                          static_cast<u32>(last_seq));
+                return;
+            }
         }
-        last_timestamp = secure_data.timestamp;
+
+        last_seq = seq;
     }
 
     // --- Find channel ---
     auto channel_info = channel_data.find(secure_data.data_channel);
-
     if (channel_info == channel_data.end()) {
         LOG_ERROR(Service_NWM,
                   "SECUREDATA UNKNOWN CHANNEL={} src={} dst={} status={} channels={}",
@@ -727,15 +719,6 @@ void NWM_UDS::HandleSecureDataPacket(const Network::WifiPacket& packet) {
 
     // --- Queue packet ---
     channel_info->second.received_packets.emplace_back(packet.data);
-
-    LOG_ERROR(Service_NWM,
-              "SECUREDATA QUEUED ch={} queue={} src={} dst={} size={}",
-              static_cast<u32>(secure_data.data_channel),
-              channel_info->second.received_packets.size(),
-              static_cast<u32>(secure_data.src_node_id),
-              static_cast<u32>(secure_data.dest_node_id),
-              secure_data.GetActualDataSize());
-
     channel_info->second.event->Signal();
 }
 
