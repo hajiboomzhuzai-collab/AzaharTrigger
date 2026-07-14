@@ -382,37 +382,25 @@ void NWM_UDS::HandleBeaconFrame(const Network::WifiPacket& packet) {
     std::scoped_lock lock(beacon_mutex);
 
     const auto unique_beacon =
-        std::find_if(received_beacons.begin(), received_beacons.end(),
+        std::find_if(received_beacons.begin(),
+                     received_beacons.end(),
                      [&packet](const Network::WifiPacket& new_packet) {
-                         return new_packet.transmitter_address == packet.transmitter_address;
+                         return new_packet.transmitter_address ==
+                                packet.transmitter_address;
                      });
 
     if (unique_beacon != received_beacons.end()) {
-        // We already have a beacon from the same mac in the deque, remove the old one;
+        // We already have a beacon from this MAC, replace the old one.
         received_beacons.erase(unique_beacon);
     }
 
     received_beacons.emplace_back(packet);
 
-    // --- SERVER KEEPALIVE PATCH ---
-    // Host must send periodic packets or MH4U disconnects after ~3 seconds.
-    // We send a tiny broadcast Data packet every time a beacon is processed.
-    if (connection_status.status == NetworkStatus::ConnectedAsHost) {
-        using Network::WifiPacket;
-        WifiPacket keepalive;
-        keepalive.type = Network::WifiPacket::PacketType::Data;
-        keepalive.channel = network_channel;
-        keepalive.destination_address = Network::BroadcastMac;
-
-        // 1-byte payload (ignored by MH4U)
-        keepalive.data = { 0x00 };
-
-        SendPacket(keepalive);
-    }
 
     // Discard old beacons if the buffer is full.
-    if (received_beacons.size() > MaxBeaconFrames)
+    if (received_beacons.size() > MaxBeaconFrames) {
         received_beacons.pop_front();
+    }
 }
 
 void NWM_UDS::HandleAssociationResponseFrame(const Network::WifiPacket& packet) {
@@ -1184,13 +1172,21 @@ void NWM_UDS::OnWifiPacketReceived(const Network::WifiPacket& packet) {
         return;
     }
 
+    {
+        std::scoped_lock lock(connection_status_mutex);
+
+        last_packet_received = std::chrono::steady_clock::now();
+    }
+
+
     LOG_ERROR(Service_NWM,
-              "RX PACKET type={} ch={} size={} node_map={} channels={}",
+              "RX PACKET type={} ch={} size={} node_map={} channels={} status={}",
               static_cast<u32>(packet.type),
               packet.channel,
               packet.data.size(),
               node_map.size(),
-              channel_data.size());
+              channel_data.size(),
+              static_cast<u32>(connection_status.status));
 
 
     switch (packet.type) {
@@ -1687,7 +1683,9 @@ void NWM_UDS::UnbindHLE(u32 bind_node_id) {
                   itr->second.network_node_id);
 
 
-        itr->second.received_packets.clear();
+        LOG_ERROR(Service_NWM,
+          "UnbindHLE KEEP queue={}",
+        itr->second.received_packets.size());
         itr->second.event->Signal();
 
         return;
@@ -1745,6 +1743,9 @@ Result NWM_UDS::BeginHostingNetwork(std::span<const u8> network_info_buffer,
         ASSERT_MSG(network_info.max_nodes > 1, "Trying to host a network of only one member.");
 
         connection_status.status = NetworkStatus::ConnectedAsHost;
+        // Start broadcasting the network, send a beacon frame every 102.4ms.
+        system.CoreTiming().ScheduleEvent(msToCycles(DefaultBeaconInterval * MillisecondsPerTU),
+                                  beacon_broadcast_event, 0);
         connection_status.status_change_reason = NetworkStatusChangeReason::ConnectionEstablished;
 
         // Ensure the application data size is less than the maximum value.
@@ -1788,10 +1789,19 @@ Result NWM_UDS::BeginHostingNetwork(std::span<const u8> network_info_buffer,
     connection_status_event->Signal();
 
     // Start broadcasting the network, send a beacon frame every 102.4ms.
-    system.CoreTiming().ScheduleEvent(msToCycles(DefaultBeaconInterval * MillisecondsPerTU),
-                                      beacon_broadcast_event, 0);
+system.CoreTiming().ScheduleEvent(msToCycles(DefaultBeaconInterval * MillisecondsPerTU),
+                                  beacon_broadcast_event, 0);
 
-    return ResultSuccess;
+
+// Start UDS keepalive heartbeat.
+// This is separate from beacon broadcasting.
+system.CoreTiming().ScheduleEvent(
+    msToCycles(1000),
+    keepalive_event,
+    0);
+
+
+return ResultSuccess;
 }
 
 void NWM_UDS::BeginHostingNetwork(Kernel::HLERequestContext& ctx) {
@@ -2639,13 +2649,14 @@ void NWM_UDS::EjectSpectators(Kernel::HLERequestContext& ctx) {
 
 // Sends a 802.11 beacon frame with information about the current network.
 void NWM_UDS::BeaconBroadcastCallback(std::uintptr_t user_data, s64 cycles_late) {
-    // Don't do anything if we're not actually hosting a network
+
     if (connection_status.status != NetworkStatus::ConnectedAsHost)
         return;
 
     std::vector<u8> frame = GenerateBeaconFrame(network_info, node_info);
 
     using Network::WifiPacket;
+
     WifiPacket packet;
     packet.type = WifiPacket::PacketType::Beacon;
     packet.data = std::move(frame);
@@ -2654,10 +2665,12 @@ void NWM_UDS::BeaconBroadcastCallback(std::uintptr_t user_data, s64 cycles_late)
 
     SendPacket(packet);
 
-    // Start broadcasting the network, send a beacon frame every 102.4ms.
-    system.CoreTiming().ScheduleEvent(msToCycles(DefaultBeaconInterval * MillisecondsPerTU) -
-                                          cycles_late,
-                                      beacon_broadcast_event, 0);
+
+    system.CoreTiming().ScheduleEvent(
+        msToCycles(DefaultBeaconInterval * MillisecondsPerTU) -
+        cycles_late,
+        beacon_broadcast_event,
+        0);
 }
 
 Network::MacAddress NWM_UDS::GetMacAddress() {
@@ -2677,6 +2690,73 @@ Network::MacAddress NWM_UDS::GetMacAddress() {
         mac = CFG::GetConsoleMacAddress(system);
     }
     return mac;
+}
+
+void NWM_UDS::KeepAliveCallback(std::uintptr_t user_data, s64 cycles_late) {
+
+    std::scoped_lock lock(connection_status_mutex);
+
+    if (connection_status.status != NetworkStatus::ConnectedAsHost) {
+        return;
+    }
+
+
+    // Host sends heartbeat to every connected node.
+    for (u32 node_id = 1; node_id <= connection_status.total_nodes; node_id++) {
+
+        if (node_id == connection_status.network_node_id)
+            continue;
+
+
+        auto dest_address = GetNodeMacAddress(node_id, 0);
+
+        if (!dest_address) {
+            LOG_ERROR(Service_NWM,
+                      "KEEPALIVE no mac for node={}",
+                      node_id);
+            continue;
+        }
+
+
+        std::vector<u8> heartbeat_data = {
+            0x00
+        };
+
+
+        u16 sequence_number = this->sequence_number++;
+
+
+        std::vector<u8> payload =
+            GenerateDataPayload(
+    heartbeat_data,
+    243,
+    node_id,
+    connection_status.network_node_id,
+    sequence_number);
+
+
+        Network::WifiPacket packet;
+
+        packet.destination_address = *dest_address;
+        packet.channel = network_channel;
+        packet.data = std::move(payload);
+        packet.type = Network::WifiPacket::PacketType::Data;
+
+
+        LOG_ERROR(Service_NWM,
+                  "UDS KEEPALIVE node={} size={}",
+                  node_id,
+                  packet.data.size());
+
+
+        SendPacket(packet);
+    }
+
+
+    system.CoreTiming().ScheduleEvent(
+        msToCycles(1000),
+        keepalive_event,
+        0);
 }
 
 NWM_UDS::NWM_UDS(Core::System& system) : ServiceFramework("nwm::UDS"), system(system) {
@@ -2721,6 +2801,11 @@ NWM_UDS::NWM_UDS(Core::System& system) : ServiceFramework("nwm::UDS"), system(sy
     beacon_broadcast_event = system.CoreTiming().RegisterEvent(
         "UDS::BeaconBroadcastCallback", [this](std::uintptr_t user_data, s64 cycles_late) {
             BeaconBroadcastCallback(user_data, cycles_late);
+        });
+
+    keepalive_event = system.CoreTiming().RegisterEvent(
+        "UDS::KeepAliveCallback", [this](std::uintptr_t user_data, s64 cycles_late) {
+            KeepAliveCallback(user_data, cycles_late);
         });
 
     system.Kernel().GetSharedPageHandler().SetMacAddress(GetMacAddress());
