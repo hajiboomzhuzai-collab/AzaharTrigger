@@ -1175,7 +1175,6 @@ void NWM_UDS::OnWifiPacketReceived(const Network::WifiPacket& packet) {
     {
         std::scoped_lock lock(connection_status_mutex);
 
-        last_packet_received = std::chrono::steady_clock::now();
     }
 
 
