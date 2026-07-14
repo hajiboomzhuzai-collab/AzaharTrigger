@@ -2,7 +2,7 @@ name: citra-build
 
 on:
   push:
-    branches: [ "hajiboomzhuzai-collab-patch-6" ]
+    branches: [ "Keepalive" ]
     tags: [ "1.0.0" ]
   pull_request:
     branches: [ "*" ]
