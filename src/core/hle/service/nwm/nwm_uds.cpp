@@ -600,7 +600,8 @@ NWM_UDS::Node* NWM_UDS::FindNodeByNodeId(u16 node_id) {
 }
 
 void NWM_UDS::HandleSecureDataPacket(const Network::WifiPacket& packet) {
-    const auto secure_data = ParseSecureDataHeader(packet.data);
+    SecureDataHeader secure_data{};
+    std::memcpy(&secure_data, packet.data.data(), sizeof(SecureDataHeader));
 
     std::scoped_lock lock{connection_status_mutex, system.Kernel().GetHLELock()};
 
@@ -650,9 +651,9 @@ void NWM_UDS::HandleSecureDataPacket(const Network::WifiPacket& packet) {
 
     // --- If node was reconnecting, finalize reconnect ---
     if (node->reconnecting) {
-        LOG_ERROR(Service_NWM,
-                  "RECONNECT: node_id={} successfully reconnected",
-                  secure_data.src_node_id);
+    LOG_ERROR(Service_NWM,
+              "RECONNECT: node_id={} successfully reconnected",
+              static_cast<u16>(secure_data.src_node_id));
 
         node->connected = true;
         node->reconnecting = false;
@@ -1061,35 +1062,21 @@ void NWM_UDS::HandleAuthenticationFrame(const Network::WifiPacket& packet) {
 void NWM_UDS::HandleDeauthenticationFrame(const Network::WifiPacket& packet) {
     std::scoped_lock lock{connection_status_mutex, system.Kernel().GetHLELock()};
 
-    const auto deauth = ParseDeauthenticationFrame(packet.data);
-
     LOG_ERROR(Service_NWM,
-              "DEAUTH: reason={} from {:02X}:{:02X}:{:02X}:{:02X}:{:02X}:{:02X}",
-              static_cast<u32>(deauth.reason_code),
+              "DEAUTH from {:02X}:{:02X}:{:02X}:{:02X}:{:02X}:{:02X}",
               packet.transmitter_address[0], packet.transmitter_address[1],
               packet.transmitter_address[2], packet.transmitter_address[3],
               packet.transmitter_address[4], packet.transmitter_address[5]);
 
-    // --- Soft disconnect: mark node as reconnecting instead of removing it ---
     auto it = node_map.find(packet.transmitter_address);
     if (it != node_map.end()) {
-        const u16 node_id = it->second.node_id;
-
-        LOG_ERROR(Service_NWM,
-                  "DEAUTH: soft disconnect, marking node_id={} as reconnecting",
-                  node_id);
-
         it->second.connected = false;
         it->second.reconnecting = true;
         it->second.last_seen = std::chrono::steady_clock::now();
-
-        // Let EAPoL-Start handle the reconnect
         return;
     }
 
-    // If host deauths us, tear down connection
     if (packet.transmitter_address == network_info.host_mac_address) {
-        LOG_ERROR(Service_NWM, "DEAUTH: host deauthenticated, disconnecting");
         DisconnectNetworkHLE();
     }
 }
