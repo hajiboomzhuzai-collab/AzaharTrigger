@@ -2255,18 +2255,13 @@ void NWM_UDS::StartConnectionSequence(const MacAddress& server) {
         std::scoped_lock lock(connection_status_mutex);
         connection_status.status = NetworkStatus::Connecting;
 
-        // TODO(Subv): Handle timeout.
-
-        // Send an authentication frame with SEQ1
         auth_request.channel = network_channel;
         auth_request.data = GenerateAuthenticationFrame(AuthenticationSeq::SEQ1);
         auth_request.destination_address = server;
         auth_request.type = WifiPacket::PacketType::Authentication;
 
-        // Save target MAC for reconnect/watchdog logic
         network_info.host_mac_address = server;
 
-        // Clear node/channel state for fresh connection
         node_map.clear();
         node_lookup.fill(boost::none);
         node_info.clear();
@@ -2279,14 +2274,11 @@ void NWM_UDS::StartConnectionSequence(const MacAddress& server) {
 
     SendPacket(auth_request);
 
-    // Start UDS main thread
-    std::thread([this]() { ThreadFunc(); }).detach();
-
-    // Start reconnect watchdog
+    // Start reconnect watchdog (safe)
     watchdog_thread = std::thread([this]() { ReconnectWatchdog(); });
     watchdog_thread.detach();
 
-    LOG_ERROR(Service_NWM, "StartConnectionSequence: initialized (auth SEQ1 + UDS + watchdog)");
+    LOG_ERROR(Service_NWM, "StartConnectionSequence: initialized (auth SEQ1 + watchdog)");
 }
 
 ResultStatus NWM_UDS::DisconnectNetworkHLE() {
