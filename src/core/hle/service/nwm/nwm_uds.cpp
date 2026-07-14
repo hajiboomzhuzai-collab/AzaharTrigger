@@ -380,17 +380,35 @@ void NWM_UDS::HandleNodeMapPacket(const Network::WifiPacket& packet) {
 
 void NWM_UDS::HandleBeaconFrame(const Network::WifiPacket& packet) {
     std::scoped_lock lock(beacon_mutex);
+
     const auto unique_beacon =
         std::find_if(received_beacons.begin(), received_beacons.end(),
                      [&packet](const Network::WifiPacket& new_packet) {
                          return new_packet.transmitter_address == packet.transmitter_address;
                      });
+
     if (unique_beacon != received_beacons.end()) {
         // We already have a beacon from the same mac in the deque, remove the old one;
         received_beacons.erase(unique_beacon);
     }
 
     received_beacons.emplace_back(packet);
+
+    // --- SERVER KEEPALIVE PATCH ---
+    // Host must send periodic packets or MH4U disconnects after ~3 seconds.
+    // We send a tiny broadcast Data packet every time a beacon is processed.
+    if (connection_status.status == NetworkStatus::ConnectedAsHost) {
+        using Network::WifiPacket;
+        WifiPacket keepalive;
+        keepalive.type = Network::WifiPacket::PacketType::Data;
+        keepalive.channel = network_channel;
+        keepalive.destination_address = Network::BroadcastMac;
+
+        // 1-byte payload (ignored by MH4U)
+        keepalive.data = { 0x00 };
+
+        SendPacket(keepalive);
+    }
 
     // Discard old beacons if the buffer is full.
     if (received_beacons.size() > MaxBeaconFrames)
