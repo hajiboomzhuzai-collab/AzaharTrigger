@@ -2194,16 +2194,17 @@ void NWM_UDS::PullPacket(Kernel::HLERequestContext& ctx) {
 }
 
 Common::Expected<int, ResultStatus> NWM_UDS::PullPacketHLE(
-LOG_ERROR(Service_NWM,
-          "PullPacketHLE ENTER status={} bind={} channels={}",
-          static_cast<u32>(connection_status.status),
-          bind_node_id,
-          channel_data.size());
     u32 bind_node_id,
     u32 max_out_buff_size,
     u32 max_out_buff_size_aligned,
     std::vector<u8>& output_buffer,
     void* secure_data_out) {
+
+    LOG_ERROR(Service_NWM,
+          "PullPacketHLE ENTER status={} bind={} channels={}",
+          static_cast<u32>(connection_status.status),
+          bind_node_id,
+          channel_data.size());
 
     u32 buff_size = std::min<u32>(max_out_buff_size_aligned, 0x172) << 2;
 
