@@ -335,22 +335,48 @@ void NWM_UDS::HandleAssociationResponseFrame(const Network::WifiPacket& packet) 
 
     ASSERT_MSG(std::get<AssocStatus>(assoc_result) == AssocStatus::Successful,
                "Could not join network");
+
+    const u16 assigned_id = std::get<u16>(assoc_result);
+
     {
         std::scoped_lock lock(connection_status_mutex);
+
         if (connection_status.status != NetworkStatus::Connecting) {
             LOG_DEBUG(Service_NWM,
                       "Ignored AssociationResponseFrame because connection status is {}",
                       static_cast<u32>(connection_status.status));
             return;
         }
+
+        // ✅ Mark client as connected
+        connection_status.network_node_id = assigned_id;
+        connection_status.status = NetworkStatus::ConnectedAsClient;
+
+        // ✅ Update node map
+        auto& node = node_map[packet.transmitter_address];
+        node.node_id   = assigned_id;
+        node.connected = true;
+        node.last_seen = std::chrono::steady_clock::now();
+
+        node_lookup[assigned_id] = packet.transmitter_address;
+
+        LOG_ERROR(Service_NWM,
+                  "ASSOC RESPONSE: assigned node_id={} mac={:02X}:{:02X}:{:02X}:{:02X}:{:02X}:{:02X}",
+                  assigned_id,
+                  packet.transmitter_address[0],
+                  packet.transmitter_address[1],
+                  packet.transmitter_address[2],
+                  packet.transmitter_address[3],
+                  packet.transmitter_address[4],
+                  packet.transmitter_address[5]);
     }
 
-    // Send the EAPoL-Start packet to the server.
+    // Send the EAPoL-Start packet to the server
     using Network::WifiPacket;
     WifiPacket eapol_start;
     eapol_start.channel = network_channel;
     eapol_start.data =
-        GenerateEAPoLStartFrame(std::get<u16>(assoc_result), conn_type, current_node);
+        GenerateEAPoLStartFrame(assigned_id, conn_type, current_node);
     // TODO(B3N30): Encrypt the packet.
     eapol_start.destination_address = packet.transmitter_address;
     eapol_start.type = WifiPacket::PacketType::Data;
@@ -559,38 +585,26 @@ void NWM_UDS::HandleEAPoLPacket(const Network::WifiPacket& packet) {
     }
 }
 
-NWM_UDS::Node* NWM_UDS::FindNodeByNodeId(u16 node_id) {
-    if (node_id == 0 || node_id > UDSMaxNodes) {
-        LOG_ERROR(Service_NWM,
-                  "FindNodeByNodeId invalid id={}",
-                  node_id);
+NodeInfo* NWM_UDS::FindNodeByNodeId(u16 node_id) {
+    if (node_id == 0) {
         return nullptr;
     }
 
-    if (!node_lookup[node_id]) {
-        LOG_ERROR(Service_NWM,
-                  "FindNodeByNodeId lookup missing id={} status={} node_map={}",
-                  node_id,
-                  static_cast<u32>(connection_status.status),
-                  node_map.size());
-        return nullptr;
+    // MH4U sometimes uses high IDs (like 150) for temp nodes.
+    auto it = node_lookup.find(node_id);
+    if (it != node_lookup.end() && it->second) {
+        auto mac = *it->second;
+        auto node_it = node_map.find(mac);
+        if (node_it != node_map.end()) {
+            return &node_it->second;
+        }
     }
 
-    const auto& lookup_mac = *node_lookup[node_id];
-
-    auto it = node_map.find(lookup_mac);
-    if (it == node_map.end()) {
-        LOG_ERROR(Service_NWM,
-                  "FindNodeByNodeId map missing id={} node_map_size={}",
-                  node_id,
-                  node_map.size());
-        return nullptr;
-    }
-
-    return &it->second;
+    return nullptr;
 }
 
-void NWM_UDS::HandleSecureDataPacket(const Network::WifiPacket& packet) {
+
+    void NWM_UDS::HandleSecureDataPacket(const Network::WifiPacket& packet) {
     // --- Parse SecureDataHeader safely ---
     SecureDataHeader secure_data{};
     if (packet.data.size() < sizeof(SecureDataHeader)) {
@@ -613,13 +627,13 @@ void NWM_UDS::HandleSecureDataPacket(const Network::WifiPacket& packet) {
                   src_id);
 
         auto& recovered_node = node_map[packet.transmitter_address];
-
         recovered_node.connected    = true;
         recovered_node.reconnecting = false;
         recovered_node.spec         = false;
         recovered_node.node_id      = src_id;
         recovered_node.last_seen    = std::chrono::steady_clock::now();
 
+        // Map this high node_id (like 150) to its MAC
         node_lookup[src_id] = packet.transmitter_address;
 
         LOG_ERROR(Service_NWM,
@@ -663,6 +677,11 @@ void NWM_UDS::HandleSecureDataPacket(const Network::WifiPacket& packet) {
     } else {
         node->last_seen = std::chrono::steady_clock::now();
         node->connected = true;
+    }
+
+    // --- Ensure we are marked connected (fixes status=7 drop) ---
+    if (connection_status.status == NetworkStatus::Connecting) {
+        connection_status.status = NetworkStatus::ConnectedAsClient;
     }
 
     // --- Only process when fully connected ---
