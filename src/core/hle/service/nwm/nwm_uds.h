@@ -534,6 +534,7 @@ private:
     u16 GetNextAvailableNodeId();
 
     void BroadcastNodeMap();
+    void RebuildHostNodeLookup();
     void HandleNodeMapPacket(const Network::WifiPacket& packet);
     void HandleBeaconFrame(const Network::WifiPacket& packet);
     void HandleAssociationResponseFrame(const Network::WifiPacket& packet);
