@@ -113,44 +113,42 @@ class CustomLayoutEditorView @JvmOverloads constructor(
     // -------------------------
     fun loadFromSettings() {
 
-        val scaleX = width / FB_WIDTH
-        val scaleY = height / FB_HEIGHT
-
         if (NativeLibrary.isPortraitMode) {
 
             topRect.set(
-                IntSetting.PORTRAIT_TOP_X.int,
-                IntSetting.PORTRAIT_TOP_Y.int,
-                (IntSetting.PORTRAIT_TOP_X.int + IntSetting.PORTRAIT_TOP_WIDTH.int),
-                (IntSetting.PORTRAIT_TOP_Y.int + IntSetting.PORTRAIT_TOP_HEIGHT.int)
+                IntSetting.PORTRAIT_TOP_X.int.toFloat(),
+                IntSetting.PORTRAIT_TOP_Y.int.toFloat(),
+                (IntSetting.PORTRAIT_TOP_X.int + IntSetting.PORTRAIT_TOP_WIDTH.int).toFloat(),
+                (IntSetting.PORTRAIT_TOP_Y.int + IntSetting.PORTRAIT_TOP_HEIGHT.int).toFloat()
             )
 
             bottomRect.set(
-                IntSetting.PORTRAIT_BOTTOM_X.int,
-                IntSetting.PORTRAIT_BOTTOM_Y.int,
-                (IntSetting.PORTRAIT_BOTTOM_X.int + IntSetting.PORTRAIT_BOTTOM_WIDTH.int),
-                (IntSetting.PORTRAIT_BOTTOM_Y.int + IntSetting.PORTRAIT_BOTTOM_HEIGHT.int)
+                IntSetting.PORTRAIT_BOTTOM_X.int.toFloat(),
+                IntSetting.PORTRAIT_BOTTOM_Y.int.toFloat(),
+                (IntSetting.PORTRAIT_BOTTOM_X.int + IntSetting.PORTRAIT_BOTTOM_WIDTH.int).toFloat(),
+                (IntSetting.PORTRAIT_BOTTOM_Y.int + IntSetting.PORTRAIT_BOTTOM_HEIGHT.int).toFloat()
             )
 
         } else {
 
             topRect.set(
-                IntSetting.LANDSCAPE_TOP_X.int * scaleX,
-                IntSetting.LANDSCAPE_TOP_Y.int * scaleY,
-                (IntSetting.LANDSCAPE_TOP_X.int + IntSetting.LANDSCAPE_TOP_WIDTH.int) * scaleX,
-                (IntSetting.LANDSCAPE_TOP_Y.int + IntSetting.LANDSCAPE_TOP_HEIGHT.int) * scaleY
+                IntSetting.LANDSCAPE_TOP_X.int.toFloat(),
+                IntSetting.LANDSCAPE_TOP_Y.int.toFloat(),
+                (IntSetting.LANDSCAPE_TOP_X.int + IntSetting.LANDSCAPE_TOP_WIDTH.int).toFloat(),
+                (IntSetting.LANDSCAPE_TOP_Y.int + IntSetting.LANDSCAPE_TOP_HEIGHT.int).toFloat()
             )
 
             bottomRect.set(
-                IntSetting.LANDSCAPE_BOTTOM_X.int * scaleX,
-                IntSetting.LANDSCAPE_BOTTOM_Y.int * scaleY,
-                (IntSetting.LANDSCAPE_BOTTOM_X.int + IntSetting.LANDSCAPE_BOTTOM_WIDTH.int) * scaleX,
-                (IntSetting.LANDSCAPE_BOTTOM_Y.int + IntSetting.LANDSCAPE_BOTTOM_HEIGHT.int) * scaleY
+                IntSetting.LANDSCAPE_BOTTOM_X.int.toFloat(),
+                IntSetting.LANDSCAPE_BOTTOM_Y.int.toFloat(),
+                (IntSetting.LANDSCAPE_BOTTOM_X.int + IntSetting.LANDSCAPE_BOTTOM_WIDTH.int).toFloat(),
+                (IntSetting.LANDSCAPE_BOTTOM_Y.int + IntSetting.LANDSCAPE_BOTTOM_HEIGHT.int).toFloat()
             )
         }
 
         invalidate()
     }
+
 
     // -------------------------
     // DRAW
