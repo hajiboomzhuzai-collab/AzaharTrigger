@@ -798,6 +798,24 @@ class SettingsFragmentPresenter(private val fragmentView: SettingsFragmentView) 
                     onLongClick = { settingsAdapter.onLongClickAutoMap() }
                 )
             )
+            add(
+                RunnableSetting(
+                    R.string.touchscreen_bindings,
+                    R.string.touchscreen_bindings_description,
+                    true,
+                    R.drawable.ic_controller,
+                    {
+                    settingsActivity.supportFragmentManager
+                        .beginTransaction()
+                        .replace(
+                        R.id.fragment_container,
+                        TouchscreenBindingFragment()
+                        )
+                        .addToBackStack(null)
+                        .commit()
+                    }
+                )
+            )
             add(HeaderSetting(R.string.generic_buttons))
             Settings.buttonKeys.forEachIndexed { i: Int, key: String ->
                 val button = getInputObject(key)
