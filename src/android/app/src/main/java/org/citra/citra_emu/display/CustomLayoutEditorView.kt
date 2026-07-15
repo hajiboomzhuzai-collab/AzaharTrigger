@@ -111,7 +111,7 @@ class CustomLayoutEditorView @JvmOverloads constructor(
     // -------------------------
     // LOAD INITIAL POSITIONS
     // -------------------------
-    private fun loadFromSettings() {
+    fun loadFromSettings() {
 
         val scaleX = width / FB_WIDTH
         val scaleY = height / FB_HEIGHT
