@@ -707,10 +707,12 @@ class EmulationFragment : Fragment(), SurfaceHolder.Callback, Choreographer.Fram
     }
 
     private fun openCustomLayoutEditor() {
-
         binding.customLayoutEditor.visibility = View.VISIBLE
         binding.customLayoutToolbar.visibility = View.VISIBLE
 
+        binding.customLayoutEditor.post {
+            binding.customLayoutEditor.loadFromSettings()
+        }
     }
     
     private fun setupCustomLayoutEditor() {
