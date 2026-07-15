@@ -823,14 +823,20 @@ void NWM_UDS::HandleSecureDataPacket(const Network::WifiPacket& packet) {
     return;
 }
 
+
+LOG_ERROR(Service_NWM,
+          "SECUREDATA ACCEPT status={} src={} dst={} channel={}",
+          static_cast<u32>(connection_status.status),
+          static_cast<u32>(secure_data.src_node_id),
+          static_cast<u32>(secure_data.dest_node_id),
+          static_cast<u32>(secure_data.data_channel));
+
     // Ignore our own packets
     if (secure_data.src_node_id ==
         connection_status.network_node_id) {
         return;
     }
-
-
-
+    
     // Not for us
     if (secure_data.dest_node_id != connection_status.network_node_id &&
         secure_data.dest_node_id != BroadcastNetworkNodeId) {
