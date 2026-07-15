@@ -812,17 +812,16 @@ void NWM_UDS::HandleSecureDataPacket(const Network::WifiPacket& packet) {
 
 
     if (connection_status.status != NetworkStatus::ConnectedAsHost &&
-        connection_status.status != NetworkStatus::ConnectedAsClient &&
-        connection_status.status != NetworkStatus::ConnectedAsSpectator) {
+    connection_status.status != NetworkStatus::ConnectedAsClient &&
+    connection_status.status != NetworkStatus::ConnectedAsSpectator &&
+    connection_status.status != NetworkStatus::Connecting) {
 
-        LOG_ERROR(Service_NWM,
-                  "SECUREDATA DROP invalid status={}",
-                  static_cast<u32>(connection_status.status));
+    LOG_ERROR(Service_NWM,
+              "SECUREDATA DROP invalid status={}",
+              static_cast<u32>(connection_status.status));
 
-        return;
-    }
-
-
+    return;
+}
 
     // Ignore our own packets
     if (secure_data.src_node_id ==
