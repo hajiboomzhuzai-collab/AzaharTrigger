@@ -119,17 +119,17 @@ class CustomLayoutEditorView @JvmOverloads constructor(
         if (NativeLibrary.isPortraitMode) {
 
             topRect.set(
-                IntSetting.PORTRAIT_TOP_X.int * scaleX,
-                IntSetting.PORTRAIT_TOP_Y.int * scaleY,
-                (IntSetting.PORTRAIT_TOP_X.int + IntSetting.PORTRAIT_TOP_WIDTH.int) * scaleX,
-                (IntSetting.PORTRAIT_TOP_Y.int + IntSetting.PORTRAIT_TOP_HEIGHT.int) * scaleY
+                IntSetting.PORTRAIT_TOP_X.int,
+                IntSetting.PORTRAIT_TOP_Y.int,
+                (IntSetting.PORTRAIT_TOP_X.int + IntSetting.PORTRAIT_TOP_WIDTH.int),
+                (IntSetting.PORTRAIT_TOP_Y.int + IntSetting.PORTRAIT_TOP_HEIGHT.int)
             )
 
             bottomRect.set(
-                IntSetting.PORTRAIT_BOTTOM_X.int * scaleX,
-                IntSetting.PORTRAIT_BOTTOM_Y.int * scaleY,
-                (IntSetting.PORTRAIT_BOTTOM_X.int + IntSetting.PORTRAIT_BOTTOM_WIDTH.int) * scaleX,
-                (IntSetting.PORTRAIT_BOTTOM_Y.int + IntSetting.PORTRAIT_BOTTOM_HEIGHT.int) * scaleY
+                IntSetting.PORTRAIT_BOTTOM_X.int,
+                IntSetting.PORTRAIT_BOTTOM_Y.int,
+                (IntSetting.PORTRAIT_BOTTOM_X.int + IntSetting.PORTRAIT_BOTTOM_WIDTH.int),
+                (IntSetting.PORTRAIT_BOTTOM_Y.int + IntSetting.PORTRAIT_BOTTOM_HEIGHT.int)
             )
 
         } else {
