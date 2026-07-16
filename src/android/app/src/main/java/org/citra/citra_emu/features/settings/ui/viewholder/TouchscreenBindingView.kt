@@ -1,41 +1,39 @@
 package org.citra.citra_emu.features.settings.ui.viewholder
 
 import android.content.Context
-import android.graphics.Canvas
-import android.graphics.Color
-import android.graphics.Paint
+import android.graphics.*
 import android.util.AttributeSet
 import android.view.MotionEvent
 import android.view.View
+
 
 class TouchscreenBindingView @JvmOverloads constructor(
     context: Context,
     attrs: AttributeSet? = null
 ) : View(context, attrs) {
 
-    private val borderPaint = Paint().apply {
-        color = Color.WHITE
-        style = Paint.Style.STROKE
-        strokeWidth = 4f
-        isAntiAlias = true
-    }
 
-    private val pointPaint = Paint().apply {
-        color = Color.RED
-        style = Paint.Style.FILL
-        isAntiAlias = true
-    }
+    private val borderPaint =
+        Paint().apply {
+            color = Color.WHITE
+            style = Paint.Style.STROKE
+            strokeWidth = 4f
+        }
 
-    private var touchX = 0f
-    private var touchY = 0f
 
-    var onTouchPointSelected: ((Float, Float) -> Unit)? = null
+    private val pointPaint =
+        Paint().apply {
+            color = Color.RED
+            style = Paint.Style.FILL
+        }
+
+
+    var touchX = 150f
+    var touchY = 150f
 
 
     override fun onDraw(canvas: Canvas) {
-        super.onDraw(canvas)
 
-        // fake 3DS bottom screen
         canvas.drawRect(
             0f,
             0f,
@@ -44,7 +42,7 @@ class TouchscreenBindingView @JvmOverloads constructor(
             borderPaint
         )
 
-        // selected point
+
         canvas.drawCircle(
             touchX,
             touchY,
@@ -56,16 +54,10 @@ class TouchscreenBindingView @JvmOverloads constructor(
 
     override fun onTouchEvent(event: MotionEvent): Boolean {
 
-        if (event.action == MotionEvent.ACTION_DOWN) {
+        if(event.action == MotionEvent.ACTION_DOWN) {
 
             touchX = event.x
             touchY = event.y
-
-
-            onTouchPointSelected?.invoke(
-                touchX,
-                touchY
-            )
 
             invalidate()
 
@@ -76,12 +68,14 @@ class TouchscreenBindingView @JvmOverloads constructor(
     }
 
 
-    fun setTouchPoint(
-        x: Float,
-        y: Float
-    ) {
-        touchX = x
-        touchY = y
-        invalidate()
+    fun getScreenX(): Int {
+
+        return ((touchX / width) * 320).toInt()
+    }
+
+
+    fun getScreenY(): Int {
+
+        return ((touchY / height) * 240).toInt()
     }
 }
