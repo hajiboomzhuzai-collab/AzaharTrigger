@@ -5,6 +5,7 @@ import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Paint
 import android.util.AttributeSet
+import android.view.MotionEvent
 import android.view.View
 
 class TouchscreenBindingView @JvmOverloads constructor(
@@ -25,13 +26,14 @@ class TouchscreenBindingView @JvmOverloads constructor(
         isAntiAlias = true
     }
 
-    var touchX = width / 2f
-    var touchY = height / 2f
+    var touchX = 150f
+    var touchY = 150f
+
+    var onTouchPointChanged: ((Float, Float) -> Unit)? = null
 
     override fun onDraw(canvas: Canvas) {
         super.onDraw(canvas)
 
-        // Draw fake 3DS bottom screen
         canvas.drawRect(
             0f,
             0f,
@@ -40,7 +42,6 @@ class TouchscreenBindingView @JvmOverloads constructor(
             borderPaint
         )
 
-        // Draw selected touch point
         canvas.drawCircle(
             touchX,
             touchY,
@@ -49,9 +50,20 @@ class TouchscreenBindingView @JvmOverloads constructor(
         )
     }
 
-    fun setTouchPoint(x: Float, y: Float) {
-        touchX = x
-        touchY = y
-        invalidate()
+    override fun onTouchEvent(event: MotionEvent): Boolean {
+        if (event.action == MotionEvent.ACTION_DOWN ||
+            event.action == MotionEvent.ACTION_MOVE
+        ) {
+            touchX = event.x
+            touchY = event.y
+
+            invalidate()
+
+            onTouchPointChanged?.invoke(touchX, touchY)
+
+            return true
+        }
+
+        return super.onTouchEvent(event)
     }
 }
