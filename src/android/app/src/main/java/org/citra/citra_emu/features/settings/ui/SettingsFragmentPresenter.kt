@@ -809,7 +809,7 @@ class SettingsFragmentPresenter(private val fragmentView: SettingsFragmentView) 
                     settingsActivity.supportFragmentManager
                         .beginTransaction()
                         .replace(
-                        R.id.frame_container,
+                        R.id.frame_content,
                         TouchscreenBindingFragment()
                         )
                         .addToBackStack(null)
