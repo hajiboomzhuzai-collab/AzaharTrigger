@@ -2,7 +2,6 @@ package org.citra.citra_emu.fragments
 
 import android.content.DialogInterface
 import android.os.Bundle
-import android.view.InputDevice
 import android.view.KeyEvent
 import android.view.LayoutInflater
 import android.view.View
@@ -13,24 +12,35 @@ import org.citra.citra_emu.databinding.DialogInputBinding
 import org.citra.citra_emu.features.settings.model.view.TouchBinding
 import org.citra.citra_emu.utils.Log
 
-class TouchBindingBottomSheetDialogFragment : BottomSheetDialogFragment() {
+
+class TouchBindingBottomSheetDialogFragment :
+    BottomSheetDialogFragment() {
+
 
     private var _binding: DialogInputBinding? = null
     private val binding get() = _binding!!
 
+
     private var touchX = 0
     private var touchY = 0
 
-    private var onCancel: (() -> Unit)? = null
-    private var onDismiss: (() -> Unit)? = null
 
 
-    override fun onCreate(savedInstanceState: Bundle?) {
+    override fun onCreate(
+        savedInstanceState: Bundle?
+    ) {
         super.onCreate(savedInstanceState)
 
-        touchX = arguments?.getInt("touch_x") ?: 0
-        touchY = arguments?.getInt("touch_y") ?: 0
+
+        touchX =
+            arguments?.getInt(ARG_X)
+                ?: 0
+
+        touchY =
+            arguments?.getInt(ARG_Y)
+                ?: 0
     }
+
 
 
     override fun onCreateView(
@@ -39,17 +49,29 @@ class TouchBindingBottomSheetDialogFragment : BottomSheetDialogFragment() {
         savedInstanceState: Bundle?
     ): View {
 
-        _binding = DialogInputBinding.inflate(inflater, container, false)
+
+        _binding =
+            DialogInputBinding.inflate(
+                inflater,
+                container,
+                false
+            )
+
 
         return binding.root
     }
+
+
 
 
     override fun onViewCreated(
         view: View,
         savedInstanceState: Bundle?
     ) {
-        super.onViewCreated(view, savedInstanceState)
+        super.onViewCreated(
+            view,
+            savedInstanceState
+        )
 
 
         BottomSheetBehavior.from<View>(
@@ -58,23 +80,32 @@ class TouchBindingBottomSheetDialogFragment : BottomSheetDialogFragment() {
             BottomSheetBehavior.STATE_EXPANDED
 
 
+
         isCancelable = false
+
 
         view.requestFocus()
 
 
-        // Wait for controller button
+        /*
+         * Listen for physical controller buttons.
+         */
         dialog?.setOnKeyListener { _, _, event ->
-            onKeyEvent(event)
+
+            handleKeyEvent(event)
+
         }
+
 
 
         binding.textTitle.text =
             "Bind Touch Point"
 
 
+
         binding.textMessage.text =
-            "Press a physical controller button"
+            "Press a controller button"
+
 
 
         binding.buttonClear.setOnClickListener {
@@ -88,9 +119,8 @@ class TouchBindingBottomSheetDialogFragment : BottomSheetDialogFragment() {
         }
 
 
-        binding.buttonCancel.setOnClickListener {
 
-            onCancel?.invoke()
+        binding.buttonCancel.setOnClickListener {
 
             dismiss()
         }
@@ -98,7 +128,9 @@ class TouchBindingBottomSheetDialogFragment : BottomSheetDialogFragment() {
 
 
 
-    private fun onKeyEvent(
+
+
+    private fun handleKeyEvent(
         event: KeyEvent
     ): Boolean {
 
@@ -107,9 +139,11 @@ class TouchBindingBottomSheetDialogFragment : BottomSheetDialogFragment() {
             return false
 
 
+
         Log.debug(
-            "[TouchBinding] Button pressed ${event.keyCode}"
+            "[TouchBinding] button ${event.keyCode}"
         )
+
 
 
         TouchBinding.addBinding(
@@ -119,10 +153,14 @@ class TouchBindingBottomSheetDialogFragment : BottomSheetDialogFragment() {
         )
 
 
+
         dismiss()
+
 
         return true
     }
+
+
 
 
 
@@ -130,9 +168,8 @@ class TouchBindingBottomSheetDialogFragment : BottomSheetDialogFragment() {
         dialog: DialogInterface
     ) {
         super.onDismiss(dialog)
-
-        onDismiss?.invoke()
     }
+
 
 
 
@@ -144,22 +181,45 @@ class TouchBindingBottomSheetDialogFragment : BottomSheetDialogFragment() {
 
 
 
+
+
     companion object {
+
+
+        private const val ARG_X =
+            "touch_x"
+
+        private const val ARG_Y =
+            "touch_y"
+
+
 
         fun newInstance(
             x: Int,
             y: Int
-        ): TouchBindingBottomSheetDialogFragment {
+        ):
+        TouchBindingBottomSheetDialogFragment {
+
 
             val fragment =
                 TouchBindingBottomSheetDialogFragment()
 
 
+
             fragment.arguments =
                 Bundle().apply {
-                    putInt("touch_x", x)
-                    putInt("touch_y", y)
+
+                    putInt(
+                        ARG_X,
+                        x
+                    )
+
+                    putInt(
+                        ARG_Y,
+                        y
+                    )
                 }
+
 
 
             return fragment
