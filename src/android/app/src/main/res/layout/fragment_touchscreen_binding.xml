@@ -8,6 +8,7 @@
     android:gravity="center_horizontal"
     android:padding="16dp">
 
+
     <TextView
         android:id="@+id/title"
         android:layout_width="wrap_content"
@@ -16,6 +17,7 @@
         android:textSize="20sp"
         android:textStyle="bold"/>
 
+
     <TextView
         android:id="@+id/description"
         android:layout_width="wrap_content"
@@ -23,25 +25,62 @@
         android:layout_marginTop="8dp"
         android:text="Tap the square to choose a touch point."/>
 
+
+
+    <!-- Fake 3DS touchscreen -->
     <FrameLayout
         android:id="@+id/touchscreen_container"
         android:layout_width="300dp"
         android:layout_height="300dp"
         android:layout_marginTop="24dp">
 
+
         <org.citra.citra_emu.features.settings.ui.viewholder.TouchscreenBindingView
             android:id="@+id/touchscreen_view"
             android:layout_width="match_parent"
             android:layout_height="match_parent"/>
 
+
     </FrameLayout>
+
+
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="16dp"
+        android:text="Saved Bindings"
+        android:textSize="18sp"
+        android:textStyle="bold"/>
+
+
+
+    <!-- Scrollable saved binding list -->
+    <ScrollView
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:layout_marginTop="8dp">
+
+
+        <LinearLayout
+            android:id="@+id/binding_list"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"/>
+
+
+    </ScrollView>
+
+
 
     <Button
         android:id="@+id/button_bind"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginTop="24dp"
         android:text="Bind Touch Point"/>
+
+
 
     <Button
         android:id="@+id/button_delete"
@@ -49,5 +88,6 @@
         android:layout_height="wrap_content"
         android:layout_marginTop="12dp"
         android:text="Delete Binding"/>
+
 
 </LinearLayout>
