@@ -44,6 +44,7 @@ import org.citra.citra_emu.features.settings.model.BooleanSetting
 import org.citra.citra_emu.features.settings.model.IntSetting
 import org.citra.citra_emu.features.settings.model.SettingsViewModel
 import org.citra.citra_emu.features.settings.model.view.InputBindingSetting
+import org.citra.citra_emu.features.settings.model.view.TouchBindingManager
 import org.citra.citra_emu.fragments.EmulationFragment
 import org.citra.citra_emu.fragments.MessageDialogFragment
 import org.citra.citra_emu.model.Game
@@ -327,6 +328,11 @@ class EmulationActivity : AppCompatActivity() {
         // TODO: Move this check into native code - prevents crash if input pressed before starting emulation
         if (!NativeLibrary.isRunning()) {
             return false
+        }
+
+        // Touchscreen button bindings
+        if (TouchBindingManager.onKeyEvent(event)) {
+            return true
         }
 
         if (emulationFragment.isDrawerOpen()) {
