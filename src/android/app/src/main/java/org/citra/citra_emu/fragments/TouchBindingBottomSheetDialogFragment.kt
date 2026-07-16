@@ -10,6 +10,7 @@ import com.google.android.material.bottomsheet.BottomSheetBehavior
 import com.google.android.material.bottomsheet.BottomSheetDialogFragment
 import org.citra.citra_emu.databinding.DialogInputBinding
 import org.citra.citra_emu.features.settings.model.view.TouchBinding
+import org.citra.citra_emu.features.settings.model.view.TouchBindingManager
 import org.citra.citra_emu.utils.Log
 
 
@@ -21,8 +22,8 @@ class TouchBindingBottomSheetDialogFragment :
     private val binding get() = _binding!!
 
 
-    private var touchX = 0
-    private var touchY = 0
+    private var touchX = 0f
+    private var touchY = 0f
 
 
 
@@ -33,12 +34,12 @@ class TouchBindingBottomSheetDialogFragment :
 
 
         touchX =
-            arguments?.getInt(ARG_X)
-                ?: 0
+            arguments?.getFloat(ARG_X)
+                ?: 0f
 
         touchY =
-            arguments?.getInt(ARG_Y)
-                ?: 0
+            arguments?.getFloat(ARG_Y)
+                ?: 0f
     }
 
 
@@ -49,14 +50,12 @@ class TouchBindingBottomSheetDialogFragment :
         savedInstanceState: Bundle?
     ): View {
 
-
         _binding =
             DialogInputBinding.inflate(
                 inflater,
                 container,
                 false
             )
-
 
         return binding.root
     }
@@ -74,21 +73,30 @@ class TouchBindingBottomSheetDialogFragment :
         )
 
 
-        BottomSheetBehavior.from<View>(
-            view.parent as View
-        ).state =
-            BottomSheetBehavior.STATE_EXPANDED
+        val parent =
+            view.parent as? View
 
+        parent?.let {
+            BottomSheetBehavior.from(it)
+                .state =
+                BottomSheetBehavior.STATE_EXPANDED
+        }
 
 
         isCancelable = false
 
 
-        view.requestFocus()
+        binding.textTitle.text =
+            "Bind Touch Point"
+
+
+        binding.textMessage.text =
+            "Press a physical controller button"
+
 
 
         /*
-         * Listen for physical controller buttons.
+         * Wait for physical controller button
          */
         dialog?.setOnKeyListener { _, _, event ->
 
@@ -98,32 +106,45 @@ class TouchBindingBottomSheetDialogFragment :
 
 
 
-        binding.textTitle.text =
-            "Bind Touch Point"
-
-
-
-        binding.textMessage.text =
-            "Press a controller button"
-
-
-
+        /*
+         * Remove this touch binding
+         */
         binding.buttonClear.setOnClickListener {
 
-            TouchBinding.removeBinding(
-                touchX,
-                touchY
-            )
+
+            val existing =
+                TouchBindingManager
+                    .getBindings()
+                    .firstOrNull {
+
+                        it.x == touchX &&
+                        it.y == touchY
+
+                    }
+
+
+            if (existing != null) {
+
+                TouchBindingManager
+                    .removeBinding(existing)
+
+            }
+
 
             dismiss()
         }
 
 
 
+        /*
+         * Cancel binding
+         */
         binding.buttonCancel.setOnClickListener {
 
             dismiss()
+
         }
+
     }
 
 
@@ -135,23 +156,38 @@ class TouchBindingBottomSheetDialogFragment :
     ): Boolean {
 
 
-        if (event.action != KeyEvent.ACTION_UP)
+        if (event.action != KeyEvent.ACTION_DOWN) {
+
             return false
+
+        }
+
+
+        val key =
+            event.keyCode
 
 
 
         Log.debug(
-            "[TouchBinding] button ${event.keyCode}"
+            "[TouchBinding] bound key=$key x=$touchX y=$touchY"
         )
 
 
 
-        TouchBinding.addBinding(
-            event.keyCode,
-            touchX,
-            touchY
-        )
+        TouchBindingManager
+            .addBinding(
 
+                TouchBinding(
+
+                    keyCode = key,
+
+                    x = touchX,
+
+                    y = touchY
+
+                )
+
+            )
 
 
         dismiss()
@@ -174,9 +210,11 @@ class TouchBindingBottomSheetDialogFragment :
 
 
     override fun onDestroyView() {
+
         super.onDestroyView()
 
         _binding = null
+
     }
 
 
@@ -189,14 +227,16 @@ class TouchBindingBottomSheetDialogFragment :
         private const val ARG_X =
             "touch_x"
 
+
         private const val ARG_Y =
             "touch_y"
 
 
 
+
         fun newInstance(
-            x: Int,
-            y: Int
+            x: Float,
+            y: Float
         ):
         TouchBindingBottomSheetDialogFragment {
 
@@ -209,20 +249,25 @@ class TouchBindingBottomSheetDialogFragment :
             fragment.arguments =
                 Bundle().apply {
 
-                    putInt(
+                    putFloat(
                         ARG_X,
                         x
                     )
 
-                    putInt(
+
+                    putFloat(
                         ARG_Y,
                         y
                     )
+
                 }
 
 
 
             return fragment
+
         }
+
     }
+
 }
