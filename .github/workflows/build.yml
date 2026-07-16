@@ -2,7 +2,7 @@ name: citra-build
 
 on:
   push:
-    branches: [ "Rework-Touchscreen-Binding" ]
+    branches: [ "Rework-Touch-Binding" ]
     tags: [ "1.0.0" ]
   pull_request:
     branches: [ "*" ]
