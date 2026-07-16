@@ -11,29 +11,29 @@ import org.json.JSONObject
 
 object TouchBindingManager {
 
-    private const val PREF_KEY = "TouchscreenBindings"
+
+    private const val PREF_KEY =
+        "TouchscreenBindings"
+
 
 
     private val preferences: SharedPreferences
         get() =
-            PreferenceManager.getDefaultSharedPreferences(
-                CitraApplication.appContext
-            )
+            PreferenceManager
+                .getDefaultSharedPreferences(
+                    CitraApplication.appContext
+                )
+
 
 
     private val bindings =
         mutableListOf<TouchBinding>()
 
 
-    private val activeButtons =
-        mutableSetOf<Int>()
-
-
 
     init {
         loadBindings()
     }
-
 
 
 
@@ -48,14 +48,37 @@ object TouchBindingManager {
         binding: TouchBinding
     ) {
 
-        // One controller button = one touchscreen point
 
+        // remove existing same key
         bindings.removeAll {
-            it.keyCode == binding.keyCode
+            it.keyCode == binding.keyCode &&
+            it.axis == binding.axis
         }
 
 
+
         bindings.add(binding)
+
+
+        saveBindings()
+    }
+
+
+
+
+
+    fun removeBinding(
+        x: Float,
+        y: Float
+    ) {
+
+
+        bindings.removeAll {
+
+            it.x == x &&
+            it.y == y
+
+        }
 
 
         saveBindings()
@@ -78,26 +101,10 @@ object TouchBindingManager {
 
 
 
-    fun removeBinding(
-        keyCode: Int
-    ) {
-
-        bindings.removeAll {
-            it.keyCode == keyCode
-        }
-
-        saveBindings()
-    }
-
-
-
-
-
     fun clearBindings() {
 
         bindings.clear()
 
-        activeButtons.clear()
 
         preferences.edit()
             .remove(PREF_KEY)
@@ -108,59 +115,23 @@ object TouchBindingManager {
 
 
 
-    fun getBindingAt(
-        x: Float,
-        y: Float
-    ): TouchBinding? {
-
-        return bindings.firstOrNull {
-
-            it.x == x &&
-            it.y == y
-
-        }
-    }
 
 
-
-
-
-
-    /**
-     * Called from EmulationActivity
-     */
     fun onKeyEvent(
         event: KeyEvent
     ): Boolean {
 
 
-        val binding =
-            bindings.firstOrNull {
-
-                it.keyCode == event.keyCode
-
-            }
-            ?: return false
+        if(event.action != KeyEvent.ACTION_DOWN)
+            return false
 
 
 
-        when(event.action) {
+        for(binding in bindings){
 
 
-            KeyEvent.ACTION_DOWN -> {
-
-
-                // Ignore repeated key events
-
-                if (activeButtons.contains(event.keyCode)) {
-                    return true
-                }
-
-
-                activeButtons.add(
-                    event.keyCode
-                )
-
+            if(binding.keyCode ==
+                event.keyCode){
 
 
                 NativeLibrary.onTouchEvent(
@@ -172,27 +143,6 @@ object TouchBindingManager {
 
                 return true
             }
-
-
-
-            KeyEvent.ACTION_UP -> {
-
-
-                activeButtons.remove(
-                    event.keyCode
-                )
-
-
-                NativeLibrary.onTouchEvent(
-                    binding.x,
-                    binding.y,
-                    false
-                )
-
-
-                return true
-            }
-
         }
 
 
@@ -204,8 +154,42 @@ object TouchBindingManager {
 
 
 
+    fun onKeyRelease(
+        event: KeyEvent
+    ){
 
-    private fun saveBindings() {
+
+        if(event.action != KeyEvent.ACTION_UP)
+            return
+
+
+
+        for(binding in bindings){
+
+
+            if(binding.keyCode ==
+                event.keyCode){
+
+
+                NativeLibrary.onTouchEvent(
+                    binding.x,
+                    binding.y,
+                    false
+                )
+
+
+                return
+            }
+        }
+    }
+
+
+
+
+
+
+
+    private fun saveBindings(){
 
 
         val array =
@@ -223,6 +207,12 @@ object TouchBindingManager {
             obj.put(
                 "keyCode",
                 it.keyCode
+            )
+
+
+            obj.put(
+                "axis",
+                it.axis
             )
 
 
@@ -258,7 +248,8 @@ object TouchBindingManager {
 
 
 
-    private fun loadBindings() {
+
+    private fun loadBindings(){
 
 
         bindings.clear()
@@ -279,7 +270,7 @@ object TouchBindingManager {
 
 
 
-        for (i in 0 until array.length()) {
+        for(i in 0 until array.length()){
 
 
             val obj =
@@ -297,18 +288,23 @@ object TouchBindingManager {
                         ),
 
 
+                    axis =
+                        obj.optInt(
+                            "axis",
+                            -1
+                        ),
+
+
                     x =
                         obj.getDouble(
                             "x"
-                        )
-                        .toFloat(),
+                        ).toFloat(),
 
 
                     y =
                         obj.getDouble(
                             "y"
-                        )
-                        .toFloat()
+                        ).toFloat()
 
                 )
 
