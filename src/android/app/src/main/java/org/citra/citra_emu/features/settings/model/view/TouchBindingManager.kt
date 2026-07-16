@@ -1,57 +1,91 @@
 package org.citra.citra_emu.features.settings.model.view
 
-import android.content.SharedPreferences
+import android.content.Context
 import androidx.preference.PreferenceManager
 import org.citra.citra_emu.CitraApplication
+import org.json.JSONArray
+import org.json.JSONObject
 
 object TouchBindingManager {
 
-    private val preferences: SharedPreferences
-        get() = PreferenceManager.getDefaultSharedPreferences(
-            CitraApplication.appContext
-        )
+    private const val PREF_KEY = "TouchBindings"
 
-    private const val PREFIX = "TouchFromButton_"
+    private val context: Context
+        get() = CitraApplication.appContext
 
-    fun saveBinding(
-        buttonKey: String,
-        x: Int,
-        y: Int
-    ) {
-        preferences.edit()
-            .putString(
-                PREFIX + buttonKey,
-                "$x,$y"
+
+    fun getBindings(): MutableList<TouchBinding> {
+
+        val prefs =
+            PreferenceManager.getDefaultSharedPreferences(context)
+
+        val json =
+            prefs.getString(PREF_KEY, "[]")
+
+        val result = mutableListOf<TouchBinding>()
+
+        val array = JSONArray(json)
+
+        for (i in 0 until array.length()) {
+
+            val obj = array.getJSONObject(i)
+
+            result.add(
+                TouchBinding(
+                    obj.getString("button"),
+                    obj.getInt("x"),
+                    obj.getInt("y")
+                )
             )
+        }
+
+        return result
+    }
+
+
+    fun addBinding(binding: TouchBinding) {
+
+        val bindings = getBindings()
+
+        bindings.add(binding)
+
+        save(bindings)
+    }
+
+
+    fun removeAll() {
+
+        PreferenceManager
+            .getDefaultSharedPreferences(context)
+            .edit()
+            .remove(PREF_KEY)
             .apply()
     }
 
-    fun getBinding(
-        buttonKey: String
-    ): Pair<Int, Int>? {
 
-        val value =
-            preferences.getString(
-                PREFIX + buttonKey,
-                null
-            ) ?: return null
+    private fun save(bindings: List<TouchBinding>) {
 
-        val split = value.split(",")
+        val array = JSONArray()
 
-        if (split.size != 2)
-            return null
+        bindings.forEach {
 
-        return Pair(
-            split[0].toInt(),
-            split[1].toInt()
-        )
-    }
+            val obj = JSONObject()
 
-    fun deleteBinding(
-        buttonKey: String
-    ) {
-        preferences.edit()
-            .remove(PREFIX + buttonKey)
+            obj.put("button", it.buttonKey)
+            obj.put("x", it.x)
+            obj.put("y", it.y)
+
+            array.put(obj)
+        }
+
+
+        PreferenceManager
+            .getDefaultSharedPreferences(context)
+            .edit()
+            .putString(
+                PREF_KEY,
+                array.toString()
+            )
             .apply()
     }
 }
