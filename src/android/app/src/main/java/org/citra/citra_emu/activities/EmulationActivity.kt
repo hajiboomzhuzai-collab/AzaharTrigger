@@ -382,6 +382,11 @@ class EmulationActivity : AppCompatActivity() {
             return super.dispatchGenericMotionEvent(event)
         }
 
+        // Custom touchscreen axis bindings
+        if (TouchBindingManager.onAxisEvent(event)) {
+            return true
+        }
+
         // Don't attempt to do anything if we are disconnecting a device.
         if (event.actionMasked == MotionEvent.ACTION_CANCEL) {
             return true
