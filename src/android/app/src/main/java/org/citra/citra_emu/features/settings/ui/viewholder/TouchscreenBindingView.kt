@@ -13,26 +13,36 @@ class TouchscreenBindingView @JvmOverloads constructor(
 ) : View(context, attrs) {
 
 
-    private val borderPaint =
-        Paint().apply {
-            color = Color.WHITE
-            style = Paint.Style.STROKE
-            strokeWidth = 4f
-        }
+    private val borderPaint = Paint().apply {
+        color = Color.WHITE
+        style = Paint.Style.STROKE
+        strokeWidth = 4f
+    }
 
 
-    private val pointPaint =
-        Paint().apply {
-            color = Color.RED
-            style = Paint.Style.FILL
-        }
+    private val pointPaint = Paint().apply {
+        color = Color.RED
+        style = Paint.Style.FILL
+    }
 
 
-    var touchX = 150f
-    var touchY = 150f
+    var touchX = 0f
+    var touchY = 0f
 
 
-    override fun onDraw(canvas: Canvas) {
+    override fun onSizeChanged(
+        w:Int,
+        h:Int,
+        oldw:Int,
+        oldh:Int
+    ){
+        touchX = w / 2f
+        touchY = h / 2f
+    }
+
+
+
+    override fun onDraw(canvas: Canvas){
 
         canvas.drawRect(
             0f,
@@ -46,15 +56,20 @@ class TouchscreenBindingView @JvmOverloads constructor(
         canvas.drawCircle(
             touchX,
             touchY,
-            12f,
+            15f,
             pointPaint
         )
     }
 
 
-    override fun onTouchEvent(event: MotionEvent): Boolean {
 
-        if(event.action == MotionEvent.ACTION_DOWN) {
+    override fun onTouchEvent(
+        event: MotionEvent
+    ): Boolean {
+
+
+        if(event.action == MotionEvent.ACTION_DOWN ||
+            event.action == MotionEvent.ACTION_MOVE){
 
             touchX = event.x
             touchY = event.y
@@ -64,18 +79,27 @@ class TouchscreenBindingView @JvmOverloads constructor(
             return true
         }
 
+
         return true
     }
 
 
-    fun getScreenX(): Int {
 
-        return ((touchX / width) * 320).toInt()
+    fun get3DSTouchX():Int{
+
+        return (
+            touchX / width * 320
+        ).toInt()
+
     }
 
 
-    fun getScreenY(): Int {
+    fun get3DSTouchY():Int{
 
-        return ((touchY / height) * 240).toInt()
+        return (
+            touchY / height * 240
+        ).toInt()
+
     }
+
 }
