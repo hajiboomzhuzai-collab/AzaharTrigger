@@ -1,17 +1,13 @@
 package org.citra.citra_emu.fragments
 
-
 import android.content.DialogInterface
 import android.os.Bundle
-import android.view.KeyEvent
-import android.view.LayoutInflater
-import android.view.View
-import android.view.ViewGroup
-
+import android.view.*
+import com.google.android.material.bottomsheet.BottomSheetBehavior
 import com.google.android.material.bottomsheet.BottomSheetDialogFragment
-
 import org.citra.citra_emu.databinding.DialogInputBinding
-
+import org.citra.citra_emu.features.settings.model.view.TouchBindingManager
+import org.citra.citra_emu.utils.Log
 
 
 class TouchBindingBottomSheetDialogFragment :
@@ -19,22 +15,22 @@ class TouchBindingBottomSheetDialogFragment :
 
 
     private var _binding: DialogInputBinding? = null
-
-    private val binding
-        get() = _binding!!
+    private val binding get() = _binding!!
 
 
     private var touchX = 0
     private var touchY = 0
 
 
+    private var waitingButton = true
+
+
 
     override fun onCreateView(
         inflater: LayoutInflater,
         container: ViewGroup?,
-        savedInstanceState: Bundle?
+        state: Bundle?
     ): View {
-
 
         _binding =
             DialogInputBinding.inflate(
@@ -43,10 +39,8 @@ class TouchBindingBottomSheetDialogFragment :
                 false
             )
 
-
         return binding.root
     }
-
 
 
 
@@ -55,10 +49,10 @@ class TouchBindingBottomSheetDialogFragment :
         savedInstanceState: Bundle?
     ) {
 
-        super.onViewCreated(
-            view,
-            savedInstanceState
-        )
+        BottomSheetBehavior.from<View>(
+            view.parent as View
+        ).state =
+            BottomSheetBehavior.STATE_EXPANDED
 
 
         binding.textTitle.text =
@@ -69,46 +63,64 @@ class TouchBindingBottomSheetDialogFragment :
             "Press a controller button"
 
 
+
         dialog?.setOnKeyListener { _, _, event ->
 
 
-            if (event.action ==
+            if(
+                event.action ==
                 KeyEvent.ACTION_UP
-            ) {
+            ){
 
-
-                // TEMP TEST
-                // later we save this
-
-                println(
-                    "Touch bind button=${event.keyCode} x=$touchX y=$touchY"
+                Log.debug(
+                    "Touch button ${event.keyCode}"
                 )
 
 
-                dismiss()
+                if(waitingButton){
 
-                true
-            }
-            else {
+                    TouchBindingManager.saveBinding(
+                        event.keyCode,
+                        touchX,
+                        touchY
+                    )
 
-                false
+
+                    dismiss()
+                }
+
             }
+
+            true
         }
 
 
 
-        binding.buttonCancel
-            .setOnClickListener {
+        binding.buttonClear.text =
+            "Delete Binding"
 
-                dismiss()
-            }
+
+        binding.buttonClear.setOnClickListener {
+
+            TouchBindingManager.removeBinding(
+                KeyEvent.KEYCODE_BUTTON_A
+            )
+
+            dismiss()
+        }
+
+
+
+        binding.buttonCancel.setOnClickListener {
+
+            dismiss()
+
+        }
     }
 
 
 
-
-
-    override fun onDestroyView() {
+    override fun onDestroyView(){
 
         super.onDestroyView()
 
@@ -117,14 +129,13 @@ class TouchBindingBottomSheetDialogFragment :
 
 
 
-
     companion object {
 
 
         fun newInstance(
-            x: Int,
-            y: Int
-        ): TouchBindingBottomSheetDialogFragment {
+            x:Int,
+            y:Int
+        ):TouchBindingBottomSheetDialogFragment {
 
 
             val fragment =
