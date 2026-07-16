@@ -26,14 +26,16 @@ class TouchscreenBindingView @JvmOverloads constructor(
         isAntiAlias = true
     }
 
-    var touchX = 150f
-    var touchY = 150f
+    private var touchX = 0f
+    private var touchY = 0f
 
-    var onTouchPointChanged: ((Float, Float) -> Unit)? = null
+    var onTouchPointSelected: ((Float, Float) -> Unit)? = null
+
 
     override fun onDraw(canvas: Canvas) {
         super.onDraw(canvas)
 
+        // fake 3DS bottom screen
         canvas.drawRect(
             0f,
             0f,
@@ -42,6 +44,7 @@ class TouchscreenBindingView @JvmOverloads constructor(
             borderPaint
         )
 
+        // selected point
         canvas.drawCircle(
             touchX,
             touchY,
@@ -50,20 +53,35 @@ class TouchscreenBindingView @JvmOverloads constructor(
         )
     }
 
+
     override fun onTouchEvent(event: MotionEvent): Boolean {
-        if (event.action == MotionEvent.ACTION_DOWN ||
-            event.action == MotionEvent.ACTION_MOVE
-        ) {
+
+        if (event.action == MotionEvent.ACTION_DOWN) {
+
             touchX = event.x
             touchY = event.y
 
-            invalidate()
 
-            onTouchPointChanged?.invoke(touchX, touchY)
+            onTouchPointSelected?.invoke(
+                touchX,
+                touchY
+            )
+
+            invalidate()
 
             return true
         }
 
-        return super.onTouchEvent(event)
+        return true
+    }
+
+
+    fun setTouchPoint(
+        x: Float,
+        y: Float
+    ) {
+        touchX = x
+        touchY = y
+        invalidate()
     }
 }
