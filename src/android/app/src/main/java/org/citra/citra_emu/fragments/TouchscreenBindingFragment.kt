@@ -11,10 +11,11 @@ import org.citra.citra_emu.databinding.FragmentTouchscreenBindingBinding
 class TouchscreenBindingFragment : Fragment() {
 
 
-    private var _binding: FragmentTouchscreenBindingBinding? = null
+    private var _binding:
+            FragmentTouchscreenBindingBinding? = null
 
-    private val binding
-        get() = _binding!!
+    private val binding get() = _binding!!
+
 
 
     override fun onCreateView(
@@ -41,46 +42,58 @@ class TouchscreenBindingFragment : Fragment() {
         view: View,
         savedInstanceState: Bundle?
     ) {
-
         super.onViewCreated(
             view,
             savedInstanceState
         )
 
 
-        binding.touchscreenView
-            .onTouchPointSelected =
+        /*
+         * When user taps the fake 3DS bottom screen,
+         * open the controller binding dialog.
+         */
+        binding.touchscreenView.onTouchPointSelected =
             { x, y ->
-
-
-                // Convert Android view coordinates
-                // to real 3DS bottom screen
-
-                val screenX =
-                    (x / binding.touchscreenView.width) * 320
-
-
-                val screenY =
-                    (y / binding.touchscreenView.height) * 240
-
 
 
                 TouchBindingBottomSheetDialogFragment
                     .newInstance(
-                        screenX.toInt(),
-                        screenY.toInt()
+                        x,
+                        y
                     )
                     .show(
                         parentFragmentManager,
-                        "touch_binding"
+                        "TouchBinding"
                     )
             }
+
+
+
+        /*
+         * Delete button.
+         *
+         * This removes all saved touch bindings.
+         * Later we can change it to delete only
+         * selected points.
+         */
+        binding.buttonDelete.setOnClickListener {
+
+            org.citra.citra_emu.features.settings.model.view
+                .TouchBinding
+                .clearAll()
+
+
+            binding.touchscreenView
+                .setTouchPoint(
+                    -1,
+                    -1
+                )
+        }
     }
 
 
 
     override fun onDestroyView() {
-
         super.onDestroyView()
 
         _binding = null
