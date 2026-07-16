@@ -25,6 +25,13 @@ class TouchscreenBindingFragment : Fragment() {
                 false
             )
 
+        binding.touchscreenView.onTouchPointChanged = { x, y ->
+
+            binding.description.text =
+            "Touch Point\nX=${x.toInt()}  Y=${y.toInt()}"
+
+        }
+
         return binding.root
     }
 
