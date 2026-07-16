@@ -1,126 +1,102 @@
 package org.citra.citra_emu.features.settings.model.view
 
 import android.view.KeyEvent
-
+import org.citra.citra_emu.NativeLibrary
 
 object TouchBindingManager {
 
+    private val bindings = mutableListOf<TouchBinding>()
 
     /**
-     * Current virtual touch position.
+     * Returns all bindings.
      */
-    private var touchX = 0
-    private var touchY = 0
-
-    private var touching = false
-
-
+    fun getBindings(): List<TouchBinding> {
+        return bindings
+    }
 
     /**
-     * Called when a physical controller button is pressed.
+     * Add or replace a binding.
      */
-    fun onKeyEvent(
-        event: KeyEvent
-    ): Boolean {
+    fun addBinding(binding: TouchBinding) {
+        bindings.removeAll {
+            it.keyCode == binding.keyCode ||
+                    (it.x == binding.x && it.y == binding.y)
+        }
 
+        bindings.add(binding)
+    }
 
-        if (event.action != KeyEvent.ACTION_DOWN) {
+    /**
+     * Remove a binding.
+     */
+    fun removeBinding(binding: TouchBinding) {
+        bindings.remove(binding)
+    }
+
+    /**
+     * Remove by keycode.
+     */
+    fun removeBinding(keyCode: Int) {
+        bindings.removeAll { it.keyCode == keyCode }
+    }
+
+    /**
+     * Remove everything.
+     */
+    fun clearBindings() {
+        bindings.clear()
+    }
+
+    /**
+     * Find binding for a touch point.
+     */
+    fun getBindingAt(x: Float, y: Float): TouchBinding? {
+        return bindings.firstOrNull {
+            it.x == x && it.y == y
+        }
+    }
+
+    /**
+     * Called from EmulationActivity.dispatchKeyEvent().
+     */
+    fun onKeyEvent(event: KeyEvent): Boolean {
+        if (event.action != KeyEvent.ACTION_DOWN)
             return false
+
+        bindings.forEach { binding ->
+            if (binding.keyCode == event.keyCode) {
+
+                NativeLibrary.onTouchEvent(
+                    binding.x,
+                    binding.y,
+                    true
+                )
+
+                return true
+            }
         }
-
-
-        val button =
-            event.keyCode
-
-
-
-        val binding =
-            TouchBinding
-                .getBindings()
-                .firstOrNull {
-                    it.button == button
-                }
-
-
-
-        if (binding != null) {
-
-            touchX =
-                binding.x
-
-            touchY =
-                binding.y
-
-
-            touching = true
-
-
-            return true
-        }
-
 
         return false
     }
 
-
-
-
-
     /**
-     * Called when controller buttons are released.
+     * Called from EmulationActivity.dispatchKeyEvent() ACTION_UP.
      */
-    fun onKeyRelease(
-        event: KeyEvent
-    ) {
+    fun onKeyRelease(event: KeyEvent) {
+        if (event.action != KeyEvent.ACTION_UP)
+            return
 
-        val button =
-            event.keyCode
+        bindings.forEach { binding ->
+            if (binding.keyCode == event.keyCode) {
 
+                NativeLibrary.onTouchEvent(
+                    binding.x,
+                    binding.y,
+                    false
+                )
 
-        val binding =
-            TouchBinding
-                .getBindings()
-                .firstOrNull {
-                    it.button == button
-                }
-
-
-
-        if (binding != null) {
-
-            touching = false
-
+                return
+            }
         }
-    }
-
-
-
-
-
-    /**
-     * Returns current touchscreen state.
-     *
-     * x and y are normalized:
-     * 0.0 - 1.0
-     */
-    fun getTouchStatus():
-            Triple<Float, Float, Boolean> {
-
-
-        if (!touching) {
-            return Triple(
-                0f,
-                0f,
-                false
-            )
-        }
-
-
-
-        return Triple(
-            touchX / 320f,
-            touchY / 240f,
-            true
-        )
     }
 }
