@@ -12,6 +12,9 @@ class TouchscreenBindingFragment : Fragment() {
     private var _binding: FragmentTouchscreenBindingBinding? = null
     private val binding get() = _binding!!
 
+    private var selectedX = 0f
+    private var selectedY = 0f
+
     override fun onCreateView(
         inflater: LayoutInflater,
         container: ViewGroup?,
@@ -26,6 +29,19 @@ class TouchscreenBindingFragment : Fragment() {
             )
 
         binding.touchscreenView.onTouchPointChanged = { x, y ->
+
+            selectedX = x
+            selectedY = y
+
+        binding.buttonBind.setOnClickListener {
+
+        TouchBindingBottomSheetDialogFragment()
+            .show(
+                parentFragmentManager,
+                "touch_bind"
+            )
+
+        }
 
             binding.description.text =
             "Touch Point\nX=${x.toInt()}  Y=${y.toInt()}"
