@@ -46,8 +46,8 @@ class TouchscreenBindingFragment : Fragment() {
             TouchBindingManager.clearBindings()
 
             binding.touchscreenView.setTouchPoint(
-                -1f,
-                -1f
+                -1,
+                -1
             )
         }
     }
