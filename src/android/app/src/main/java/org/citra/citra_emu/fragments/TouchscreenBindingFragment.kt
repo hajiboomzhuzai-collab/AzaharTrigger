@@ -1,10 +1,10 @@
 package org.citra.citra_emu.fragments
 
 import android.os.Bundle
+import android.view.KeyEvent
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import android.view.KeyEvent
 import android.widget.TextView
 import androidx.fragment.app.Fragment
 import org.citra.citra_emu.databinding.FragmentTouchscreenBindingBinding
@@ -14,10 +14,14 @@ import org.citra.citra_emu.features.settings.model.view.TouchBindingManager
 class TouchscreenBindingFragment : Fragment() {
 
 
-    private var _binding: FragmentTouchscreenBindingBinding? = null
+    private var _binding:
+            FragmentTouchscreenBindingBinding? = null
+
 
     private val binding
         get() = _binding!!
+
+
 
 
     override fun onCreate(
@@ -27,16 +31,33 @@ class TouchscreenBindingFragment : Fragment() {
 
 
         /*
-         * Refresh when a new touch binding is created.
+         * Refresh after adding a binding.
          */
-        parentFragmentManager.setFragmentResultListener(
-            "touch_binding_added",
-            this
-        ) { _, _ ->
+        parentFragmentManager
+            .setFragmentResultListener(
+                "touch_binding_added",
+                this
+            ) { _, _ ->
 
-            refreshBindings()
-        }
+                refreshBindings()
+            }
+
+
+
+        /*
+         * Refresh after deleting a binding.
+         */
+        parentFragmentManager
+            .setFragmentResultListener(
+                "touch_binding_removed",
+                this
+            ) { _, _ ->
+
+                refreshBindings()
+            }
     }
+
+
 
 
 
@@ -63,10 +84,14 @@ class TouchscreenBindingFragment : Fragment() {
 
 
 
+
+
+
     override fun onViewCreated(
         view: View,
         savedInstanceState: Bundle?
     ) {
+
         super.onViewCreated(
             view,
             savedInstanceState
@@ -75,9 +100,10 @@ class TouchscreenBindingFragment : Fragment() {
 
 
         /*
-         * Tap fake touchscreen to create binding.
+         * Tap fake touchscreen.
          */
-        binding.touchscreenView.onTouchPointSelected =
+        binding.touchscreenView
+            .onTouchPointSelected =
             { x, y ->
 
 
@@ -90,8 +116,9 @@ class TouchscreenBindingFragment : Fragment() {
                         parentFragmentManager,
                         "TouchBinding"
                     )
-
             }
+
+
 
 
 
@@ -99,21 +126,26 @@ class TouchscreenBindingFragment : Fragment() {
         /*
          * Delete all bindings.
          */
-        binding.buttonDelete.setOnClickListener {
+        binding.buttonDelete
+            .setOnClickListener {
 
 
-            TouchBindingManager.clearBindings()
+                TouchBindingManager
+                    .clearBindings()
 
 
-            refreshBindings()
 
-        }
+                refreshBindings()
+
+            }
+
+
 
 
 
 
         /*
-         * Load saved bindings when opening menu.
+         * Load saved dots/list.
          */
         refreshBindings()
 
@@ -125,22 +157,33 @@ class TouchscreenBindingFragment : Fragment() {
 
 
 
+
+
+
     private fun refreshBindings() {
 
 
         /*
-         * Restore all red dots.
+         * Restore red dots.
          */
-        binding.touchscreenView.setBindings(
-            TouchBindingManager.getBindings()
-        )
+        binding.touchscreenView
+            .setBindings(
+                TouchBindingManager
+                    .getBindings()
+            )
+
+
 
 
 
         /*
-         * Update saved binding list.
+         * Update list.
          */
-        binding.bindingList.removeAllViews()
+        binding.bindingList
+            .removeAllViews()
+
+
+
 
 
 
@@ -151,15 +194,42 @@ class TouchscreenBindingFragment : Fragment() {
 
 
                 val text =
-                    TextView(requireContext())
+                    TextView(
+                        requireContext()
+                    )
+
+
+
+                val buttonName =
+                    KeyEvent
+                        .keyCodeToString(
+                            bindingData.keyCode
+                        )
+
+
+
+                val axisText =
+                    if(bindingData.axis >= 0)
+                    {
+                        " Axis ${bindingData.axis}"
+                    }
+                    else
+                    {
+                        ""
+                    }
+
+
 
 
                 text.text =
-                    "${KeyEvent.keyCodeToString(bindingData.keyCode)}  →  Touch (${bindingData.x.toInt()}, ${bindingData.y.toInt()})"
+                    "$buttonName$axisText → Touch (${bindingData.x.toInt()}, ${bindingData.y.toInt()})"
 
 
 
-                text.textSize = 16f
+
+                text.textSize =
+                    16f
+
 
 
                 text.setPadding(
@@ -171,12 +241,13 @@ class TouchscreenBindingFragment : Fragment() {
 
 
 
-                binding.bindingList.addView(
-                    text
-                )
+
+                binding.bindingList
+                    .addView(text)
 
             }
     }
+
 
 
 
@@ -188,6 +259,8 @@ class TouchscreenBindingFragment : Fragment() {
 
         super.onDestroyView()
 
+
         _binding = null
     }
+
 }
