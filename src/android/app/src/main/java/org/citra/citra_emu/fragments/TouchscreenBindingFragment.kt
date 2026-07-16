@@ -37,7 +37,7 @@ class TouchscreenBindingFragment : Fragment() {
         binding.touchscreenView.onTouchPointSelected = { x, y ->
 
             TouchBindingBottomSheetDialogFragment
-                .newInstance(x, y)
+                .newInstance(x.toFloat(), y.toFloat())
                 .show(parentFragmentManager, "TouchBinding")
         }
 
@@ -46,8 +46,8 @@ class TouchscreenBindingFragment : Fragment() {
             TouchBindingManager.clearBindings()
 
             binding.touchscreenView.setTouchPoint(
-                -1,
-                -1
+                -1f,
+                -1f
             )
         }
     }
