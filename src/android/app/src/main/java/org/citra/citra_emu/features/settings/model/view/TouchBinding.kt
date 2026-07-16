@@ -1,7 +1,7 @@
 package org.citra.citra_emu.features.settings.model.view
 
 data class TouchBinding(
-    val buttonCode: Int,
+    val buttonKey: String,
     val x: Int,
     val y: Int
 )
