@@ -9,7 +9,7 @@ import org.citra.citra_emu.databinding.DialogInputBinding
 
 class TouchBindingBottomSheetDialogFragment : BottomSheetDialogFragment() {
 
-    private var _binding: DialogInputBindingBinding? = null
+    private var _binding: DialogInputBinding? = null
     private val binding get() = _binding!!
 
     override fun onCreateView(
@@ -19,7 +19,7 @@ class TouchBindingBottomSheetDialogFragment : BottomSheetDialogFragment() {
     ): View {
 
         _binding =
-            DialogInputBindingBinding.inflate(
+            DialogInputBinding.inflate(
                 inflater,
                 container,
                 false
