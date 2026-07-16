@@ -5,7 +5,7 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import com.google.android.material.bottomsheet.BottomSheetDialogFragment
-import org.citra.citra_emu.databinding.DialogInputBindingBinding
+import org.citra.citra_emu.databinding.DialogInputBinding
 
 class TouchBindingBottomSheetDialogFragment : BottomSheetDialogFragment() {
 
