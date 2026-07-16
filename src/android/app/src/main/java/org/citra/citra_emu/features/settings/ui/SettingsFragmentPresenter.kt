@@ -46,6 +46,7 @@ import org.citra.citra_emu.features.settings.model.view.SubmenuSetting
 import org.citra.citra_emu.features.settings.model.view.SwitchSetting
 import org.citra.citra_emu.features.settings.utils.SettingsFile
 import org.citra.citra_emu.fragments.ResetSettingsDialogFragment
+import org.citra.citra_emu.fragments.TouchscreenBindingFragment
 import org.citra.citra_emu.utils.BirthdayMonth
 import org.citra.citra_emu.utils.Log
 import org.citra.citra_emu.utils.SystemSaveGame
