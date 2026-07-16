@@ -1,78 +1,126 @@
 package org.citra.citra_emu.features.settings.model.view
 
-import android.content.SharedPreferences
-import androidx.preference.PreferenceManager
-import org.citra.citra_emu.CitraApplication
+import android.view.KeyEvent
+
 
 object TouchBindingManager {
 
-    private val prefs: SharedPreferences
-        get() = PreferenceManager
-            .getDefaultSharedPreferences(CitraApplication.appContext)
 
-    private const val PREFIX = "TouchBinding_"
+    /**
+     * Current virtual touch position.
+     */
+    private var touchX = 0
+    private var touchY = 0
 
-    data class TouchBinding(
-        val button: String,
-        val x: Int,
-        val y: Int
-    )
-
-    fun saveBinding(
-        index: Int,
-        button: String,
-        x: Int,
-        y: Int
-    ) {
-        prefs.edit()
-            .putString("${PREFIX}${index}_button", button)
-            .putInt("${PREFIX}${index}_x", x)
-            .putInt("${PREFIX}${index}_y", y)
-            .apply()
-    }
+    private var touching = false
 
 
-    fun getBinding(index: Int): TouchBinding? {
+
+    /**
+     * Called when a physical controller button is pressed.
+     */
+    fun onKeyEvent(
+        event: KeyEvent
+    ): Boolean {
+
+
+        if (event.action != KeyEvent.ACTION_DOWN) {
+            return false
+        }
+
 
         val button =
-            prefs.getString("${PREFIX}${index}_button", null)
-                ?: return null
-
-        val x =
-            prefs.getInt("${PREFIX}${index}_x", -1)
-
-        val y =
-            prefs.getInt("${PREFIX}${index}_y", -1)
-
-        return TouchBinding(
-            button,
-            x,
-            y
-        )
-    }
+            event.keyCode
 
 
-    fun deleteBinding(index: Int) {
 
-        prefs.edit()
-            .remove("${PREFIX}${index}_button")
-            .remove("${PREFIX}${index}_x")
-            .remove("${PREFIX}${index}_y")
-            .apply()
-    }
+        val binding =
+            TouchBinding
+                .getBindings()
+                .firstOrNull {
+                    it.button == button
+                }
 
 
-    fun clearAll() {
 
-        prefs.edit().apply {
+        if (binding != null) {
 
-            for (i in 0 until 32) {
-                remove("${PREFIX}${i}_button")
-                remove("${PREFIX}${i}_x")
-                remove("${PREFIX}${i}_y")
-            }
+            touchX =
+                binding.x
 
-            apply()
+            touchY =
+                binding.y
+
+
+            touching = true
+
+
+            return true
         }
+
+
+        return false
+    }
+
+
+
+
+
+    /**
+     * Called when controller buttons are released.
+     */
+    fun onKeyRelease(
+        event: KeyEvent
+    ) {
+
+        val button =
+            event.keyCode
+
+
+        val binding =
+            TouchBinding
+                .getBindings()
+                .firstOrNull {
+                    it.button == button
+                }
+
+
+
+        if (binding != null) {
+
+            touching = false
+
+        }
+    }
+
+
+
+
+
+    /**
+     * Returns current touchscreen state.
+     *
+     * x and y are normalized:
+     * 0.0 - 1.0
+     */
+    fun getTouchStatus():
+            Triple<Float, Float, Boolean> {
+
+
+        if (!touching) {
+            return Triple(
+                0f,
+                0f,
+                false
+            )
+        }
+
+
+
+        return Triple(
+            touchX / 320f,
+            touchY / 240f,
+            true
+        )
     }
 }
