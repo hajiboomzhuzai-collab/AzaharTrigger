@@ -7,19 +7,22 @@ import android.view.ViewGroup
 import androidx.fragment.app.Fragment
 import org.citra.citra_emu.databinding.FragmentTouchscreenBindingBinding
 
+
 class TouchscreenBindingFragment : Fragment() {
 
-    private var _binding: FragmentTouchscreenBindingBinding? = null
-    private val binding get() = _binding!!
 
-    private var selectedX = 0f
-    private var selectedY = 0f
+    private var _binding: FragmentTouchscreenBindingBinding? = null
+
+    private val binding
+        get() = _binding!!
+
 
     override fun onCreateView(
         inflater: LayoutInflater,
         container: ViewGroup?,
         savedInstanceState: Bundle?
     ): View {
+
 
         _binding =
             FragmentTouchscreenBindingBinding.inflate(
@@ -28,31 +31,58 @@ class TouchscreenBindingFragment : Fragment() {
                 false
             )
 
-        binding.touchscreenView.onTouchPointChanged = { x, y ->
-
-            selectedX = x
-            selectedY = y
-
-        binding.buttonBind.setOnClickListener {
-
-        TouchBindingBottomSheetDialogFragment()
-            .show(
-                parentFragmentManager,
-                "touch_bind"
-            )
-
-        }
-
-            binding.description.text =
-            "Touch Point\nX=${x.toInt()}  Y=${y.toInt()}"
-
-        }
 
         return binding.root
     }
 
+
+
+    override fun onViewCreated(
+        view: View,
+        savedInstanceState: Bundle?
+    ) {
+
+        super.onViewCreated(
+            view,
+            savedInstanceState
+        )
+
+
+        binding.touchscreenView
+            .onTouchPointSelected =
+            { x, y ->
+
+
+                // Convert Android view coordinates
+                // to real 3DS bottom screen
+
+                val screenX =
+                    (x / binding.touchscreenView.width) * 320
+
+
+                val screenY =
+                    (y / binding.touchscreenView.height) * 240
+
+
+
+                TouchBindingBottomSheetDialogFragment
+                    .newInstance(
+                        screenX.toInt(),
+                        screenY.toInt()
+                    )
+                    .show(
+                        parentFragmentManager,
+                        "touch_binding"
+                    )
+            }
+    }
+
+
+
     override fun onDestroyView() {
+
         super.onDestroyView()
+
         _binding = null
     }
 }
