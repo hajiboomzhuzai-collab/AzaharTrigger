@@ -1,4 +1,4 @@
-package org.citra.citra_emu.ui.viewholder
+package org.citra.citra_emu.features.settings.ui.viewholder
 
 import android.content.Context
 import android.graphics.Canvas
