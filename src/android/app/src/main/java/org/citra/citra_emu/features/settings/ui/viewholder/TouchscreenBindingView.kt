@@ -7,7 +7,9 @@ import android.graphics.Paint
 import android.util.AttributeSet
 import android.view.MotionEvent
 import android.view.View
+import org.citra.citra_emu.features.settings.model.view.TouchBinding
 import kotlin.math.roundToInt
+
 
 class TouchscreenBindingView @JvmOverloads constructor(
     context: Context,
@@ -37,23 +39,38 @@ class TouchscreenBindingView @JvmOverloads constructor(
     }
 
 
-    private var touchX = -1f
-    private var touchY = -1f
 
-
-    /**
-     * Called by Fragment when user taps the fake bottom screen.
+    /*
+     * All saved touch points.
      */
+    private var bindings: List<TouchBinding> = emptyList()
+
+
+
+    /*
+     * Current point user is selecting.
+     */
+    private var selectedX = -1f
+    private var selectedY = -1f
+
+
+
     var onTouchPointSelected:
-            ((Int, Int) -> Unit)? = null
+            ((Float, Float) -> Unit)? = null
 
 
 
-    override fun onDraw(canvas: Canvas) {
+
+
+    override fun onDraw(
+        canvas: Canvas
+    ) {
+
         super.onDraw(canvas)
 
 
-        // Fake 3DS bottom screen
+
+        // Background
         canvas.drawRect(
             0f,
             0f,
@@ -61,6 +78,7 @@ class TouchscreenBindingView @JvmOverloads constructor(
             height.toFloat(),
             backgroundPaint
         )
+
 
 
         // Border
@@ -73,17 +91,50 @@ class TouchscreenBindingView @JvmOverloads constructor(
         )
 
 
-        // Draw selected touch point
-        if (touchX >= 0 && touchY >= 0) {
+
+        /*
+         * Draw all saved bindings.
+         */
+        bindings.forEach {
+
+
+            val x =
+                (it.x / 320f) * width
+
+
+            val y =
+                (it.y / 240f) * height
+
+
 
             canvas.drawCircle(
-                touchX,
-                touchY,
+                x,
+                y,
+                12f,
+                pointPaint
+            )
+        }
+
+
+
+        /*
+         * Draw currently selected point.
+         */
+        if (selectedX >= 0 && selectedY >= 0) {
+
+
+            canvas.drawCircle(
+                selectedX,
+                selectedY,
                 12f,
                 pointPaint
             )
         }
     }
+
+
+
+
 
 
 
@@ -94,40 +145,44 @@ class TouchscreenBindingView @JvmOverloads constructor(
 
         if (event.action == MotionEvent.ACTION_DOWN) {
 
-            touchX = event.x
-            touchY = event.y
+
+            selectedX = event.x
+            selectedY = event.y
+
 
 
             invalidate()
 
 
+
             /*
-             * Convert Android view coordinates
-             * into 3DS bottom screen coordinates.
-             *
-             * 3DS bottom screen:
-             * width  = 320
-             * height = 240
+             * Convert view coordinates
+             * to 3DS touchscreen coordinates.
              */
             val x =
-                ((touchX / width) * 320)
+
+                ((selectedX / width) * 320)
                     .roundToInt()
 
 
+
             val y =
-                ((touchY / height) * 240)
+
+                ((selectedY / height) * 240)
                     .roundToInt()
 
 
 
             onTouchPointSelected?.invoke(
-                x,
-                y
+                x.toFloat(),
+                y.toFloat()
             )
+
 
 
             return true
         }
+
 
 
         return true
@@ -135,23 +190,43 @@ class TouchscreenBindingView @JvmOverloads constructor(
 
 
 
-    fun setTouchPoint(
-        x: Int,
-        y: Int
+
+
+
+
+    /*
+     * Called by Fragment to restore saved dots.
+     */
+    fun setBindings(
+        bindings: List<TouchBinding>
     ) {
 
-        /*
-         * Convert 3DS coordinates back
-         * into view coordinates.
-         */
-        touchX =
-            (x / 320f) * width
-
-
-        touchY =
-            (y / 240f) * height
+        this.bindings =
+            bindings.toList()
 
 
         invalidate()
     }
+
+
+
+
+
+
+    /*
+     * Clear all dots.
+     */
+    fun clearBindings() {
+
+        bindings =
+            emptyList()
+
+
+        selectedX = -1f
+        selectedY = -1f
+
+
+        invalidate()
+    }
+
 }
