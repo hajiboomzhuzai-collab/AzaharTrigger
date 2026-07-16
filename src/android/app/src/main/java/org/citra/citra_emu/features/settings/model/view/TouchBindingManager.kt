@@ -1,91 +1,78 @@
 package org.citra.citra_emu.features.settings.model.view
 
-import android.content.Context
+import android.content.SharedPreferences
 import androidx.preference.PreferenceManager
 import org.citra.citra_emu.CitraApplication
-import org.json.JSONArray
-import org.json.JSONObject
 
 object TouchBindingManager {
 
-    private const val PREF_KEY = "TouchBindings"
+    private val prefs: SharedPreferences
+        get() = PreferenceManager
+            .getDefaultSharedPreferences(CitraApplication.appContext)
 
-    private val context: Context
-        get() = CitraApplication.appContext
+    private const val PREFIX = "TouchBinding_"
 
+    data class TouchBinding(
+        val button: String,
+        val x: Int,
+        val y: Int
+    )
 
-    fun getBindings(): MutableList<TouchBinding> {
-
-        val prefs =
-            PreferenceManager.getDefaultSharedPreferences(context)
-
-        val json =
-            prefs.getString(PREF_KEY, "[]")
-
-        val result = mutableListOf<TouchBinding>()
-
-        val array = JSONArray(json)
-
-        for (i in 0 until array.length()) {
-
-            val obj = array.getJSONObject(i)
-
-            result.add(
-                TouchBinding(
-                    obj.getString("button"),
-                    obj.getInt("x"),
-                    obj.getInt("y")
-                )
-            )
-        }
-
-        return result
-    }
-
-
-    fun addBinding(binding: TouchBinding) {
-
-        val bindings = getBindings()
-
-        bindings.add(binding)
-
-        save(bindings)
-    }
-
-
-    fun removeAll() {
-
-        PreferenceManager
-            .getDefaultSharedPreferences(context)
-            .edit()
-            .remove(PREF_KEY)
+    fun saveBinding(
+        index: Int,
+        button: String,
+        x: Int,
+        y: Int
+    ) {
+        prefs.edit()
+            .putString("${PREFIX}${index}_button", button)
+            .putInt("${PREFIX}${index}_x", x)
+            .putInt("${PREFIX}${index}_y", y)
             .apply()
     }
 
 
-    private fun save(bindings: List<TouchBinding>) {
+    fun getBinding(index: Int): TouchBinding? {
 
-        val array = JSONArray()
+        val button =
+            prefs.getString("${PREFIX}${index}_button", null)
+                ?: return null
 
-        bindings.forEach {
+        val x =
+            prefs.getInt("${PREFIX}${index}_x", -1)
 
-            val obj = JSONObject()
+        val y =
+            prefs.getInt("${PREFIX}${index}_y", -1)
 
-            obj.put("button", it.buttonKey)
-            obj.put("x", it.x)
-            obj.put("y", it.y)
+        return TouchBinding(
+            button,
+            x,
+            y
+        )
+    }
 
-            array.put(obj)
-        }
 
+    fun deleteBinding(index: Int) {
 
-        PreferenceManager
-            .getDefaultSharedPreferences(context)
-            .edit()
-            .putString(
-                PREF_KEY,
-                array.toString()
-            )
+        prefs.edit()
+            .remove("${PREFIX}${index}_button")
+            .remove("${PREFIX}${index}_x")
+            .remove("${PREFIX}${index}_y")
             .apply()
+    }
+
+
+    fun clearAll() {
+
+        prefs.edit().apply {
+
+            for (i in 0 until 32) {
+                remove("${PREFIX}${i}_button")
+                remove("${PREFIX}${i}_x")
+                remove("${PREFIX}${i}_y")
+            }
+
+            apply()
+        }
     }
 }
