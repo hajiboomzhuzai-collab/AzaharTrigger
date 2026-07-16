@@ -17,38 +17,42 @@ class TouchscreenBindingView @JvmOverloads constructor(
 ) : View(context, attrs) {
 
 
-    private val borderPaint = Paint().apply {
-        color = Color.WHITE
-        style = Paint.Style.STROKE
-        strokeWidth = 4f
-        isAntiAlias = true
-    }
+    private val borderPaint =
+        Paint().apply {
+            color = Color.WHITE
+            style = Paint.Style.STROKE
+            strokeWidth = 4f
+            isAntiAlias = true
+        }
 
 
-    private val backgroundPaint = Paint().apply {
-        color = Color.rgb(30, 30, 30)
-        style = Paint.Style.FILL
-        isAntiAlias = true
-    }
+    private val backgroundPaint =
+        Paint().apply {
+            color = Color.rgb(30,30,30)
+            style = Paint.Style.FILL
+            isAntiAlias = true
+        }
 
 
-    private val pointPaint = Paint().apply {
-        color = Color.RED
-        style = Paint.Style.FILL
-        isAntiAlias = true
-    }
+    private val pointPaint =
+        Paint().apply {
+            color = Color.RED
+            style = Paint.Style.FILL
+            isAntiAlias = true
+        }
 
 
 
     /*
-     * All saved touch points.
+     * Saved bindings from TouchBindingManager
      */
-    private var bindings: List<TouchBinding> = emptyList()
+    private var bindings: List<TouchBinding> =
+        emptyList()
 
 
 
     /*
-     * Current point user is selecting.
+     * Temporary point currently selected
      */
     private var selectedX = -1f
     private var selectedY = -1f
@@ -93,17 +97,19 @@ class TouchscreenBindingView @JvmOverloads constructor(
 
 
         /*
-         * Draw all saved bindings.
+         * Draw saved touch bindings
          */
-        bindings.forEach {
+        bindings.forEach { binding ->
 
 
             val x =
-                (it.x / 320f) * width
+                (binding.x / 320f) *
+                        width
 
 
             val y =
-                (it.y / 240f) * height
+                (binding.y / 240f) *
+                        height
 
 
 
@@ -117,10 +123,14 @@ class TouchscreenBindingView @JvmOverloads constructor(
 
 
 
+
         /*
-         * Draw currently selected point.
+         * Draw current selected point
          */
-        if (selectedX >= 0 && selectedY >= 0) {
+        if (
+            selectedX >= 0 &&
+            selectedY >= 0
+        ) {
 
 
             canvas.drawCircle(
@@ -143,11 +153,18 @@ class TouchscreenBindingView @JvmOverloads constructor(
     ): Boolean {
 
 
-        if (event.action == MotionEvent.ACTION_DOWN) {
+        if (
+            event.action ==
+            MotionEvent.ACTION_DOWN
+        ) {
 
 
-            selectedX = event.x
-            selectedY = event.y
+            selectedX =
+                event.x
+
+
+            selectedY =
+                event.y
 
 
 
@@ -156,19 +173,24 @@ class TouchscreenBindingView @JvmOverloads constructor(
 
 
             /*
-             * Convert view coordinates
-             * to 3DS touchscreen coordinates.
+             * Convert Android view coordinate
+             *
+             * to 3DS coordinate
+             *
+             * 320 x 240
              */
             val x =
 
-                ((selectedX / width) * 320)
+                ((selectedX / width)
+                        * 320)
                     .roundToInt()
 
 
 
             val y =
 
-                ((selectedY / height) * 240)
+                ((selectedY / height)
+                        * 240)
                     .roundToInt()
 
 
@@ -184,7 +206,6 @@ class TouchscreenBindingView @JvmOverloads constructor(
         }
 
 
-
         return true
     }
 
@@ -195,14 +216,14 @@ class TouchscreenBindingView @JvmOverloads constructor(
 
 
     /*
-     * Called by Fragment to restore saved dots.
+     * Reload dots from saved preferences
      */
     fun setBindings(
-        bindings: List<TouchBinding>
+        newBindings: List<TouchBinding>
     ) {
 
-        this.bindings =
-            bindings.toList()
+        bindings =
+            newBindings.toList()
 
 
         invalidate()
@@ -213,10 +234,12 @@ class TouchscreenBindingView @JvmOverloads constructor(
 
 
 
+
     /*
-     * Clear all dots.
+     * Remove all visible dots
      */
     fun clearBindings() {
+
 
         bindings =
             emptyList()
