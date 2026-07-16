@@ -1,81 +1,152 @@
-package org.citra.citra_emu.features.settings.ui.viewholder
+package org.citra.citra_emu.fragments
 
-import android.content.Context
-import android.graphics.*
-import android.util.AttributeSet
-import android.view.MotionEvent
-import android.view.View
-
-
-class TouchscreenBindingView @JvmOverloads constructor(
-    context: Context,
-    attrs: AttributeSet? = null
-) : View(context, attrs) {
+import android.content.DialogInterface
+import android.os.Bundle
+import android.view.*
+import com.google.android.material.bottomsheet.BottomSheetBehavior
+import com.google.android.material.bottomsheet.BottomSheetDialogFragment
+import org.citra.citra_emu.databinding.DialogInputBinding
+import org.citra.citra_emu.features.settings.model.view.TouchBindingManager
+import org.citra.citra_emu.utils.Log
 
 
-    private val borderPaint =
-        Paint().apply {
-            color = Color.WHITE
-            style = Paint.Style.STROKE
-            strokeWidth = 4f
-        }
+class TouchBindingBottomSheetDialogFragment :
+    BottomSheetDialogFragment() {
 
 
-    private val pointPaint =
-        Paint().apply {
-            color = Color.RED
-            style = Paint.Style.FILL
-        }
+    private var _binding: DialogInputBinding? = null
+    private val binding get() = _binding!!
 
 
-    var touchX = 150f
-    var touchY = 150f
+    private var touchX = 0
+    private var touchY = 0
 
 
-    override fun onDraw(canvas: Canvas) {
-
-        canvas.drawRect(
-            0f,
-            0f,
-            width.toFloat(),
-            height.toFloat(),
-            borderPaint
-        )
+    private var waitingButton = true
 
 
-        canvas.drawCircle(
-            touchX,
-            touchY,
-            12f,
-            pointPaint
-        )
+
+    override fun onCreateView(
+        inflater: LayoutInflater,
+        container: ViewGroup?,
+        state: Bundle?
+    ): View {
+
+        _binding =
+            DialogInputBinding.inflate(
+                inflater,
+                container,
+                false
+            )
+
+        return binding.root
     }
 
 
-    override fun onTouchEvent(event: MotionEvent): Boolean {
 
-        if(event.action == MotionEvent.ACTION_DOWN) {
+    override fun onViewCreated(
+        view: View,
+        savedInstanceState: Bundle?
+    ) {
 
-            touchX = event.x
-            touchY = event.y
+        BottomSheetBehavior.from<View>(
+            view.parent as View
+        ).state =
+            BottomSheetBehavior.STATE_EXPANDED
 
-            invalidate()
 
-            return true
+        binding.textTitle.text =
+            "Bind Touch Point"
+
+
+        binding.textMessage.text =
+            "Press a controller button"
+
+
+
+        dialog?.setOnKeyListener { _, _, event ->
+
+
+            if(
+                event.action ==
+                KeyEvent.ACTION_UP
+            ){
+
+                Log.debug(
+                    "Touch button ${event.keyCode}"
+                )
+
+
+                if(waitingButton){
+
+                    TouchBindingManager.saveBinding(
+                        event.keyCode,
+                        touchX,
+                        touchY
+                    )
+
+
+                    dismiss()
+                }
+
+            }
+
+            true
         }
 
-        return true
+
+
+        binding.buttonClear.text =
+            "Delete Binding"
+
+
+        binding.buttonClear.setOnClickListener {
+
+            TouchBindingManager.removeBinding(
+                KeyEvent.KEYCODE_BUTTON_A
+            )
+
+            dismiss()
+        }
+
+
+
+        binding.buttonCancel.setOnClickListener {
+
+            dismiss()
+
+        }
     }
 
 
-    fun getScreenX(): Int {
 
-        return ((touchX / width) * 320).toInt()
+    override fun onDestroyView(){
+
+        super.onDestroyView()
+
+        _binding = null
     }
 
 
-    fun getScreenY(): Int {
 
-        return ((touchY / height) * 240).toInt()
+    companion object {
+
+
+        fun newInstance(
+            x:Int,
+            y:Int
+        ):TouchBindingBottomSheetDialogFragment {
+
+
+            val fragment =
+                TouchBindingBottomSheetDialogFragment()
+
+
+            fragment.touchX = x
+            fragment.touchY = y
+
+
+            return fragment
+        }
     }
 }
