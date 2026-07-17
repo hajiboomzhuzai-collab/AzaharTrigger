@@ -2,6 +2,7 @@ package org.citra.citra_emu.features.settings.model.view
 
 import android.content.SharedPreferences
 import android.view.KeyEvent
+import android.view.MotionEvent
 import androidx.preference.PreferenceManager
 import org.citra.citra_emu.CitraApplication
 import org.citra.citra_emu.NativeLibrary
@@ -14,6 +15,10 @@ object TouchBindingManager {
 
     private const val PREF_KEY =
         "TouchscreenBindings"
+
+
+    private const val AXIS_DEADZONE =
+        0.15f
 
 
 
@@ -37,9 +42,14 @@ object TouchBindingManager {
 
 
 
+
+
     fun getBindings(): List<TouchBinding> {
+
         return bindings.toList()
+
     }
+
 
 
 
@@ -49,10 +59,21 @@ object TouchBindingManager {
     ) {
 
 
-        // remove existing same key
+        /*
+         * Remove duplicate mapping.
+         *
+         * Same:
+         * - key
+         * - axis
+         * - direction
+         *
+         */
         bindings.removeAll {
+
             it.keyCode == binding.keyCode &&
-            it.axis == binding.axis
+            it.axis == binding.axis &&
+            it.positive == binding.positive
+
         }
 
 
@@ -61,6 +82,22 @@ object TouchBindingManager {
 
 
         saveBindings()
+
+    }
+
+
+
+
+
+
+    fun removeBinding(
+        binding: TouchBinding
+    ) {
+
+        bindings.remove(binding)
+
+        saveBindings()
+
     }
 
 
@@ -82,20 +119,10 @@ object TouchBindingManager {
 
 
         saveBindings()
+
     }
 
 
-
-
-
-    fun removeBinding(
-        binding: TouchBinding
-    ) {
-
-        bindings.remove(binding)
-
-        saveBindings()
-    }
 
 
 
@@ -103,12 +130,14 @@ object TouchBindingManager {
 
     fun clearBindings() {
 
+
         bindings.clear()
 
 
         preferences.edit()
             .remove(PREF_KEY)
             .apply()
+
     }
 
 
@@ -117,21 +146,31 @@ object TouchBindingManager {
 
 
 
+
+    /*
+     * Controller buttons
+     */
     fun onKeyEvent(
         event: KeyEvent
     ): Boolean {
 
 
-        if(event.action != KeyEvent.ACTION_DOWN)
+        if (event.action != KeyEvent.ACTION_DOWN)
             return false
 
 
 
-        for(binding in bindings){
+        var handled = false
 
 
-            if(binding.keyCode ==
-                event.keyCode){
+
+        bindings.forEach { binding ->
+
+
+            if (
+                binding.keyCode == event.keyCode &&
+                binding.axis == -1
+            ) {
 
 
                 NativeLibrary.onTouchEvent(
@@ -141,13 +180,17 @@ object TouchBindingManager {
                 )
 
 
-                return true
+                handled = true
+
             }
+
         }
 
 
-        return false
+        return handled
+
     }
+
 
 
 
@@ -156,19 +199,21 @@ object TouchBindingManager {
 
     fun onKeyRelease(
         event: KeyEvent
-    ){
+    ) {
 
 
-        if(event.action != KeyEvent.ACTION_UP)
+        if (event.action != KeyEvent.ACTION_UP)
             return
 
 
 
-        for(binding in bindings){
+        bindings.forEach { binding ->
 
 
-            if(binding.keyCode ==
-                event.keyCode){
+            if (
+                binding.keyCode == event.keyCode &&
+                binding.axis == -1
+            ) {
 
 
                 NativeLibrary.onTouchEvent(
@@ -177,37 +222,113 @@ object TouchBindingManager {
                     false
                 )
 
-
-                return
             }
+
         }
+
     }
 
+
+
+
+
+
+
+
+
+    /*
+     * Joystick axis bindings
+     */
     fun onAxisEvent(
-        axis: Int,
-        value: Float
+        event: MotionEvent
     ): Boolean {
+
 
         var handled = false
 
-        for (binding in bindings) {
 
-            if (binding.axis != axis)
-                continue
 
-            handled = true
+        bindings.forEach { binding ->
+
+
+
+            if (binding.axis == -1)
+                return@forEach
+
+
+
+            val value =
+                event.getAxisValue(
+                    binding.axis
+                )
+
+
+
+            val pressed =
+
+                if (binding.positive)
+
+                    value > AXIS_DEADZONE
+
+                else
+
+                    value < -AXIS_DEADZONE
+
+
+
+
+
 
             NativeLibrary.onTouchEvent(
                 binding.x,
                 binding.y,
-                value != 0f
+                pressed
             )
+
+
+
+            handled = true
+
         }
+
+
 
         return handled
+
+    }
+
+
+
+
+
+
+
+
+
+    fun getBindingAt(
+        x: Float,
+        y: Float
+    ): TouchBinding? {
+
+
+        return bindings.firstOrNull {
+
+            it.x == x &&
+            it.y == y
+
         }
 
-    private fun saveBindings(){
+    }
+
+
+
+
+
+
+
+
+
+    private fun saveBindings() {
 
 
         val array =
@@ -215,40 +336,50 @@ object TouchBindingManager {
 
 
 
-        bindings.forEach {
+        bindings.forEach { binding ->
 
 
             val obj =
                 JSONObject()
 
 
+
             obj.put(
                 "keyCode",
-                it.keyCode
+                binding.keyCode
             )
 
 
             obj.put(
                 "axis",
-                it.axis
+                binding.axis
+            )
+
+
+            obj.put(
+                "positive",
+                binding.positive
             )
 
 
             obj.put(
                 "x",
-                it.x
+                binding.x
             )
 
 
             obj.put(
                 "y",
-                it.y
+                binding.y
             )
+
 
 
             array.put(obj)
 
         }
+
+
 
 
 
@@ -258,6 +389,7 @@ object TouchBindingManager {
                 array.toString()
             )
             .apply()
+
     }
 
 
@@ -267,7 +399,8 @@ object TouchBindingManager {
 
 
 
-    private fun loadBindings(){
+
+    private fun loadBindings() {
 
 
         bindings.clear()
@@ -275,6 +408,7 @@ object TouchBindingManager {
 
 
         val json =
+
             preferences.getString(
                 PREF_KEY,
                 "[]"
@@ -283,12 +417,13 @@ object TouchBindingManager {
 
 
 
+
         val array =
             JSONArray(json)
 
 
 
-        for(i in 0 until array.length()){
+        for (i in 0 until array.length()) {
 
 
             val obj =
@@ -301,8 +436,9 @@ object TouchBindingManager {
                 TouchBinding(
 
                     keyCode =
-                        obj.getInt(
-                            "keyCode"
+                        obj.optInt(
+                            "keyCode",
+                            -1
                         ),
 
 
@@ -313,20 +449,32 @@ object TouchBindingManager {
                         ),
 
 
+                    positive =
+                        obj.optBoolean(
+                            "positive",
+                            true
+                        ),
+
+
                     x =
-                        obj.getDouble(
-                            "x"
+                        obj.optDouble(
+                            "x",
+                            0.0
                         ).toFloat(),
 
 
                     y =
-                        obj.getDouble(
-                            "y"
+                        obj.optDouble(
+                            "y",
+                            0.0
                         ).toFloat()
 
                 )
 
             )
+
         }
+
     }
+
 }
