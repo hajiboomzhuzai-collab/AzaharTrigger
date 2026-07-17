@@ -122,7 +122,7 @@ class TouchscreenBindingFragment : Fragment() {
 
 
                 if (isAddingBinding) {
-                    return@onTouchPointSelected
+                    return@setOnTouchPointSelected
                 }
 
 
@@ -302,7 +302,7 @@ class TouchscreenBindingFragment : Fragment() {
 
 
                 TouchBindingManager
-                    .removeBinding(index)
+                    .removeBinding(data)
 
 
                 refreshBindings()
