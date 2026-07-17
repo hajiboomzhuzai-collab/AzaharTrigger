@@ -1,6 +1,7 @@
 package org.citra.citra_emu.features.settings.model.view
 
 import android.content.SharedPreferences
+import android.util.Log
 import android.view.KeyEvent
 import android.view.MotionEvent
 import androidx.preference.PreferenceManager
@@ -41,7 +42,6 @@ object TouchBindingManager {
      */
     private val axisStates =
         mutableMapOf<String, Boolean>()
-
 
 
 
@@ -137,12 +137,19 @@ object TouchBindingManager {
     /*
      * Send touchscreen press/release to native.
      *
-     * Saved coordinates:
-     * 0-320 X
-     * 0-240 Y
+     * Coordinates must match InputOverlay.kt.
      *
-     * Native expects:
-     * 0.0-1.0
+     * InputOverlay sends:
+     *
+     * Press:
+     * x = screen coordinate
+     * y = screen coordinate
+     * pressed = true
+     *
+     * Release:
+     * x = 0
+     * y = 0
+     * pressed = false
      */
     private fun sendTouch(
         binding: TouchBinding,
@@ -150,11 +157,48 @@ object TouchBindingManager {
     ) {
 
 
-        NativeLibrary.onTouchEvent(
-            binding.x / 320f,
-            binding.y / 240f,
-            pressed
-        )
+        if (pressed) {
+
+
+            Log.e(
+                "TouchBinding",
+                "PRESS x=${binding.x} y=${binding.y}"
+            )
+
+
+
+            NativeLibrary.onTouchEvent(
+
+                binding.x,
+
+                binding.y,
+
+                true
+
+            )
+
+
+        } else {
+
+
+            Log.e(
+                "TouchBinding",
+                "RELEASE"
+            )
+
+
+
+            NativeLibrary.onTouchEvent(
+
+                0f,
+
+                0f,
+
+                false
+
+            )
+
+        }
 
     }
 
