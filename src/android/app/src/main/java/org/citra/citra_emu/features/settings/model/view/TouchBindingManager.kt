@@ -34,7 +34,8 @@ object TouchBindingManager {
     private val bindings =
         mutableListOf<TouchBinding>()
 
-
+    private val axisStates =
+    mutableMapOf<String, Boolean>()
 
     init {
         loadBindings()
@@ -239,6 +240,7 @@ object TouchBindingManager {
     /*
      * Joystick axis bindings
      */
+    
     fun onAxisEvent(
         event: MotionEvent
     ): Boolean {
@@ -246,64 +248,46 @@ object TouchBindingManager {
 
         var handled = false
 
-
-
         bindings.forEach { binding ->
-
 
 
             if (binding.axis == -1)
                 return@forEach
-
-
 
             val value =
                 event.getAxisValue(
                     binding.axis
                 )
 
-
-
             val pressed =
-
                 if (binding.positive)
-
                     value > AXIS_DEADZONE
-
                 else
-
                     value < -AXIS_DEADZONE
 
-
-
-
-
-
-            NativeLibrary.onTouchEvent(
-                binding.x,
-                binding.y,
-                pressed
-            )
-
-
-
+            val id =
+                "${binding.axis}:${binding.positive}:${binding.x}:${binding.y}"
+            
+            val oldState =
+                axisStates[id] ?: false
+            
+            /*
+            * Only send change.
+            */
+            if (oldState != pressed) {
+                NativeLibrary.onTouchEvent(
+                    binding.x,
+                    binding.y,
+                    pressed
+                )
+                axisStates[id] =
+                    pressed
+            }
             handled = true
-
         }
-
-
-
-        return handled
+    return handled
 
     }
-
-
-
-
-
-
-
-
 
     fun getBindingAt(
         x: Float,
