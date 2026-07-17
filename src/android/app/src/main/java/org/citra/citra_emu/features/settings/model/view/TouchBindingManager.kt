@@ -43,7 +43,6 @@ object TouchBindingManager {
         mutableSetOf<Int>()
 
 
-
     init {
         loadBindings()
     }
@@ -100,93 +99,43 @@ object TouchBindingManager {
 
 
     /**
-     * Converts normalized coordinates
-     * into current touchscreen coordinates.
+     * Sends touchscreen press.
      *
-     * x/y are stored as 0.0 - 1.0
+     * Coordinates are normalized:
+     *
+     * x = 0.0 - 1.0
+     * y = 0.0 - 1.0
+     *
+     * Actual scaling happens in NativeLibrary.
      */
-    private fun convertToTouchCoordinate(
-        binding: TouchBinding
-    ): Pair<Float, Float> {
-
-
-        val bounds =
-            NativeLibrary.getTouchscreenBounds()
-
-
-        if(bounds.size < 4)
-            return Pair(0f,0f)
-
-
-
-        val left =
-            bounds[0]
-
-
-        val top =
-            bounds[1]
-
-
-        val width =
-            bounds[2]
-
-
-        val height =
-            bounds[3]
-
-
-
-        return Pair(
-
-            left + binding.x * width,
-
-            top + binding.y * height
-
-        )
-    }
-
-
-
-
-
-
     private fun sendTouch(
         binding: TouchBinding,
         pressed: Boolean
     ) {
 
-
-        val point =
-            convertToTouchCoordinate(binding)
-
-
-
         Log.d(
             TAG,
-            "x=${point.first} y=${point.second} pressed=$pressed"
+            "Touch x=${binding.x} y=${binding.y} pressed=$pressed"
         )
-
 
 
         NativeLibrary.onTouchEvent(
 
-            if(pressed)
-                point.first
+            if (pressed)
+                binding.x
             else
                 0f,
 
 
-            if(pressed)
-                point.second
+            if (pressed)
+                binding.y
             else
                 0f,
 
 
             pressed
-
         )
     }
-
 
 
 
@@ -201,7 +150,6 @@ object TouchBindingManager {
 
         if(event.action != KeyEvent.ACTION_DOWN)
             return false
-
 
 
         if(keyStates.contains(event.keyCode))
@@ -235,6 +183,7 @@ object TouchBindingManager {
         }
 
 
+
         if(handled)
             keyStates.add(event.keyCode)
 
@@ -242,6 +191,7 @@ object TouchBindingManager {
 
         return handled
     }
+
 
 
 
@@ -284,13 +234,13 @@ object TouchBindingManager {
         }
 
 
+
         keyStates.remove(event.keyCode)
 
 
 
         return handled
     }
-
 
 
 
@@ -335,12 +285,12 @@ object TouchBindingManager {
                     if(binding.positive)
 
                         value >
-                            AXIS_DEADZONE
+                                AXIS_DEADZONE
 
                     else
 
                         value <
-                            -AXIS_DEADZONE
+                                -AXIS_DEADZONE
 
                 }
 
@@ -396,8 +346,8 @@ object TouchBindingManager {
         return bindings.firstOrNull {
 
 
-            abs(it.x - x) < 0.01f &&
-            abs(it.y - y) < 0.01f
+            abs(it.x - x) < 0.02f &&
+            abs(it.y - y) < 0.02f
 
         }
 
@@ -423,35 +373,42 @@ object TouchBindingManager {
                 JSONObject()
 
 
+
             obj.put(
                 "keyCode",
                 it.keyCode
             )
+
 
             obj.put(
                 "axis",
                 it.axis
             )
 
+
             obj.put(
                 "positive",
                 it.positive
             )
+
 
             obj.put(
                 "analog",
                 it.analog
             )
 
+
             obj.put(
                 "threshold",
                 it.threshold
             )
 
+
             obj.put(
                 "x",
                 it.x
             )
+
 
             obj.put(
                 "y",
@@ -583,6 +540,7 @@ object TouchBindingManager {
                 "Failed loading bindings",
                 e
             )
+
 
             bindings.clear()
 
