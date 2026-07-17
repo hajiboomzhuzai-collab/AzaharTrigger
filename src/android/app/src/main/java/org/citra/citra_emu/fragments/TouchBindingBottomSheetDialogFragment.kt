@@ -2,8 +2,10 @@ package org.citra.citra_emu.fragments
 
 import android.content.DialogInterface
 import android.os.Bundle
+import android.view.InputDevice
 import android.view.KeyEvent
 import android.view.LayoutInflater
+import android.view.MotionEvent
 import android.view.View
 import android.view.ViewGroup
 import com.google.android.material.bottomsheet.BottomSheetBehavior
@@ -24,6 +26,10 @@ class TouchBindingBottomSheetDialogFragment :
 
     private var touchX = 0f
     private var touchY = 0f
+
+
+    private var axisBound = false
+
 
 
 
@@ -109,14 +115,14 @@ class TouchBindingBottomSheetDialogFragment :
 
 
 
-
         binding.textTitle.text =
             "Bind Touch Point"
 
 
 
         binding.textMessage.text =
-            "Press a physical controller button"
+            "Press button or move joystick"
+
 
 
 
@@ -124,7 +130,7 @@ class TouchBindingBottomSheetDialogFragment :
 
 
         /*
-         * Listen for controller buttons.
+         * Controller buttons
          */
         dialog?.setOnKeyListener { _, _, event ->
 
@@ -138,10 +144,23 @@ class TouchBindingBottomSheetDialogFragment :
 
 
 
-
         /*
-         * Remove this touch binding.
+         * Joystick axis
          */
+        dialog?.window
+            ?.decorView
+            ?.setOnGenericMotionListener { _, event ->
+
+                handleAxisEvent(event)
+
+            }
+
+
+
+
+
+
+
         binding.buttonClear.setOnClickListener {
 
 
@@ -150,21 +169,17 @@ class TouchBindingBottomSheetDialogFragment :
                     .getBindings()
                     .firstOrNull {
 
-
                         it.x == touchX &&
                         it.y == touchY
-
 
                     }
 
 
 
-            if (existing != null) {
-
+            existing?.let {
 
                 TouchBindingManager
-                    .removeBinding(existing)
-
+                    .removeBinding(it)
 
 
                 parentFragmentManager
@@ -172,11 +187,13 @@ class TouchBindingBottomSheetDialogFragment :
                         "touch_binding_removed",
                         Bundle()
                     )
+
             }
 
 
 
             dismiss()
+
         }
 
 
@@ -185,12 +202,9 @@ class TouchBindingBottomSheetDialogFragment :
 
 
 
-        /*
-         * Cancel.
-         */
+
         binding.buttonCancel
             .setOnClickListener {
-
 
                 dismiss()
 
@@ -230,24 +244,12 @@ class TouchBindingBottomSheetDialogFragment :
 
 
         Log.debug(
-            "[TouchBinding] " +
-                    "key=$key x=$touchX y=$touchY"
+            "[TouchBinding] button=$key"
         )
 
 
 
 
-
-
-        /*
-         * Add button binding.
-         *
-         * axis = -1 means this is
-         * a normal button.
-         *
-         * Later joystick axes can
-         * use axis >= 0.
-         */
         TouchBindingManager
             .addBinding(
 
@@ -257,10 +259,118 @@ class TouchBindingBottomSheetDialogFragment :
 
                     axis = -1,
 
+                    positive = true,
+
                     x = touchX,
 
                     y = touchY
+
                 )
+
+            )
+
+
+
+        notifyAdded()
+
+
+        dismiss()
+
+
+        return true
+
+    }
+
+
+
+
+
+
+
+
+
+    private fun handleAxisEvent(
+        event: MotionEvent
+    ): Boolean {
+
+
+        if (
+            event.action !=
+            MotionEvent.ACTION_MOVE
+        ) {
+
+            return false
+        }
+
+
+
+        if (
+            event.source and
+            InputDevice.SOURCE_CLASS_JOYSTICK
+            == 0
+        ) {
+
+            return false
+        }
+
+
+
+
+
+
+        val device =
+            event.device
+                ?: return false
+
+
+
+
+
+        for (range in device.motionRanges) {
+
+
+            val axis =
+                range.axis
+
+
+
+            val value =
+                event.getAxisValue(axis)
+
+
+
+
+
+            /*
+             * Ignore stick center
+             */
+            if (
+                value > -0.5f &&
+                value < 0.5f
+            ) {
+
+                continue
+
+            }
+
+
+
+
+
+
+            val positive =
+                value > 0f
+
+
+
+
+
+
+            Log.debug(
+                "[TouchBinding] " +
+                "axis=$axis " +
+                "positive=$positive " +
+                "value=$value"
             )
 
 
@@ -268,28 +378,63 @@ class TouchBindingBottomSheetDialogFragment :
 
 
 
+            TouchBindingManager
+                .addBinding(
 
-        /*
-         * Tell TouchscreenBindingFragment
-         * to reload dots/list.
-         */
+                    TouchBinding(
+
+                        keyCode = -1,
+
+                        axis = axis,
+
+                        positive = positive,
+
+                        x = touchX,
+
+                        y = touchY
+
+                    )
+
+                )
+
+
+
+            notifyAdded()
+
+
+
+            dismiss()
+
+
+
+            return true
+
+        }
+
+
+
+        return false
+
+    }
+
+
+
+
+
+
+
+
+
+    private fun notifyAdded() {
+
         parentFragmentManager
             .setFragmentResult(
                 "touch_binding_added",
                 Bundle()
             )
 
-
-
-
-
-
-        dismiss()
-
-
-
-        return true
     }
+
 
 
 
@@ -317,8 +462,8 @@ class TouchBindingBottomSheetDialogFragment :
 
         super.onDestroyView()
 
-
         _binding = null
+
     }
 
 
@@ -343,6 +488,7 @@ class TouchBindingBottomSheetDialogFragment :
 
 
 
+
         fun newInstance(
             x: Float,
             y: Float
@@ -350,32 +496,29 @@ class TouchBindingBottomSheetDialogFragment :
         TouchBindingBottomSheetDialogFragment {
 
 
-            val fragment =
-                TouchBindingBottomSheetDialogFragment()
+            return TouchBindingBottomSheetDialogFragment()
+                .apply {
+
+                    arguments =
+                        Bundle().apply {
+
+                            putFloat(
+                                ARG_X,
+                                x
+                            )
 
 
+                            putFloat(
+                                ARG_Y,
+                                y
+                            )
 
-            fragment.arguments =
-                Bundle().apply {
-
-
-                    putFloat(
-                        ARG_X,
-                        x
-                    )
-
-
-                    putFloat(
-                        ARG_Y,
-                        y
-                    )
+                        }
 
                 }
 
-
-
-            return fragment
         }
+
     }
 
 }
