@@ -82,6 +82,7 @@ import org.citra.citra_emu.display.ScreenLayout
 import org.citra.citra_emu.features.settings.model.BooleanSetting
 import org.citra.citra_emu.features.settings.model.IntSetting
 import org.citra.citra_emu.features.settings.model.SettingsViewModel
+import org.citra.citra_emu.features.settings.model.view.TouchBindingManager
 import org.citra.citra_emu.features.settings.ui.SettingsActivity
 import org.citra.citra_emu.features.settings.utils.SettingsFile
 import org.citra.citra_emu.model.Game
@@ -240,7 +241,9 @@ class EmulationFragment : Fragment(), SurfaceHolder.Callback, Choreographer.Fram
         binding.doneControlConfig.setOnClickListener {
             binding.doneControlConfig.visibility = View.GONE
             binding.surfaceInputOverlay.setIsInEditMode(false)
-            TouchBindingManager.setTouchDispatcher {
+        }
+
+        TouchBindingManager.setTouchDispatcher {
                     x,
                     y,
                     pressed ->
@@ -257,7 +260,6 @@ class EmulationFragment : Fragment(), SurfaceHolder.Callback, Choreographer.Fram
                     if (pressed) touchY else 0f,
                     pressed
                 )
-            }
         }
 
         binding.chatButton.setOnClickListener {
