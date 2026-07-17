@@ -25,6 +25,7 @@ class TouchscreenBindingFragment : Fragment() {
 
 
 
+
     override fun onCreate(
         savedInstanceState: Bundle?
     ) {
@@ -34,8 +35,9 @@ class TouchscreenBindingFragment : Fragment() {
         )
 
 
+
         /*
-         * Refresh after new binding.
+         * Refresh after adding binding.
          */
         parentFragmentManager
             .setFragmentResultListener(
@@ -44,13 +46,16 @@ class TouchscreenBindingFragment : Fragment() {
             ) { _, _ ->
 
                 refreshBindings()
+
             }
 
 
 
 
+
+
         /*
-         * Refresh after delete.
+         * Refresh after removing binding.
          */
         parentFragmentManager
             .setFragmentResultListener(
@@ -59,8 +64,11 @@ class TouchscreenBindingFragment : Fragment() {
             ) { _, _ ->
 
                 refreshBindings()
+
             }
+
     }
+
 
 
 
@@ -86,6 +94,7 @@ class TouchscreenBindingFragment : Fragment() {
 
 
         return binding.root
+
     }
 
 
@@ -101,6 +110,7 @@ class TouchscreenBindingFragment : Fragment() {
         savedInstanceState: Bundle?
     ) {
 
+
         super.onViewCreated(
             view,
             savedInstanceState
@@ -110,8 +120,11 @@ class TouchscreenBindingFragment : Fragment() {
 
 
 
+
+
         /*
-         * Touchscreen selection.
+         * Tap touchscreen area
+         * to create a binding.
          */
         binding.touchscreenView
             .onTouchPointSelected =
@@ -127,6 +140,7 @@ class TouchscreenBindingFragment : Fragment() {
                         parentFragmentManager,
                         "TouchBinding"
                     )
+
             }
 
 
@@ -135,8 +149,10 @@ class TouchscreenBindingFragment : Fragment() {
 
 
 
+
+
         /*
-         * Delete all.
+         * Delete all bindings.
          */
         binding.buttonDelete
             .setOnClickListener {
@@ -156,10 +172,12 @@ class TouchscreenBindingFragment : Fragment() {
 
 
 
+
         /*
-         * Load saved bindings.
+         * Load existing bindings.
          */
         refreshBindings()
+
     }
 
 
@@ -181,6 +199,8 @@ class TouchscreenBindingFragment : Fragment() {
 
 
 
+
+
         /*
          * Restore red dots.
          */
@@ -194,8 +214,11 @@ class TouchscreenBindingFragment : Fragment() {
 
 
 
+
+
+
         /*
-         * Update list.
+         * Refresh scroll list.
          */
         binding.bindingList
             .removeAllViews()
@@ -205,7 +228,9 @@ class TouchscreenBindingFragment : Fragment() {
 
 
 
+
         bindings.forEach { data ->
+
 
 
             val text =
@@ -215,25 +240,52 @@ class TouchscreenBindingFragment : Fragment() {
 
 
 
-            val buttonName =
-                KeyEvent
-                    .keyCodeToString(
-                        data.keyCode
-                    )
 
 
 
-            text.text =
+
+            val displayText =
+
+
+
                 if (data.axis >= 0) {
 
 
-                    "$buttonName + Axis ${data.axis} → Touch (${data.x.toInt()}, ${data.y.toInt()})"
+
+                    val direction =
+
+                        if (data.positive)
+
+                            "+"
+
+                        else
+
+                            "-"
+
+
+
+
+
+                    "Axis ${data.axis} $direction → " +
+                    "Touch (${data.x.toInt()}, ${data.y.toInt()})"
+
 
 
                 } else {
 
 
-                    "$buttonName → Touch (${data.x.toInt()}, ${data.y.toInt()})"
+
+                    val buttonName =
+
+                        KeyEvent
+                            .keyCodeToString(
+                                data.keyCode
+                            )
+
+
+
+                    "$buttonName → " +
+                    "Touch (${data.x.toInt()}, ${data.y.toInt()})"
 
                 }
 
@@ -241,7 +293,20 @@ class TouchscreenBindingFragment : Fragment() {
 
 
 
-            text.textSize = 16f
+
+
+
+            text.text =
+                displayText
+
+
+
+
+
+            text.textSize =
+                16f
+
+
 
 
 
@@ -254,11 +319,16 @@ class TouchscreenBindingFragment : Fragment() {
 
 
 
+
+
+
             binding.bindingList
                 .addView(
                     text
                 )
+
         }
+
     }
 
 
@@ -271,9 +341,12 @@ class TouchscreenBindingFragment : Fragment() {
 
     override fun onDestroyView() {
 
+
         super.onDestroyView()
 
+
         _binding = null
+
     }
 
 }
