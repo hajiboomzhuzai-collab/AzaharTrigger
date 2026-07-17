@@ -25,20 +25,14 @@ class TouchscreenBindingFragment : Fragment() {
 
 
 
-
     override fun onCreate(
         savedInstanceState: Bundle?
     ) {
 
-        super.onCreate(
-            savedInstanceState
-        )
+        super.onCreate(savedInstanceState)
 
 
 
-        /*
-         * Refresh after adding binding.
-         */
         parentFragmentManager
             .setFragmentResultListener(
                 "touch_binding_added",
@@ -51,12 +45,6 @@ class TouchscreenBindingFragment : Fragment() {
 
 
 
-
-
-
-        /*
-         * Refresh after removing binding.
-         */
         parentFragmentManager
             .setFragmentResultListener(
                 "touch_binding_removed",
@@ -76,7 +64,6 @@ class TouchscreenBindingFragment : Fragment() {
 
 
 
-
     override fun onCreateView(
         inflater: LayoutInflater,
         container: ViewGroup?,
@@ -85,12 +72,11 @@ class TouchscreenBindingFragment : Fragment() {
 
 
         _binding =
-            FragmentTouchscreenBindingBinding
-                .inflate(
-                    inflater,
-                    container,
-                    false
-                )
+            FragmentTouchscreenBindingBinding.inflate(
+                inflater,
+                container,
+                false
+            )
 
 
         return binding.root
@@ -118,13 +104,13 @@ class TouchscreenBindingFragment : Fragment() {
 
 
 
-
-
-
-
         /*
-         * Tap touchscreen area
-         * to create a binding.
+         * User selects touchscreen location.
+         *
+         * Coordinates are normalized:
+         *
+         * x = 0.0 - 1.0
+         * y = 0.0 - 1.0
          */
         binding.touchscreenView
             .onTouchPointSelected =
@@ -150,10 +136,6 @@ class TouchscreenBindingFragment : Fragment() {
 
 
 
-
-        /*
-         * Delete all bindings.
-         */
         binding.buttonDelete
             .setOnClickListener {
 
@@ -172,10 +154,21 @@ class TouchscreenBindingFragment : Fragment() {
 
 
 
+        refreshBindings()
 
-        /*
-         * Load existing bindings.
-         */
+    }
+
+
+
+
+
+
+
+
+    override fun onResume() {
+
+        super.onResume()
+
         refreshBindings()
 
     }
@@ -191,6 +184,11 @@ class TouchscreenBindingFragment : Fragment() {
     private fun refreshBindings() {
 
 
+        if(_binding == null)
+            return
+
+
+
         val bindings =
             TouchBindingManager
                 .getBindings()
@@ -199,11 +197,6 @@ class TouchscreenBindingFragment : Fragment() {
 
 
 
-
-
-        /*
-         * Restore red dots.
-         */
         binding.touchscreenView
             .setBindings(
                 bindings
@@ -213,17 +206,8 @@ class TouchscreenBindingFragment : Fragment() {
 
 
 
-
-
-
-
-        /*
-         * Refresh scroll list.
-         */
         binding.bindingList
             .removeAllViews()
-
-
 
 
 
@@ -240,35 +224,24 @@ class TouchscreenBindingFragment : Fragment() {
 
 
 
-
-
-
-
             val displayText =
 
 
-
-                if (data.axis >= 0) {
-
+                if(data.axis >= 0) {
 
 
                     val direction =
 
-                        if (data.positive)
-
+                        if(data.positive)
                             "+"
-
                         else
-
                             "-"
 
 
 
-
-
                     "Axis ${data.axis} $direction → " +
-                    "Touch (${data.x.toInt()}, ${data.y.toInt()})"
-
+                    "Touch (${formatCoordinate(data.x)}, " +
+                    "${formatCoordinate(data.y)})"
 
 
                 } else {
@@ -276,7 +249,6 @@ class TouchscreenBindingFragment : Fragment() {
 
 
                     val buttonName =
-
                         KeyEvent
                             .keyCodeToString(
                                 data.keyCode
@@ -285,11 +257,10 @@ class TouchscreenBindingFragment : Fragment() {
 
 
                     "$buttonName → " +
-                    "Touch (${data.x.toInt()}, ${data.y.toInt()})"
+                    "Touch (${formatCoordinate(data.x)}, " +
+                    "${formatCoordinate(data.y)})"
 
                 }
-
-
 
 
 
@@ -301,12 +272,8 @@ class TouchscreenBindingFragment : Fragment() {
 
 
 
-
-
             text.textSize =
                 16f
-
-
 
 
 
@@ -319,9 +286,6 @@ class TouchscreenBindingFragment : Fragment() {
 
 
 
-
-
-
             binding.bindingList
                 .addView(
                     text
@@ -331,6 +295,23 @@ class TouchscreenBindingFragment : Fragment() {
 
     }
 
+
+
+
+
+
+
+
+    private fun formatCoordinate(
+        value: Float
+    ): String {
+
+        return String.format(
+            "%.2f",
+            value
+        )
+
+    }
 
 
 
