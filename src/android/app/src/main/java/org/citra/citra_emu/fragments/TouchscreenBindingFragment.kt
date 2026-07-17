@@ -116,31 +116,16 @@ class TouchscreenBindingFragment : Fragment() {
          * 0.0 = top
          * 1.0 = bottom
          */
-        binding.touchscreenView
-            .onTouchPointSelected =
-            { x, y ->
+        binding.touchscreenView.onTouchPointSelected = { x, y ->
 
+    if (!isAddingBinding) {
+        isAddingBinding = true
 
-                if (isAddingBinding) {
-                    return@setOnTouchPointSelected
-                }
-
-
-                isAddingBinding = true
-
-
-
-                TouchBindingBottomSheetDialogFragment
-                    .newInstance(
-                        x,
-                        y
-                    )
-                    .show(
-                        parentFragmentManager,
-                        "TouchBinding"
-                    )
-
-            }
+        TouchBindingBottomSheetDialogFragment
+            .newInstance(x, y)
+            .show(parentFragmentManager, "TouchBinding")
+    }
+}
 
 
 
@@ -166,14 +151,6 @@ class TouchscreenBindingFragment : Fragment() {
         refreshBindings()
 
     }
-
-
-
-
-
-
-
-
 
     override fun onResume() {
 
