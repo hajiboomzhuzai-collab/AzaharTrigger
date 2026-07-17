@@ -170,11 +170,16 @@ object TouchBindingManager {
             ) {
 
 
-                NativeLibrary.onTouchEvent(
-                    binding.x,
-                    binding.y,
-                    true
-                )
+                NativeLibrary.onTouchMoved(
+    binding.x,
+    binding.y
+)
+
+NativeLibrary.onTouchEvent(
+    binding.x,
+    binding.y,
+    true
+)
 
 
                 handled = true
@@ -305,20 +310,22 @@ object TouchBindingManager {
 
 
 
-            if(old != pressed) {
+            if (old != pressed) {
+    if (pressed) {
+        NativeLibrary.onTouchMoved(
+            binding.x,
+            binding.y
+        )
+    }
 
+    NativeLibrary.onTouchEvent(
+        binding.x,
+        binding.y,
+        pressed
+    )
 
-                NativeLibrary.onTouchEvent(
-                    binding.x,
-                    binding.y,
-                    pressed
-                )
-
-
-                axisStates[stateKey] =
-                    pressed
-
-            }
+    axisStates[stateKey] = pressed
+}
 
 
 
