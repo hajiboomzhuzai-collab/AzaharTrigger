@@ -197,31 +197,36 @@ object TouchBindingManager {
 
 
     fun onKeyRelease(
-        event: KeyEvent
-    ) {
+    event: KeyEvent
+): Boolean {
 
 
-        if(event.action != KeyEvent.ACTION_UP)
-            return
+    if (event.action != KeyEvent.ACTION_UP)
+        return false
 
 
 
-        bindings.forEach { binding ->
+    var handled = false
 
 
-            if(
-                binding.axis == -1 &&
-                binding.keyCode == event.keyCode
-            ) {
+
+    bindings.forEach { binding ->
 
 
-                NativeLibrary.onTouchEvent(
-                    binding.x,
-                    binding.y,
-                    false
-                )
+        if (
+            binding.axis == -1 &&
+            binding.keyCode == event.keyCode
+        ) {
 
-            }
+
+            NativeLibrary.onTouchEvent(
+                binding.x,
+                binding.y,
+                false
+            )
+
+
+            handled = true
 
         }
 
@@ -229,11 +234,8 @@ object TouchBindingManager {
 
 
 
-
-
-
-
-
+    return handled
+}
 
     /*
      * Joystick axis.
