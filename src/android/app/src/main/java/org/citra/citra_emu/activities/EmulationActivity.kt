@@ -331,8 +331,19 @@ class EmulationActivity : AppCompatActivity() {
         }
 
         // Touchscreen button bindings
-        if (TouchBindingManager.onKeyEvent(event)) {
-            return true
+        when (event.action) {
+
+            KeyEvent.ACTION_DOWN -> {
+                if (TouchBindingManager.onKeyEvent(event)) {
+                    return true
+                }
+            }
+
+            KeyEvent.ACTION_UP -> {
+                if (TouchBindingManager.onKeyRelease(event)) {
+                    return true
+                }
+            }
         }
 
         if (emulationFragment.isDrawerOpen()) {
