@@ -183,11 +183,29 @@ object TouchBindingManager {
         }
     }
 
+    fun onAxisEvent(
+        axis: Int,
+        value: Float
+    ): Boolean {
 
+        var handled = false
 
+        for (binding in bindings) {
 
+            if (binding.axis != axis)
+                continue
 
+            handled = true
 
+            NativeLibrary.onTouchEvent(
+                binding.x,
+                binding.y,
+                value != 0f
+            )
+        }
+
+        return handled
+        }
 
     private fun saveBindings(){
 
