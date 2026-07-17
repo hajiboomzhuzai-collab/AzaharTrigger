@@ -37,11 +37,7 @@ object TouchBindingManager {
 
 
     /*
-     * Stores current joystick direction state.
-     *
-     * Example:
-     * axis 0 positive = true
-     * axis 0 negative = false
+     * Stores joystick direction state.
      */
     private val axisStates =
         mutableMapOf<String, Boolean>()
@@ -55,7 +51,6 @@ object TouchBindingManager {
         loadBindings()
 
     }
-
 
 
 
@@ -79,9 +74,6 @@ object TouchBindingManager {
     ) {
 
 
-        /*
-         * Remove duplicate.
-         */
         bindings.removeAll {
 
             it.keyCode == binding.keyCode &&
@@ -142,17 +134,46 @@ object TouchBindingManager {
 
 
 
+    /*
+     * Send touchscreen press/release to native.
+     *
+     * Saved coordinates:
+     * 0-320 X
+     * 0-240 Y
+     *
+     * Native expects:
+     * 0.0-1.0
+     */
+    private fun sendTouch(
+        binding: TouchBinding,
+        pressed: Boolean
+    ) {
+
+
+        NativeLibrary.onTouchEvent(
+            binding.x / 320f,
+            binding.y / 240f,
+            pressed
+        )
+
+    }
+
+
+
+
+
+
 
 
     /*
-     * Controller buttons.
+     * Keyboard bindings.
      */
     fun onKeyEvent(
         event: KeyEvent
     ): Boolean {
 
 
-        if(event.action != KeyEvent.ACTION_DOWN)
+        if (event.action != KeyEvent.ACTION_DOWN)
             return false
 
 
@@ -164,22 +185,16 @@ object TouchBindingManager {
         bindings.forEach { binding ->
 
 
-            if(
+            if (
                 binding.axis == -1 &&
                 binding.keyCode == event.keyCode
             ) {
 
 
-                NativeLibrary.onTouchMoved(
-    binding.x,
-    binding.y
-)
-
-NativeLibrary.onTouchEvent(
-    binding.x,
-    binding.y,
-    true
-)
+                sendTouch(
+                    binding,
+                    true
+                )
 
 
                 handled = true
@@ -202,58 +217,61 @@ NativeLibrary.onTouchEvent(
 
 
     fun onKeyRelease(
-    event: KeyEvent
-): Boolean {
+        event: KeyEvent
+    ): Boolean {
 
 
-    if (event.action != KeyEvent.ACTION_UP)
-        return false
-
-
-
-    var handled = false
+        if (event.action != KeyEvent.ACTION_UP)
+            return false
 
 
 
-    bindings.forEach { binding ->
+        var handled = false
 
 
-        if (
-            binding.axis == -1 &&
-            binding.keyCode == event.keyCode
-        ) {
+
+        bindings.forEach { binding ->
 
 
-            NativeLibrary.onTouchEvent(
-                binding.x,
-                binding.y,
-                false
-            )
+            if (
+                binding.axis == -1 &&
+                binding.keyCode == event.keyCode
+            ) {
 
 
-            handled = true
+                sendTouch(
+                    binding,
+                    false
+                )
+
+
+                handled = true
+
+            }
 
         }
+
+
+
+        return handled
 
     }
 
 
 
-    return handled
-}
+
+
+
+
+
 
     /*
-     * Joystick axis.
+     * Joystick axis bindings.
      *
      * axis:
      *
-     * 0 = left/right stick X
-     * 1 = left/right stick Y
-     *
-     * positive:
-     *
-     * true  = + direction
-     * false = - direction
+     * 0 = X axis
+     * 1 = Y axis
      */
     fun onAxisEvent(
         event: MotionEvent
@@ -267,8 +285,7 @@ NativeLibrary.onTouchEvent(
         bindings.forEach { binding ->
 
 
-
-            if(binding.axis < 0)
+            if (binding.axis < 0)
                 return@forEach
 
 
@@ -281,7 +298,7 @@ NativeLibrary.onTouchEvent(
 
 
             val pressed =
-                if(binding.positive) {
+                if (binding.positive) {
 
                     value > AXIS_DEADZONE
 
@@ -311,21 +328,19 @@ NativeLibrary.onTouchEvent(
 
 
             if (old != pressed) {
-    if (pressed) {
-        NativeLibrary.onTouchMoved(
-            binding.x,
-            binding.y
-        )
-    }
 
-    NativeLibrary.onTouchEvent(
-        binding.x,
-        binding.y,
-        pressed
-    )
 
-    axisStates[stateKey] = pressed
-}
+                sendTouch(
+                    binding,
+                    pressed
+                )
+
+
+
+                axisStates[stateKey] =
+                    pressed
+
+            }
 
 
 
@@ -423,6 +438,8 @@ NativeLibrary.onTouchEvent(
 
 
 
+
+
         preferences.edit()
             .putString(
                 PREF_KEY,
@@ -463,7 +480,7 @@ NativeLibrary.onTouchEvent(
 
 
 
-        for(i in 0 until array.length()) {
+        for (i in 0 until array.length()) {
 
 
             val obj =
