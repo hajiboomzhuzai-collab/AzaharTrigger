@@ -919,8 +919,18 @@ jboolean Java_org_citra_citra_1emu_NativeLibrary_onTouchEvent([[maybe_unused]] J
                                                               [[maybe_unused]] jobject obj,
                                                               jfloat x, jfloat y,
                                                               jboolean pressed) {
+    const int touch_x = static_cast<int>(x + 0.5f);
+    const int touch_y = static_cast<int>(y + 0.5f);
+
+    LOG_ERROR(
+        Frontend,
+        "JNI onTouchEvent x={} y={} pressed={}",
+        touch_x,
+        touch_y,
+        static_cast<bool>(pressed));
+
     return static_cast<jboolean>(
-        window->OnTouchEvent(static_cast<int>(x + 0.5), static_cast<int>(y + 0.5), pressed));
+        window->OnTouchEvent(touch_x, touch_y, pressed));
 }
 
 void Java_org_citra_citra_1emu_NativeLibrary_onTouchMoved([[maybe_unused]] JNIEnv* env,
