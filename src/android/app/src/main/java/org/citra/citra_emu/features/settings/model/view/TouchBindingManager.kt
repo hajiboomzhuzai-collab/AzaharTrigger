@@ -7,6 +7,7 @@ import android.view.MotionEvent
 import androidx.preference.PreferenceManager
 import org.citra.citra_emu.CitraApplication
 import org.citra.citra_emu.NativeLibrary
+import org.citra.citra_emu.utils.ControllerMappingHelper
 import org.json.JSONArray
 import org.json.JSONObject
 import kotlin.math.abs
@@ -150,7 +151,9 @@ object TouchBindingManager {
 
         if(event.action != KeyEvent.ACTION_DOWN)
             return false
-
+       
+        if (ControllerMappingHelper.shouldKeyBeIgnored(event.device, event.keyCode))
+            return false
 
         if(keyStates.contains(event.keyCode))
             return false
@@ -206,7 +209,8 @@ object TouchBindingManager {
         if(event.action != KeyEvent.ACTION_UP)
             return false
 
-
+        if (ControllerMappingHelper.shouldKeyBeIgnored(event.device, event.keyCode))
+            return false
 
         var handled = false
 
@@ -266,9 +270,11 @@ object TouchBindingManager {
 
 
             val value =
-                event.getAxisValue(
-                    binding.axis
-                )
+            ControllerMappingHelper.scaleAxis(
+                event.device,
+                binding.axis,
+                event.getAxisValue(binding.axis)
+            )
 
 
 
