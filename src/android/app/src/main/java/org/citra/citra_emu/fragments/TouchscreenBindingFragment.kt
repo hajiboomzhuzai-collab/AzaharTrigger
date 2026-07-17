@@ -8,6 +8,7 @@ import android.view.ViewGroup
 import android.widget.TextView
 import androidx.fragment.app.Fragment
 import org.citra.citra_emu.databinding.FragmentTouchscreenBindingBinding
+import org.citra.citra_emu.features.settings.model.view.TouchBinding
 import org.citra.citra_emu.features.settings.model.view.TouchBindingManager
 
 
@@ -22,6 +23,8 @@ class TouchscreenBindingFragment : Fragment() {
         get() = _binding!!
 
 
+    private var isAddingBinding = false
+
 
 
 
@@ -32,31 +35,27 @@ class TouchscreenBindingFragment : Fragment() {
         super.onCreate(savedInstanceState)
 
 
+        parentFragmentManager.setFragmentResultListener(
+            "touch_binding_added",
+            this
+        ) { _, _ ->
 
-        parentFragmentManager
-            .setFragmentResultListener(
-                "touch_binding_added",
-                this
-            ) { _, _ ->
+            isAddingBinding = false
+            refreshBindings()
 
-                refreshBindings()
-
-            }
-
+        }
 
 
-        parentFragmentManager
-            .setFragmentResultListener(
-                "touch_binding_removed",
-                this
-            ) { _, _ ->
+        parentFragmentManager.setFragmentResultListener(
+            "touch_binding_removed",
+            this
+        ) { _, _ ->
 
-                refreshBindings()
+            refreshBindings()
 
-            }
+        }
 
     }
-
 
 
 
@@ -105,16 +104,30 @@ class TouchscreenBindingFragment : Fragment() {
 
 
         /*
-         * User selects touchscreen location.
+         * Touchscreen editor.
          *
-         * Coordinates are normalized:
+         * Coordinates returned:
          *
-         * x = 0.0 - 1.0
-         * y = 0.0 - 1.0
+         * X:
+         * 0.0 = left
+         * 1.0 = right
+         *
+         * Y:
+         * 0.0 = top
+         * 1.0 = bottom
          */
         binding.touchscreenView
             .onTouchPointSelected =
             { x, y ->
+
+
+                if (isAddingBinding) {
+                    return@onTouchPointSelected
+                }
+
+
+                isAddingBinding = true
+
 
 
                 TouchBindingBottomSheetDialogFragment
@@ -128,8 +141,6 @@ class TouchscreenBindingFragment : Fragment() {
                     )
 
             }
-
-
 
 
 
@@ -152,11 +163,10 @@ class TouchscreenBindingFragment : Fragment() {
 
 
 
-
-
         refreshBindings()
 
     }
+
 
 
 
@@ -184,8 +194,8 @@ class TouchscreenBindingFragment : Fragment() {
     private fun refreshBindings() {
 
 
-        if(_binding == null)
-            return
+        val currentBinding =
+            _binding ?: return
 
 
 
@@ -197,7 +207,7 @@ class TouchscreenBindingFragment : Fragment() {
 
 
 
-        binding.touchscreenView
+        currentBinding.touchscreenView
             .setBindings(
                 bindings
             )
@@ -206,15 +216,56 @@ class TouchscreenBindingFragment : Fragment() {
 
 
 
-        binding.bindingList
+
+        currentBinding.bindingList
             .removeAllViews()
 
 
 
 
 
-        bindings.forEach { data ->
+        if (bindings.isEmpty()) {
 
+
+            val emptyText =
+                TextView(
+                    requireContext()
+                )
+
+
+            emptyText.text =
+                "No touchscreen bindings"
+
+
+            emptyText.textSize =
+                16f
+
+
+            emptyText.setPadding(
+                16,
+                16,
+                16,
+                16
+            )
+
+
+            currentBinding.bindingList
+                .addView(
+                    emptyText
+                )
+
+
+            return
+
+        }
+
+
+
+
+
+
+
+        bindings.forEachIndexed { index, data ->
 
 
             val text =
@@ -224,51 +275,8 @@ class TouchscreenBindingFragment : Fragment() {
 
 
 
-            val displayText =
-
-
-                if(data.axis >= 0) {
-
-
-                    val direction =
-
-                        if(data.positive)
-                            "+"
-                        else
-                            "-"
-
-
-
-                    "Axis ${data.axis} $direction → " +
-                    "Touch (${formatCoordinate(data.x)}, " +
-                    "${formatCoordinate(data.y)})"
-
-
-                } else {
-
-
-
-                    val buttonName =
-                        KeyEvent
-                            .keyCodeToString(
-                                data.keyCode
-                            )
-
-
-
-                    "$buttonName → " +
-                    "Touch (${formatCoordinate(data.x)}, " +
-                    "${formatCoordinate(data.y)})"
-
-                }
-
-
-
-
-
-
             text.text =
-                displayText
+                createBindingText(data)
 
 
 
@@ -279,17 +287,83 @@ class TouchscreenBindingFragment : Fragment() {
 
             text.setPadding(
                 16,
-                12,
                 16,
-                12
+                16,
+                16
             )
 
 
 
-            binding.bindingList
+            /*
+             * Tap a saved binding
+             * to remove it
+             */
+            text.setOnClickListener {
+
+
+                TouchBindingManager
+                    .removeBinding(index)
+
+
+                refreshBindings()
+
+            }
+
+
+
+            currentBinding.bindingList
                 .addView(
                     text
                 )
+
+
+        }
+
+    }
+
+
+
+
+
+
+
+
+    private fun createBindingText(
+        data: TouchBinding
+    ): String {
+
+
+        return if(data.axis >= 0) {
+
+
+            val direction =
+                if(data.positive)
+                    "+"
+                else
+                    "-"
+
+
+
+            "Axis ${data.axis} $direction\n" +
+                    "Touch (${formatCoordinate(data.x)}, " +
+                    "${formatCoordinate(data.y)})"
+
+
+        } else {
+
+
+
+            val buttonName =
+                KeyEvent
+                    .keyCodeToString(
+                        data.keyCode
+                    )
+
+
+
+            "$buttonName\n" +
+                    "Touch (${formatCoordinate(data.x)}, " +
+                    "${formatCoordinate(data.y)})"
 
         }
 
@@ -306,12 +380,14 @@ class TouchscreenBindingFragment : Fragment() {
         value: Float
     ): String {
 
+
         return String.format(
-            "%.2f",
+            "%.3f",
             value
         )
 
     }
+
 
 
 
