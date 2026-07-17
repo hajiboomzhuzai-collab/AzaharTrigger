@@ -8,7 +8,6 @@ import android.util.AttributeSet
 import android.view.MotionEvent
 import android.view.View
 import org.citra.citra_emu.features.settings.model.view.TouchBinding
-import kotlin.math.roundToInt
 
 
 class TouchscreenBindingView @JvmOverloads constructor(
@@ -43,22 +42,26 @@ class TouchscreenBindingView @JvmOverloads constructor(
 
 
 
-    /*
-     * Saved bindings from TouchBindingManager
-     */
-    private var bindings: List<TouchBinding> =
+    private var bindings:
+            List<TouchBinding> =
         emptyList()
 
 
 
     /*
-     * Temporary point currently selected
+     * Selected point stored as view pixels
      */
     private var selectedX = -1f
     private var selectedY = -1f
 
 
 
+    /*
+     * Returns normalized coordinate
+     *
+     * 0.0 = left/top
+     * 1.0 = right/bottom
+     */
     var onTouchPointSelected:
             ((Float, Float) -> Unit)? = null
 
@@ -74,7 +77,6 @@ class TouchscreenBindingView @JvmOverloads constructor(
 
 
 
-        // Background
         canvas.drawRect(
             0f,
             0f,
@@ -85,7 +87,6 @@ class TouchscreenBindingView @JvmOverloads constructor(
 
 
 
-        // Border
         canvas.drawRect(
             0f,
             0f,
@@ -97,18 +98,18 @@ class TouchscreenBindingView @JvmOverloads constructor(
 
 
         /*
-         * Draw saved touch bindings
+         * Draw saved normalized bindings
          */
         bindings.forEach { binding ->
 
 
             val x =
-                (binding.x / 320f) *
+                binding.x *
                         width
 
 
             val y =
-                (binding.y / 240f) *
+                binding.y *
                         height
 
 
@@ -119,19 +120,17 @@ class TouchscreenBindingView @JvmOverloads constructor(
                 12f,
                 pointPaint
             )
+
         }
 
 
 
 
-        /*
-         * Draw current selected point
-         */
-        if (
+
+        if(
             selectedX >= 0 &&
             selectedY >= 0
         ) {
-
 
             canvas.drawCircle(
                 selectedX,
@@ -139,8 +138,11 @@ class TouchscreenBindingView @JvmOverloads constructor(
                 12f,
                 pointPaint
             )
+
         }
+
     }
+
 
 
 
@@ -153,7 +155,7 @@ class TouchscreenBindingView @JvmOverloads constructor(
     ): Boolean {
 
 
-        if (
+        if(
             event.action ==
             MotionEvent.ACTION_DOWN
         ) {
@@ -173,31 +175,27 @@ class TouchscreenBindingView @JvmOverloads constructor(
 
 
             /*
-             * Convert Android view coordinate
+             * Convert view pixels
              *
-             * to 3DS coordinate
+             * into normalized coordinates
              *
-             * 320 x 240
+             * 0.0 - 1.0
              */
-            val x =
-
-                ((selectedX / width)
-                        * 320)
-                    .roundToInt()
+            val normalizedX =
+                selectedX /
+                width.toFloat()
 
 
 
-            val y =
-
-                ((selectedY / height)
-                        * 240)
-                    .roundToInt()
+            val normalizedY =
+                selectedY /
+                height.toFloat()
 
 
 
             onTouchPointSelected?.invoke(
-                x.toFloat(),
-                y.toFloat()
+                normalizedX,
+                normalizedY
             )
 
 
@@ -215,9 +213,7 @@ class TouchscreenBindingView @JvmOverloads constructor(
 
 
 
-    /*
-     * Reload dots from saved preferences
-     */
+
     fun setBindings(
         newBindings: List<TouchBinding>
     ) {
@@ -227,6 +223,7 @@ class TouchscreenBindingView @JvmOverloads constructor(
 
 
         invalidate()
+
     }
 
 
@@ -235,9 +232,7 @@ class TouchscreenBindingView @JvmOverloads constructor(
 
 
 
-    /*
-     * Remove all visible dots
-     */
+
     fun clearBindings() {
 
 
@@ -250,6 +245,7 @@ class TouchscreenBindingView @JvmOverloads constructor(
 
 
         invalidate()
+
     }
 
 }
