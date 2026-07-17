@@ -1,5 +1,6 @@
 package org.citra.citra_emu.fragments
 
+
 import android.content.DialogInterface
 import android.os.Bundle
 import android.view.InputDevice
@@ -8,27 +9,43 @@ import android.view.LayoutInflater
 import android.view.MotionEvent
 import android.view.View
 import android.view.ViewGroup
+
 import com.google.android.material.bottomsheet.BottomSheetBehavior
 import com.google.android.material.bottomsheet.BottomSheetDialogFragment
+
 import org.citra.citra_emu.databinding.DialogInputBinding
 import org.citra.citra_emu.features.settings.model.view.TouchBinding
 import org.citra.citra_emu.features.settings.model.view.TouchBindingManager
 import org.citra.citra_emu.utils.Log
 
 
+
 class TouchBindingBottomSheetDialogFragment :
     BottomSheetDialogFragment() {
 
 
-    private var _binding: DialogInputBinding? = null
-    private val binding get() = _binding!!
+
+    private var _binding:
+        DialogInputBinding? = null
 
 
+    private val binding:
+        DialogInputBinding
+        get() = _binding!!
+
+
+
+
+
+    /*
+     * Normalized touchscreen position.
+     *
+     * 0.0 - 1.0
+     */
     private var touchX = 0f
+
     private var touchY = 0f
 
-
-    private var axisBound = false
 
 
 
@@ -37,7 +54,9 @@ class TouchBindingBottomSheetDialogFragment :
     override fun onCreate(
         savedInstanceState: Bundle?
     ) {
+
         super.onCreate(savedInstanceState)
+
 
 
         touchX =
@@ -45,10 +64,13 @@ class TouchBindingBottomSheetDialogFragment :
                 ?: 0f
 
 
+
         touchY =
             arguments?.getFloat(ARG_Y)
                 ?: 0f
+
     }
+
 
 
 
@@ -72,6 +94,7 @@ class TouchBindingBottomSheetDialogFragment :
 
 
         return binding.root
+
     }
 
 
@@ -87,6 +110,7 @@ class TouchBindingBottomSheetDialogFragment :
         savedInstanceState: Bundle?
     ) {
 
+
         super.onViewCreated(
             view,
             savedInstanceState
@@ -94,17 +118,23 @@ class TouchBindingBottomSheetDialogFragment :
 
 
 
+
+
         val parent =
             view.parent as? View
 
 
+
         parent?.let {
+
 
             BottomSheetBehavior
                 .from(it)
                 .state =
                 BottomSheetBehavior.STATE_EXPANDED
+
         }
+
 
 
 
@@ -115,13 +145,17 @@ class TouchBindingBottomSheetDialogFragment :
 
 
 
+
         binding.textTitle.text =
             "Bind Touch Point"
 
 
 
+
         binding.textMessage.text =
             "Press button or move joystick"
+
+
 
 
 
@@ -144,10 +178,12 @@ class TouchBindingBottomSheetDialogFragment :
 
 
 
+
         /*
-         * Joystick axis
+         * Controller axis
          */
-        dialog?.window
+        dialog
+            ?.window
             ?.decorView
             ?.setOnGenericMotionListener { _, event ->
 
@@ -161,40 +197,60 @@ class TouchBindingBottomSheetDialogFragment :
 
 
 
-        binding.buttonClear.setOnClickListener {
 
 
-            val existing =
-                TouchBindingManager
-                    .getBindings()
-                    .firstOrNull {
-
-                        it.x == touchX &&
-                        it.y == touchY
-
-                    }
+        binding.buttonClear
+            .setOnClickListener {
 
 
+                val existing =
+                    TouchBindingManager
+                        .getBindings()
+                        .firstOrNull {
 
-            existing?.let {
 
-                TouchBindingManager
-                    .removeBinding(it)
+                            kotlin.math.abs(
+                                it.x - touchX
+                            ) < 0.01f &&
 
 
-                parentFragmentManager
-                    .setFragmentResult(
-                        "touch_binding_removed",
-                        Bundle()
-                    )
+                            kotlin.math.abs(
+                                it.y - touchY
+                            ) < 0.01f
+
+
+                        }
+
+
+
+
+
+
+                existing?.let {
+
+
+                    TouchBindingManager
+                        .removeBinding(it)
+
+
+
+                    parentFragmentManager
+                        .setFragmentResult(
+                            "touch_binding_removed",
+                            Bundle()
+                        )
+
+
+                }
+
+
+
+
+                dismiss()
+
 
             }
 
-
-
-            dismiss()
-
-        }
 
 
 
@@ -206,11 +262,16 @@ class TouchBindingBottomSheetDialogFragment :
         binding.buttonCancel
             .setOnClickListener {
 
+
                 dismiss()
+
 
             }
 
     }
+
+
+
 
 
 
@@ -231,6 +292,7 @@ class TouchBindingBottomSheetDialogFragment :
         ) {
 
             return false
+
         }
 
 
@@ -250,20 +312,35 @@ class TouchBindingBottomSheetDialogFragment :
 
 
 
+
+
+
         TouchBindingManager
             .addBinding(
 
                 TouchBinding(
 
+
                     keyCode = key,
+
 
                     axis = -1,
 
+
                     positive = true,
+
+
+                    analog = false,
+
+
+                    threshold = 0.5f,
+
 
                     x = touchX,
 
+
                     y = touchY
+
 
                 )
 
@@ -271,10 +348,16 @@ class TouchBindingBottomSheetDialogFragment :
 
 
 
+
+
+
+
         notifyAdded()
 
 
+
         dismiss()
+
 
 
         return true
@@ -289,9 +372,14 @@ class TouchBindingBottomSheetDialogFragment :
 
 
 
+
+
+
+
     private fun handleAxisEvent(
         event: MotionEvent
     ): Boolean {
+
 
 
         if (
@@ -300,7 +388,10 @@ class TouchBindingBottomSheetDialogFragment :
         ) {
 
             return false
+
         }
+
+
 
 
 
@@ -311,7 +402,9 @@ class TouchBindingBottomSheetDialogFragment :
         ) {
 
             return false
+
         }
+
 
 
 
@@ -326,7 +419,11 @@ class TouchBindingBottomSheetDialogFragment :
 
 
 
-        for (range in device.motionRanges) {
+
+
+        for (
+            range in device.motionRanges
+        ) {
 
 
             val axis =
@@ -341,8 +438,10 @@ class TouchBindingBottomSheetDialogFragment :
 
 
 
+
+
             /*
-             * Ignore stick center
+             * Ignore center
              */
             if (
                 value > -0.5f &&
@@ -358,6 +457,7 @@ class TouchBindingBottomSheetDialogFragment :
 
 
 
+
             val positive =
                 value > 0f
 
@@ -366,12 +466,18 @@ class TouchBindingBottomSheetDialogFragment :
 
 
 
+
             Log.debug(
+
                 "[TouchBinding] " +
                 "axis=$axis " +
-                "positive=$positive " +
-                "value=$value"
+                "value=$value " +
+                "positive=$positive"
+
             )
+
+
+
 
 
 
@@ -383,19 +489,45 @@ class TouchBindingBottomSheetDialogFragment :
 
                     TouchBinding(
 
+
                         keyCode = -1,
+
 
                         axis = axis,
 
+
                         positive = positive,
+
+
+                        /*
+                         * Change this to true
+                         * for analog triggers.
+                         *
+                         * Joystick directions:
+                         * false
+                         *
+                         * Trigger:
+                         * true
+                         */
+                        analog = false,
+
+
+                        threshold = 0.5f,
+
 
                         x = touchX,
 
+
                         y = touchY
+
 
                     )
 
                 )
+
+
+
+
 
 
 
@@ -409,11 +541,15 @@ class TouchBindingBottomSheetDialogFragment :
 
             return true
 
+
         }
 
 
 
+
+
         return false
+
 
     }
 
@@ -427,10 +563,14 @@ class TouchBindingBottomSheetDialogFragment :
 
     private fun notifyAdded() {
 
+
         parentFragmentManager
             .setFragmentResult(
+
                 "touch_binding_added",
+
                 Bundle()
+
             )
 
     }
@@ -447,6 +587,7 @@ class TouchBindingBottomSheetDialogFragment :
         dialog: DialogInterface
     ) {
 
+
         super.onDismiss(dialog)
 
     }
@@ -458,11 +599,15 @@ class TouchBindingBottomSheetDialogFragment :
 
 
 
+
     override fun onDestroyView() {
+
 
         super.onDestroyView()
 
+
         _binding = null
+
 
     }
 
@@ -477,12 +622,15 @@ class TouchBindingBottomSheetDialogFragment :
     companion object {
 
 
+
         private const val ARG_X =
             "touch_x"
 
 
         private const val ARG_Y =
             "touch_y"
+
+
 
 
 
@@ -496,29 +644,35 @@ class TouchBindingBottomSheetDialogFragment :
         TouchBindingBottomSheetDialogFragment {
 
 
+
             return TouchBindingBottomSheetDialogFragment()
                 .apply {
 
+
                     arguments =
-                        Bundle().apply {
-
-                            putFloat(
-                                ARG_X,
-                                x
-                            )
+                        Bundle()
+                            .apply {
 
 
-                            putFloat(
-                                ARG_Y,
-                                y
-                            )
+                                putFloat(
+                                    ARG_X,
+                                    x
+                                )
 
-                        }
+
+                                putFloat(
+                                    ARG_Y,
+                                    y
+                                )
+
+                            }
 
                 }
 
         }
 
+
     }
+
 
 }
