@@ -23,6 +23,7 @@ object TouchBindingManager {
         0.15f
 
 
+
     private val preferences: SharedPreferences
         get() =
             PreferenceManager
@@ -31,8 +32,10 @@ object TouchBindingManager {
                 )
 
 
+
     private val bindings =
         mutableListOf<TouchBinding>()
+
 
 
     private val axisStates =
@@ -46,12 +49,21 @@ object TouchBindingManager {
 
 
 
-    fun getBindings(): List<TouchBinding> =
-        bindings.toList()
+
+    fun getBindings(): List<TouchBinding> {
+
+        return bindings.toList()
+
+    }
 
 
 
-    fun addBinding(binding: TouchBinding) {
+
+
+    fun addBinding(
+        binding: TouchBinding
+    ) {
+
 
         bindings.removeAll {
 
@@ -63,16 +75,21 @@ object TouchBindingManager {
         }
 
 
+
         bindings.add(binding)
 
         saveBindings()
+
     }
 
 
 
 
 
-    fun removeBinding(binding: TouchBinding) {
+
+    fun removeBinding(
+        binding: TouchBinding
+    ) {
 
         bindings.remove(binding)
 
@@ -90,6 +107,7 @@ object TouchBindingManager {
 
         axisStates.clear()
 
+
         preferences.edit()
             .remove(PREF_KEY)
             .apply()
@@ -100,9 +118,16 @@ object TouchBindingManager {
 
 
 
+
+
+
     /*
-     * Convert normalized touch position
-     * into current touchscreen surface position.
+     * TouchBinding stores normalized coordinates:
+     *
+     * x = 0.0 - 1.0
+     * y = 0.0 - 1.0
+     *
+     * Convert them into screen coordinates.
      */
     private fun sendTouch(
         binding: TouchBinding,
@@ -110,48 +135,33 @@ object TouchBindingManager {
     ) {
 
 
-        val bounds =
-            NativeLibrary.getTouchscreenBounds()
-
-
-        if (bounds.size < 4)
-            return
-
-
-
-        val left =
-            bounds[0]
-
-
-        val top =
-            bounds[1]
-
-
-        val width =
-            bounds[2]
-
-
-        val height =
-            bounds[3]
+        val metrics =
+            CitraApplication
+                .appContext
+                .resources
+                .displayMetrics
 
 
 
         val x =
-            left +
-            (binding.x * width)
+            binding.x *
+            metrics.widthPixels
 
 
 
         val y =
-            top +
-            (binding.y * height)
+            binding.y *
+            metrics.heightPixels
+
+
 
 
 
         Log.d(
             "TouchBinding",
-            "touch x=$x y=$y pressed=$pressed"
+            "x=$x y=$y pressed=$pressed"
         )
+
 
 
 
@@ -175,6 +185,9 @@ object TouchBindingManager {
 
 
 
+    /*
+     * Physical controller buttons
+     */
     fun onKeyEvent(
         event: KeyEvent
     ): Boolean {
@@ -188,7 +201,9 @@ object TouchBindingManager {
 
 
 
+
         var handled = false
+
 
 
 
@@ -197,7 +212,8 @@ object TouchBindingManager {
 
             if (
                 binding.axis == -1 &&
-                binding.keyCode == event.keyCode
+                binding.keyCode ==
+                event.keyCode
             ) {
 
 
@@ -214,9 +230,14 @@ object TouchBindingManager {
         }
 
 
+
+
         return handled
 
     }
+
+
+
 
 
 
@@ -236,7 +257,11 @@ object TouchBindingManager {
 
 
 
+
+
         var handled = false
+
+
 
 
 
@@ -245,7 +270,8 @@ object TouchBindingManager {
 
             if (
                 binding.axis == -1 &&
-                binding.keyCode == event.keyCode
+                binding.keyCode ==
+                event.keyCode
             ) {
 
 
@@ -262,6 +288,9 @@ object TouchBindingManager {
         }
 
 
+
+
+
         return handled
 
     }
@@ -274,6 +303,9 @@ object TouchBindingManager {
 
 
 
+    /*
+     * Controller analog axes
+     */
     fun onAxisEvent(
         event: MotionEvent
     ): Boolean {
@@ -292,6 +324,7 @@ object TouchBindingManager {
 
 
 
+
             val value =
                 event.getAxisValue(
                     binding.axis
@@ -305,21 +338,24 @@ object TouchBindingManager {
 
                 if(binding.analog) {
 
+
                     abs(value) >
-                            binding.threshold
+                    binding.threshold
+
 
                 }
                 else {
 
+
                     if(binding.positive)
 
                         value >
-                                AXIS_DEADZONE
+                        AXIS_DEADZONE
 
                     else
 
                         value <
-                                -AXIS_DEADZONE
+                        -AXIS_DEADZONE
 
                 }
 
@@ -327,20 +363,22 @@ object TouchBindingManager {
 
 
 
-
-            val key =
+            val stateKey =
                 "${binding.axis}_${binding.positive}_${binding.analog}"
 
 
 
-            val old =
-                axisStates[key]
+
+
+            val oldState =
+                axisStates[stateKey]
                     ?: false
 
 
 
 
-            if(old != pressed) {
+
+            if(oldState != pressed) {
 
 
                 sendTouch(
@@ -349,7 +387,8 @@ object TouchBindingManager {
                 )
 
 
-                axisStates[key] =
+
+                axisStates[stateKey] =
                     pressed
 
             }
@@ -359,6 +398,8 @@ object TouchBindingManager {
             handled = true
 
         }
+
+
 
 
 
@@ -373,6 +414,10 @@ object TouchBindingManager {
 
 
 
+
+    /*
+     * Find touchscreen binding near position.
+     */
     fun getBindingAt(
         x: Float,
         y: Float
@@ -382,8 +427,9 @@ object TouchBindingManager {
         return bindings.firstOrNull {
 
 
-            abs(it.x-x) < 0.01f &&
-            abs(it.y-y) < 0.01f
+            abs(it.x - x) < 0.01f &&
+            abs(it.y - y) < 0.01f
+
 
         }
 
@@ -405,7 +451,7 @@ object TouchBindingManager {
 
 
 
-        bindings.forEach {
+        bindings.forEach { binding ->
 
 
             val obj =
@@ -415,49 +461,52 @@ object TouchBindingManager {
 
             obj.put(
                 "keyCode",
-                it.keyCode
+                binding.keyCode
             )
 
 
             obj.put(
                 "axis",
-                it.axis
+                binding.axis
             )
 
 
             obj.put(
                 "positive",
-                it.positive
+                binding.positive
             )
 
 
             obj.put(
                 "analog",
-                it.analog
+                binding.analog
             )
 
 
             obj.put(
                 "threshold",
-                it.threshold
+                binding.threshold
             )
 
 
             obj.put(
                 "x",
-                it.x
+                binding.x
             )
 
 
             obj.put(
                 "y",
-                it.y
+                binding.y
             )
+
 
 
             array.put(obj)
 
         }
+
+
 
 
 
@@ -494,8 +543,12 @@ object TouchBindingManager {
 
 
 
+
+
         val array =
             JSONArray(json)
+
+
 
 
 
@@ -504,6 +557,7 @@ object TouchBindingManager {
 
             val obj =
                 array.getJSONObject(i)
+
 
 
 
