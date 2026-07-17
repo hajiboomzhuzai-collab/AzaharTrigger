@@ -34,12 +34,29 @@ object TouchBindingManager {
     private val bindings =
         mutableListOf<TouchBinding>()
 
+
+
+    /*
+     * Stores current joystick direction state.
+     *
+     * Example:
+     * axis 0 positive = true
+     * axis 0 negative = false
+     */
     private val axisStates =
-    mutableMapOf<String, Boolean>()
+        mutableMapOf<String, Boolean>()
+
+
+
+
 
     init {
+
         loadBindings()
+
     }
+
+
 
 
 
@@ -55,19 +72,15 @@ object TouchBindingManager {
 
 
 
+
+
     fun addBinding(
         binding: TouchBinding
     ) {
 
 
         /*
-         * Remove duplicate mapping.
-         *
-         * Same:
-         * - key
-         * - axis
-         * - direction
-         *
+         * Remove duplicate.
          */
         bindings.removeAll {
 
@@ -82,9 +95,11 @@ object TouchBindingManager {
         bindings.add(binding)
 
 
+
         saveBindings()
 
     }
+
 
 
 
@@ -105,34 +120,14 @@ object TouchBindingManager {
 
 
 
-    fun removeBinding(
-        x: Float,
-        y: Float
-    ) {
-
-
-        bindings.removeAll {
-
-            it.x == x &&
-            it.y == y
-
-        }
-
-
-        saveBindings()
-
-    }
-
-
-
-
-
 
 
     fun clearBindings() {
 
 
         bindings.clear()
+
+        axisStates.clear()
 
 
         preferences.edit()
@@ -148,15 +143,16 @@ object TouchBindingManager {
 
 
 
+
     /*
-     * Controller buttons
+     * Controller buttons.
      */
     fun onKeyEvent(
         event: KeyEvent
     ): Boolean {
 
 
-        if (event.action != KeyEvent.ACTION_DOWN)
+        if(event.action != KeyEvent.ACTION_DOWN)
             return false
 
 
@@ -168,9 +164,9 @@ object TouchBindingManager {
         bindings.forEach { binding ->
 
 
-            if (
-                binding.keyCode == event.keyCode &&
-                binding.axis == -1
+            if(
+                binding.axis == -1 &&
+                binding.keyCode == event.keyCode
             ) {
 
 
@@ -188,9 +184,11 @@ object TouchBindingManager {
         }
 
 
+
         return handled
 
     }
+
 
 
 
@@ -203,7 +201,7 @@ object TouchBindingManager {
     ) {
 
 
-        if (event.action != KeyEvent.ACTION_UP)
+        if(event.action != KeyEvent.ACTION_UP)
             return
 
 
@@ -211,9 +209,9 @@ object TouchBindingManager {
         bindings.forEach { binding ->
 
 
-            if (
-                binding.keyCode == event.keyCode &&
-                binding.axis == -1
+            if(
+                binding.axis == -1 &&
+                binding.keyCode == event.keyCode
             ) {
 
 
@@ -238,9 +236,18 @@ object TouchBindingManager {
 
 
     /*
-     * Joystick axis bindings
+     * Joystick axis.
+     *
+     * axis:
+     *
+     * 0 = left/right stick X
+     * 1 = left/right stick Y
+     *
+     * positive:
+     *
+     * true  = + direction
+     * false = - direction
      */
-    
     fun onAxisEvent(
         event: MotionEvent
     ): Boolean {
@@ -248,46 +255,88 @@ object TouchBindingManager {
 
         var handled = false
 
+
+
         bindings.forEach { binding ->
 
 
-            if (binding.axis == -1)
+
+            if(binding.axis < 0)
                 return@forEach
+
+
 
             val value =
                 event.getAxisValue(
                     binding.axis
                 )
 
+
+
             val pressed =
-                if (binding.positive)
+                if(binding.positive) {
+
                     value > AXIS_DEADZONE
-                else
+
+                } else {
+
                     value < -AXIS_DEADZONE
 
-            val id =
-                "${binding.axis}:${binding.positive}:${binding.x}:${binding.y}"
-            
-            val oldState =
-                axisStates[id] ?: false
-            
-            /*
-            * Only send change.
-            */
-            if (oldState != pressed) {
+                }
+
+
+
+
+
+            val stateKey =
+                "${binding.axis}_${binding.positive}"
+
+
+
+
+
+            val old =
+                axisStates[stateKey]
+                    ?: false
+
+
+
+
+
+            if(old != pressed) {
+
+
                 NativeLibrary.onTouchEvent(
                     binding.x,
                     binding.y,
                     pressed
                 )
-                axisStates[id] =
+
+
+                axisStates[stateKey] =
                     pressed
+
             }
+
+
+
             handled = true
+
         }
-    return handled
+
+
+
+        return handled
 
     }
+
+
+
+
+
+
+
+
 
     fun getBindingAt(
         x: Float,
@@ -365,8 +414,6 @@ object TouchBindingManager {
 
 
 
-
-
         preferences.edit()
             .putString(
                 PREF_KEY,
@@ -392,7 +439,6 @@ object TouchBindingManager {
 
 
         val json =
-
             preferences.getString(
                 PREF_KEY,
                 "[]"
@@ -401,13 +447,14 @@ object TouchBindingManager {
 
 
 
-
         val array =
             JSONArray(json)
 
 
 
-        for (i in 0 until array.length()) {
+
+
+        for(i in 0 until array.length()) {
 
 
             val obj =
@@ -426,11 +473,13 @@ object TouchBindingManager {
                         ),
 
 
+
                     axis =
                         obj.optInt(
                             "axis",
                             -1
                         ),
+
 
 
                     positive =
@@ -440,18 +489,22 @@ object TouchBindingManager {
                         ),
 
 
+
                     x =
                         obj.optDouble(
                             "x",
                             0.0
-                        ).toFloat(),
+                        )
+                        .toFloat(),
+
 
 
                     y =
                         obj.optDouble(
                             "y",
                             0.0
-                        ).toFloat()
+                        )
+                        .toFloat()
 
                 )
 
