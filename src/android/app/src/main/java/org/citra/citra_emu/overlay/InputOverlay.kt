@@ -87,6 +87,32 @@ class InputOverlay(context: Context?, attrs: AttributeSet?) : SurfaceView(contex
         )
     }
 
+    fun getTouchWidth(): Int {
+        return width
+    }
+
+    fun getTouchHeight(): Int {
+        return height
+    }
+
+    fun convertToSurfaceCoordinate(
+        x: Float,
+        y: Float
+    ): Pair<Float, Float> {
+
+        val scaleX =
+            width.toFloat() / resources.displayMetrics.widthPixels
+
+        val scaleY =
+            height.toFloat() / resources.displayMetrics.heightPixels
+
+
+        return Pair(
+            x * scaleX,
+            y * scaleY
+        )
+    }
+
     fun hapticFeedback(type:Int){
         if(EmulationMenuSettings.hapticFeedback)
             performHapticFeedback(type)
