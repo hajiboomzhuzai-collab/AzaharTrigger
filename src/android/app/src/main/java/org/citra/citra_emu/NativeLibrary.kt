@@ -220,6 +220,8 @@ object NativeLibrary {
      */
     external fun updateFramebuffer(isPortrait: Boolean)
 
+    external fun getSavedBottomScreenRect(): IntArray?
+
     external fun getBottomScreenRect(): IntArray?
 
     external fun getFramebufferSize(): IntArray?
