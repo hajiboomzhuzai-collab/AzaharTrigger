@@ -86,39 +86,28 @@ object TouchBindingManager {
      * Actual scaling happens in NativeLibrary.
      */
     
-    private fun sendTouch(
+    /**
+ * Sends touchscreen press.
+ *
+ * Coordinates are normalized (0.0 - 1.0):
+ * x = 0.0 (left) to 1.0 (right)
+ * y = 0.0 (top) to 1.0 (bottom)
+ *
+ * These are the actual 3DS screen coordinates.
+ */
+private fun sendTouch(
     binding: TouchBinding,
     pressed: Boolean
 ) {
-
     Log.d(
         TAG,
         "Touch binding x=${binding.x} y=${binding.y} pressed=$pressed"
     )
-
-    val rect =
-        NativeLibrary.getBottomScreenRect()
-            ?: return
-
-    if (rect.size != 4)
-        return
-
-
-    val x =
-        rect[0] +
-        binding.x *
-        (rect[2] - rect[0])
-
-
-    val y =
-        rect[1] +
-        binding.y *
-        (rect[3] - rect[1])
-
-
+    
+    // Pass normalized coordinates directly - NativeLibrary expects 0-1 range
     NativeLibrary.onTouchEvent(
-        if (pressed) x else 0f,
-        if (pressed) y else 0f,
+        if (pressed) binding.x else 0f,
+        if (pressed) binding.y else 0f,
         pressed
     )
 }
