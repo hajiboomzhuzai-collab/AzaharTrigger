@@ -17,6 +17,10 @@ public:
     EmuWindow_Android(ANativeWindow* surface, bool is_secondary = false);
     ~EmuWindow_Android();
 
+    const Layout::FramebufferLayout& GetCurrentFramebufferLayout() const {
+        return GetFramebufferLayout();
+    }
+
     /// Called by the onSurfaceChanges() method to change the surface
     bool OnSurfaceChanged(ANativeWindow* surface);
 
