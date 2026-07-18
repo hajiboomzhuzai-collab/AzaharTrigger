@@ -222,6 +222,8 @@ object NativeLibrary {
 
     external fun getBottomScreenRect(): IntArray?
 
+    external fun getFramebufferSize(): IntArray?
+
     external fun setCustomLayout(
         topX: Int,
         topY: Int,
