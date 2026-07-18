@@ -471,27 +471,75 @@ void Java_org_citra_citra_1emu_NativeLibrary_updateFramebuffer([[maybe_unused]] 
 
 jintArray Java_org_citra_citra_1emu_NativeLibrary_getBottomScreenRect(
         JNIEnv* env,
-        [[maybe_unused]] jobject obj)
-{
-    if (!window) {
-        return nullptr;
+        [[maybe_unused]] jobject obj) {
+
+    jint data[4]{};
+
+    const auto layout =
+        Settings::values.layout_option.GetValue();
+
+    if (layout == Settings::LayoutOption::CustomLayout) {
+
+        const jint left =
+            static_cast<jint>(
+                Settings::values.custom_bottom_x.GetValue()
+            );
+
+        const jint top =
+            static_cast<jint>(
+                Settings::values.custom_bottom_y.GetValue()
+            );
+
+        const jint right =
+            left +
+            static_cast<jint>(
+                Settings::values.custom_bottom_width.GetValue()
+            );
+
+        const jint bottom =
+            top +
+            static_cast<jint>(
+                Settings::values.custom_bottom_height.GetValue()
+            );
+
+
+        data[0] = left;
+        data[1] = top;
+        data[2] = right;
+        data[3] = bottom;
+
+    } else {
+
+        if (!window) {
+            return nullptr;
+        }
+
+
+        const auto& framebuffer =
+            window->GetCurrentFramebufferLayout();
+
+
+        const auto& rect =
+            framebuffer.bottom_screen;
+
+
+        data[0] =
+            static_cast<jint>(rect.left);
+
+        data[1] =
+            static_cast<jint>(rect.top);
+
+        data[2] =
+            static_cast<jint>(rect.right);
+
+        data[3] =
+            static_cast<jint>(rect.bottom);
     }
 
-    const auto& layout =
-        window->GetCurrentFramebufferLayout();
-
-    const auto& rect =
-        layout.bottom_screen;
-
-    jint data[4] = {
-        static_cast<jint>(rect.left),
-        static_cast<jint>(rect.top),
-        static_cast<jint>(rect.right),
-        static_cast<jint>(rect.bottom)
-    };
 
     jintArray result =
         env->NewIntArray(4);
+
 
     env->SetIntArrayRegion(
         result,
@@ -499,6 +547,7 @@ jintArray Java_org_citra_citra_1emu_NativeLibrary_getBottomScreenRect(
         4,
         data
     );
+
 
     return result;
 }
