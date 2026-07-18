@@ -243,25 +243,6 @@ class EmulationFragment : Fragment(), SurfaceHolder.Callback, Choreographer.Fram
             binding.surfaceInputOverlay.setIsInEditMode(false)
         }
 
-        TouchBindingManager.setTouchDispatcher {
-                    x,
-                    y,
-                    pressed ->
-
-                val surface =
-                    binding.surfaceInputOverlay
-                val touchX =
-                    x * surface.width
-                val touchY =
-                    y * surface.height
-                
-                NativeLibrary.onTouchEvent(
-                    if (pressed) touchX else 0f,
-                    if (pressed) touchY else 0f,
-                    pressed
-                )
-        }
-
         binding.chatButton.setOnClickListener {
             ChatDialog(requireContext()).show()
         }
