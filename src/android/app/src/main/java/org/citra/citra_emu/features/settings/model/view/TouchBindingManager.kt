@@ -94,6 +94,9 @@ object TouchBindingManager {
      *
      * Actual scaling happens in NativeLibrary.
      */
+
+    external fun getBottomScreenRect(): IntArray?
+    
     private fun sendTouch(
         binding: TouchBinding,
         pressed: Boolean
@@ -113,11 +116,28 @@ object TouchBindingManager {
             return
         }
 
-        NativeLibrary.onTouchEvent(
-            if (pressed) binding.x else 0f,
-            if (pressed) binding.y else 0f,
-            pressed
-        )
+        val rect =
+        NativeLibrary.getBottomScreenRect()
+
+        if (rect != null && rect.size == 4) {
+
+            val x =
+                rect[0] +
+                binding.x *
+                (rect[2] - rect[0])
+            
+            val y =
+                rect[1] +
+                binding.y *
+                (rect[3] - rect[1])
+            
+            NativeLibrary.onTouchEvent(
+                if (pressed) x else 0f,
+                if (pressed) y else 0f,
+                pressed
+            )
+
+        }
     }
     
     fun onKeyEvent(
@@ -171,12 +191,6 @@ object TouchBindingManager {
         return handled
     }
 
-
-
-
-
-
-
     fun onKeyRelease(
         event: KeyEvent
     ): Boolean {
@@ -190,22 +204,17 @@ object TouchBindingManager {
 
         var handled = false
 
-
-
         bindings.forEach { binding ->
-
 
             if(
                 binding.axis == -1 &&
                 binding.keyCode == event.keyCode
             ) {
 
-
                 sendTouch(
                     binding,
                     false
                 )
-
 
                 handled = true
 
@@ -213,20 +222,10 @@ object TouchBindingManager {
 
         }
 
-
-
         keyStates.remove(event.keyCode)
-
-
 
         return handled
     }
-
-
-
-
-
-
 
     fun onAxisEvent(
         event: MotionEvent
@@ -235,15 +234,10 @@ object TouchBindingManager {
 
         var handled = false
 
-
-
         bindings.forEach { binding ->
-
 
             if(binding.axis < 0)
                 return@forEach
-
-
 
             val value =
             ControllerMappingHelper.scaleAxis(
@@ -251,8 +245,6 @@ object TouchBindingManager {
                 binding.axis,
                 event.getAxisValue(binding.axis)
             )
-
-
 
             val pressed =
 
@@ -276,22 +268,15 @@ object TouchBindingManager {
 
                 }
 
-
-
             val stateKey =
                 "${binding.axis}_${binding.positive}_${binding.analog}"
-
-
 
             val old =
                 axisStates[stateKey]
                     ?: false
 
-
-
             if(old != pressed) {
-
-
+                
                 sendTouch(
                     binding,
                     pressed
@@ -313,12 +298,6 @@ object TouchBindingManager {
         return handled
     }
 
-
-
-
-
-
-
     fun getBindingAt(
         x: Float,
         y: Float
@@ -335,74 +314,54 @@ object TouchBindingManager {
 
     }
 
-
-
-
-
-
-
     private fun saveBindings() {
-
 
         val array =
             JSONArray()
-
-
 
         bindings.forEach {
 
             val obj =
                 JSONObject()
 
-
-
             obj.put(
                 "keyCode",
                 it.keyCode
             )
-
 
             obj.put(
                 "axis",
                 it.axis
             )
 
-
             obj.put(
                 "positive",
                 it.positive
             )
-
 
             obj.put(
                 "analog",
                 it.analog
             )
 
-
             obj.put(
                 "threshold",
                 it.threshold
             )
-
 
             obj.put(
                 "x",
                 it.x
             )
 
-
             obj.put(
                 "y",
                 it.y
             )
 
-
             array.put(obj)
 
         }
-
-
 
         preferences.edit()
             .putString(
@@ -410,25 +369,14 @@ object TouchBindingManager {
                 array.toString()
             )
             .apply()
-
     }
-
-
-
-
-
-
-
 
     private fun loadBindings() {
 
 
         bindings.clear()
 
-
-
         try {
-
 
             val json =
                 preferences.getString(
@@ -436,8 +384,6 @@ object TouchBindingManager {
                     "[]"
                 )
                 ?: "[]"
-
-
 
             val array =
                 JSONArray(json)
