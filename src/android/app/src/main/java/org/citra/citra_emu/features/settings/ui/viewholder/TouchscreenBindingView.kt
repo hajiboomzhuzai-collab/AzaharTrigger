@@ -86,21 +86,19 @@ class TouchscreenBindingView @JvmOverloads constructor(
 
     private fun updateBottomScreenRect() {
 
-        val scaleX =
-            width.toFloat() /
-                framebufferWidth
+    val screenWidth =
+        width.toFloat()
 
-        val scaleY =
-            height.toFloat() /
-                framebufferHeight
+    val screenHeight =
+        height.toFloat()
 
-        bottomScreenRect.set(
-            0f,
-            0f,
-            framebufferWidth * scaleX,
-            framebufferHeight * scaleY
-        )
-    }
+    bottomScreenRect.set(
+        0f,
+        0f,
+        screenWidth,
+        screenHeight
+    )
+}
 
     override fun onDraw(
         canvas: Canvas
