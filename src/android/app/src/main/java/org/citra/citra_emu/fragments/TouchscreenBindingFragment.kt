@@ -181,7 +181,7 @@ class TouchscreenBindingFragment : Fragment() {
             text = "Touch (${formatCoordinate(data.x)}, ${formatCoordinate(data.y)})"
             textSize = 14f
             setTextColor(ContextCompat.getColor(requireContext(), android.R.color.darker_gray))
-            topPadding = 4
+            setPadding(0, 4, 0, 0)
         }
 
         infoContainer.addView(nameText)
