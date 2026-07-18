@@ -532,6 +532,59 @@ jintArray Java_org_citra_citra_1emu_NativeLibrary_getFramebufferSize(
     return result;
 }
 
+jintArray Java_org_citra_citra_1emu_NativeLibrary_getSavedBottomScreenRect(
+        JNIEnv* env,
+        jobject obj)
+{
+    jint data[4];
+
+
+    if (Settings::values.layout_option ==
+        Settings::LayoutOption::CustomLayout) {
+
+        data[0] =
+            Settings::values.custom_bottom_x;
+
+        data[1] =
+            Settings::values.custom_bottom_y;
+
+        data[2] =
+            Settings::values.custom_bottom_x +
+            Settings::values.custom_bottom_width;
+
+        data[3] =
+            Settings::values.custom_bottom_y +
+            Settings::values.custom_bottom_height;
+
+    } else {
+
+        /*
+         * Temporary fixed bottom screen.
+         * We will add other layouts after this works.
+         */
+
+        data[0] = 0;
+        data[1] = 0;
+        data[2] = 320;
+        data[3] = 240;
+    }
+
+
+    jintArray result =
+        env->NewIntArray(4);
+
+
+    env->SetIntArrayRegion(
+        result,
+        0,
+        4,
+        data
+    );
+
+
+    return result;
+}
+
 void Java_org_citra_citra_1emu_NativeLibrary_setCustomLayout(
     JNIEnv* env,
     jobject obj,
