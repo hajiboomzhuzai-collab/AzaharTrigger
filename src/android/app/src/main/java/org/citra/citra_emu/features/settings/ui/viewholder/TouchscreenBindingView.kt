@@ -79,82 +79,32 @@ class TouchscreenBindingView @JvmOverloads constructor(
     private var selectedX = -1f
     private var selectedY = -1f
 
-
-
     /*
-     * Bottom screen size ratio.
-     *
-     * These should match your framebuffer layout.
-     *
-     * Default:
-     * Top screen    800x480
-     * Bottom screen 640x480
-     *
-     * Change these later if your custom layout differs.
+     * Bottom screen rectangle in VIEW PIXELS
      */
-    private var bottomX = 80f
-    private var bottomY = 480f
-    private var bottomWidth = 640f
-    private var bottomHeight = 480f
-
-
+    private val bottomScreenRect = RectF()
 
     var onTouchPointSelected:
             ((Float, Float) -> Unit)? = null
 
 
 
-    override fun onSizeChanged(
-        w: Int,
-        h: Int,
-        oldw: Int,
-        oldh: Int
+    fun setBottomScreenRect(
+        left: Float,
+        top: Float,
+        right: Float,
+        bottom: Float
     ) {
 
-        super.onSizeChanged(
-            w,
-            h,
-            oldw,
-            oldh
-        )
-
-
-        updateBottomScreenRect()
-    }
-
-
-
-    private fun updateBottomScreenRect() {
-
-        /*
-         * Same scaling logic as CustomLayoutEditorView
-         */
-
-        val sx =
-            width /
-                800f
-
-
-        val sy =
-            height /
-                960f
-
-
-
         bottomScreenRect.set(
-
-            bottomX * sx,
-
-            bottomY * sy,
-
-            (bottomX + bottomWidth) * sx,
-
-            (bottomY + bottomHeight) * sy
-
+            left,
+            top,
+            right,
+            bottom
         )
+
+        invalidate()
     }
-
-
 
     override fun onDraw(
         canvas: Canvas
