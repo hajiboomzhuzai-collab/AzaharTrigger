@@ -11,7 +11,6 @@ import org.json.JSONArray
 import org.json.JSONObject
 import kotlin.math.abs
 
-
 object TouchBindingManager {
 
     private const val TAG = "TouchBinding"
@@ -91,16 +90,8 @@ object TouchBindingManager {
         pressed: Boolean
     ) {
 
-        val framebufferWidth = 320f
-        val framebufferHeight = 240f
-
-
-        val x =
-            binding.x * framebufferWidth
-
-        val y =
-            binding.y * framebufferHeight
-
+        val x = binding.x * 320f
+        val y = binding.y * 240f
 
         NativeLibrary.onTouchEvent(
             x,
