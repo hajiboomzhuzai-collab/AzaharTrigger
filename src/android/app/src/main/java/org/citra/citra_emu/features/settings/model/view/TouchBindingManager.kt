@@ -6,6 +6,7 @@ import android.view.KeyEvent
 import android.view.MotionEvent
 import androidx.preference.PreferenceManager
 import org.citra.citra_emu.CitraApplication
+import org.citra.citra_emu.NativeLibrary
 import org.citra.citra_emu.utils.ControllerMappingHelper
 import org.json.JSONArray
 import org.json.JSONObject
@@ -86,19 +87,26 @@ object TouchBindingManager {
      */
     
     private fun sendTouch(
-        binding: TouchBinding,
-        pressed: Boolean
-    ) {
+    binding: TouchBinding,
+    pressed: Boolean
+) {
+    Log.d(
+        TAG,
+        "Touch binding x=${binding.x} y=${binding.y} pressed=$pressed"
+    )
 
-        val x = binding.x * 320f
-        val y = binding.y * 240f
+    val x =
+        binding.x * 320f
 
-        NativeLibrary.onTouchEvent(
-            x,
-            y,
-            pressed
-        )
-    }
+    val y =
+        binding.y * 240f
+
+    NativeLibrary.onTouchEvent(
+        if (pressed) x else 0f,
+        if (pressed) y else 0f,
+        pressed
+    )
+}
     
     fun onKeyEvent(
         event: KeyEvent
