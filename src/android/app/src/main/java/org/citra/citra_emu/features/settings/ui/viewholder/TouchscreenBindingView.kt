@@ -56,9 +56,6 @@ class TouchscreenBindingView @JvmOverloads constructor(
 
     private val bottomScreenRect = RectF()
 
-    private var framebufferWidth = 400f
-    private var framebufferHeight = 240f
-
     private var bindings: List<TouchBinding> =
         emptyList()
 
@@ -181,8 +178,7 @@ class TouchscreenBindingView @JvmOverloads constructor(
 
         when (event.action) {
 
-            MotionEvent.ACTION_DOWN,
-            MotionEvent.ACTION_MOVE -> {
+            MotionEvent.ACTION_DOWN -> {
 
                 if (
                     !bottomScreenRect.contains(
