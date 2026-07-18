@@ -6,7 +6,6 @@ import android.view.KeyEvent
 import android.view.MotionEvent
 import androidx.preference.PreferenceManager
 import org.citra.citra_emu.CitraApplication
-import org.citra.citra_emu.NativeLibrary
 import org.citra.citra_emu.utils.ControllerMappingHelper
 import org.json.JSONArray
 import org.json.JSONObject
@@ -96,47 +95,21 @@ object TouchBindingManager {
      */
     
     private fun sendTouch(
-        binding: TouchBinding,
-        pressed: Boolean
-    ) {
+    binding: TouchBinding,
+    pressed: Boolean
+) {
 
-        Log.d(
-            TAG,
-            "Touch x=${binding.x} y=${binding.y} pressed=$pressed"
-        )
+    Log.d(
+        TAG,
+        "Touch x=${binding.x} y=${binding.y} pressed=$pressed"
+    )
 
-        if (touchDispatcher != null) {
-            touchDispatcher!!.invoke(
-                binding.x,
-                binding.y,
-                pressed
-            )
-            return
-        }
-
-        val rect =
-        NativeLibrary.getBottomScreenRect()
-
-        if (rect != null && rect.size == 4) {
-
-            val x =
-                rect[0] +
-                binding.x *
-                (rect[2] - rect[0])
-            
-            val y =
-                rect[1] +
-                binding.y *
-                (rect[3] - rect[1])
-            
-            NativeLibrary.onTouchEvent(
-                if (pressed) x else 0f,
-                if (pressed) y else 0f,
-                pressed
-            )
-
-        }
-    }
+    touchDispatcher?.invoke(
+        binding.x,
+        binding.y,
+        pressed
+    )
+}
     
     fun onKeyEvent(
         event: KeyEvent
