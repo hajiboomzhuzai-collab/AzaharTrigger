@@ -4,8 +4,10 @@ import android.content.Context
 import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Paint
+import android.graphics.Rect
 import android.graphics.RectF
 import android.util.AttributeSet
+import android.util.Log
 import android.view.MotionEvent
 import android.view.View
 import kotlin.math.max
@@ -16,6 +18,10 @@ class TouchscreenBindingView @JvmOverloads constructor(
     context: Context,
     attrs: AttributeSet? = null
 ) : View(context, attrs) {
+
+    companion object {
+        private const val TAG = "TouchscreenBindingView"
+    }
 
     private val borderPaint = Paint().apply {
         color = Color.WHITE
@@ -46,6 +52,23 @@ class TouchscreenBindingView @JvmOverloads constructor(
         color = Color.YELLOW
         style = Paint.Style.STROKE
         strokeWidth = 2f
+        isAntiAlias = true
+    }
+
+    // Label paint for showing numbers
+    private val labelPaint = Paint().apply {
+        color = Color.WHITE
+        style = Paint.Style.FILL
+        isAntiAlias = true
+        textSize = 28f
+        textAlign = Paint.Align.LEFT
+        isFakeBoldText = true
+    }
+
+    // Background for label text
+    private val labelBackgroundPaint = Paint().apply {
+        color = Color.argb(200, 0, 0, 0)
+        style = Paint.Style.FILL
         isAntiAlias = true
     }
 
@@ -96,6 +119,9 @@ class TouchscreenBindingView @JvmOverloads constructor(
             rectLeft + rectWidth,
             rectTop + rectHeight
         )
+
+        Log.d(TAG, "updateBottomScreenRect: viewWidth=$viewWidth viewHeight=$viewHeight")
+        Log.d(TAG, "updateBottomScreenRect: rect=$bottomScreenRect")
     }
 
     override fun onDraw(canvas: Canvas) {
@@ -109,11 +135,16 @@ class TouchscreenBindingView @JvmOverloads constructor(
 
         canvas.drawRect(bottomScreenRect, borderPaint)
 
-        bindings.forEach { binding ->
+        bindings.forEachIndexed { index, binding ->
             val x = bottomScreenRect.left + binding.x * bottomScreenRect.width()
             val y = bottomScreenRect.top + binding.y * bottomScreenRect.height()
 
+            // Draw the touch point
             canvas.drawCircle(x, y, 12f, pointPaint)
+
+            // Draw number label
+            val number = "${index + 1}"
+            drawNumberLabel(canvas, x, y, number)
         }
 
         if (selectedX >= 0 && selectedY >= 0) {
@@ -124,10 +155,33 @@ class TouchscreenBindingView @JvmOverloads constructor(
         }
     }
 
+    private fun drawNumberLabel(canvas: Canvas, pointX: Float, pointY: Float, number: String) {
+        // Measure text bounds
+        val textBounds = Rect()
+        labelPaint.getTextBounds(number, 0, number.length, textBounds)
+
+        // Position label to the right of the point
+        val labelX = pointX + 18f
+        val labelY = pointY
+
+        // Draw background for better visibility
+        val padding = 4f
+        val bgLeft = labelX - padding
+        val bgTop = labelY - textBounds.height() - padding
+        val bgRight = labelX + textBounds.width() + padding
+        val bgBottom = labelY + padding
+
+        canvas.drawRect(bgLeft, bgTop, bgRight, bgBottom, labelBackgroundPaint)
+
+        // Draw the number text
+        canvas.drawText(number, labelX, labelY, labelPaint)
+    }
+
     override fun onTouchEvent(event: MotionEvent): Boolean {
         when (event.action) {
             MotionEvent.ACTION_DOWN -> {
                 if (!bottomScreenRect.contains(event.x, event.y)) {
+                    Log.d(TAG, "Touch outside bottom screen rect")
                     return true
                 }
 
@@ -142,6 +196,9 @@ class TouchscreenBindingView @JvmOverloads constructor(
                 val normalizedY = clamp(
                     (event.y - bottomScreenRect.top) / bottomScreenRect.height()
                 )
+
+                Log.d(TAG, "onTouchEvent: screenX=${event.x} screenY=${event.y}")
+                Log.d(TAG, "onTouchEvent: normalizedX=$normalizedX normalizedY=$normalizedY")
 
                 onTouchPointSelected?.invoke(normalizedX, normalizedY)
 
