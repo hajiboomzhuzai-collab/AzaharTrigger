@@ -38,8 +38,6 @@ object TouchBindingManager {
     private val keyStates =
         mutableSetOf<Int>()
 
-    private var touchDispatcher: ((Float, Float, Boolean) -> Unit)? = null
-
     init {
         loadBindings()
     }
@@ -77,12 +75,6 @@ object TouchBindingManager {
             .apply()
     }
 
-    fun setTouchDispatcher(
-        dispatcher: (Float, Float, Boolean) -> Unit
-    ) {
-        touchDispatcher = dispatcher
-    }
-
     /**
      * Sends touchscreen press.
      *
@@ -95,63 +87,27 @@ object TouchBindingManager {
      */
     
     private fun sendTouch(
-    binding: TouchBinding,
-    pressed: Boolean
-) {
+        binding: TouchBinding,
+        pressed: Boolean
+    ) {
 
-    Log.d(
-        TAG,
-        "Touch x=${binding.x} y=${binding.y} pressed=$pressed"
-    )
+        val framebufferWidth = 320f
+        val framebufferHeight = 240f
 
-    if (touchDispatcher != null) {
 
-        touchDispatcher!!.invoke(
-            binding.x,
-            binding.y,
+        val x =
+            binding.x * framebufferWidth
+
+        val y =
+            binding.y * framebufferHeight
+
+
+        NativeLibrary.onTouchEvent(
+            x,
+            y,
             pressed
         )
-
-        return
     }
-
-
-    val framebuffer =
-        NativeLibrary.getFramebufferSize()
-            ?: return
-
-
-    if (framebuffer.size != 2)
-        return
-
-
-    val rect =
-        NativeLibrary.getBottomScreenRect()
-            ?: return
-
-
-    if (rect.size != 4)
-        return
-
-
-    val x =
-        rect[0] +
-        binding.x *
-        (rect[2] - rect[0])
-
-
-    val y =
-        rect[1] +
-        binding.y *
-        (rect[3] - rect[1])
-
-
-    NativeLibrary.onTouchEvent(
-        if (pressed) x else 0f,
-        if (pressed) y else 0f,
-        pressed
-    )
-}
     
     fun onKeyEvent(
         event: KeyEvent
