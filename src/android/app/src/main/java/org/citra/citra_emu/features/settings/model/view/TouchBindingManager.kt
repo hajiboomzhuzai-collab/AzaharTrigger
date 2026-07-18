@@ -23,7 +23,6 @@ object TouchBindingManager {
     private const val AXIS_DEADZONE =
         0.15f
 
-
     private val preferences: SharedPreferences
         get() =
             PreferenceManager
@@ -31,29 +30,23 @@ object TouchBindingManager {
                     CitraApplication.appContext
                 )
 
-
     private val bindings =
         mutableListOf<TouchBinding>()
-
 
     private val axisStates =
         mutableMapOf<String, Boolean>()
 
-
     private val keyStates =
         mutableSetOf<Int>()
 
+    private var touchDispatcher: ((Float, Float, Boolean) -> Unit)? = null
 
     init {
         loadBindings()
     }
 
-
-
     fun getBindings(): List<TouchBinding> =
         bindings.toList()
-
-
 
     fun addBinding(binding: TouchBinding) {
 
@@ -71,33 +64,25 @@ object TouchBindingManager {
         saveBindings()
     }
 
-
-
     fun removeBinding(binding: TouchBinding) {
-
         bindings.remove(binding)
-
         saveBindings()
     }
 
-
-
     fun clearBindings() {
-
         bindings.clear()
-
         axisStates.clear()
-
         keyStates.clear()
-
         preferences.edit()
             .remove(PREF_KEY)
             .apply()
     }
 
-
-
-
+    fun setTouchDispatcher(
+        dispatcher: (Float, Float, Boolean) -> Unit
+    ) {
+        touchDispatcher = dispatcher
+    }
 
     /**
      * Sends touchscreen press.
@@ -119,31 +104,22 @@ object TouchBindingManager {
             "Touch x=${binding.x} y=${binding.y} pressed=$pressed"
         )
 
+        if (touchDispatcher != null) {
+            touchDispatcher!!.invoke(
+                binding.x,
+                binding.y,
+                pressed
+            )
+            return
+        }
 
         NativeLibrary.onTouchEvent(
-
-            if (pressed)
-                binding.x
-            else
-                0f,
-
-
-            if (pressed)
-                binding.y
-            else
-                0f,
-
-
+            if (pressed) binding.x else 0f,
+            if (pressed) binding.y else 0f,
             pressed
         )
     }
-
-
-
-
-
-
-
+    
     fun onKeyEvent(
         event: KeyEvent
     ): Boolean {
