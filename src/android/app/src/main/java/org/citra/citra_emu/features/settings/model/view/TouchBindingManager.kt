@@ -104,9 +104,51 @@ object TouchBindingManager {
         "Touch x=${binding.x} y=${binding.y} pressed=$pressed"
     )
 
-    touchDispatcher?.invoke(
-        binding.x,
-        binding.y,
+    if (touchDispatcher != null) {
+
+        touchDispatcher!!.invoke(
+            binding.x,
+            binding.y,
+            pressed
+        )
+
+        return
+    }
+
+
+    val framebuffer =
+        NativeLibrary.getFramebufferSize()
+            ?: return
+
+
+    if (framebuffer.size != 2)
+        return
+
+
+    val rect =
+        NativeLibrary.getBottomScreenRect()
+            ?: return
+
+
+    if (rect.size != 4)
+        return
+
+
+    val x =
+        rect[0] +
+        binding.x *
+        (rect[2] - rect[0])
+
+
+    val y =
+        rect[1] +
+        binding.y *
+        (rect[3] - rect[1])
+
+
+    NativeLibrary.onTouchEvent(
+        if (pressed) x else 0f,
+        if (pressed) y else 0f,
         pressed
     )
 }
