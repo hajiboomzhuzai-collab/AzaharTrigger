@@ -2,6 +2,7 @@ package org.citra.citra_emu.fragments
 
 import android.content.DialogInterface
 import android.os.Bundle
+import android.util.Log
 import android.view.InputDevice
 import android.view.KeyEvent
 import android.view.LayoutInflater
@@ -13,10 +14,24 @@ import com.google.android.material.bottomsheet.BottomSheetDialogFragment
 import org.citra.citra_emu.databinding.DialogInputBinding
 import org.citra.citra_emu.features.settings.model.view.TouchBinding
 import org.citra.citra_emu.features.settings.model.view.TouchBindingManager
-import org.citra.citra_emu.utils.Log
 import kotlin.math.abs
 
 class TouchBindingBottomSheetDialogFragment : BottomSheetDialogFragment() {
+
+    companion object {
+        private const val TAG = "TouchBindingDialog"
+        private const val ARG_X = "touch_x"
+        private const val ARG_Y = "touch_y"
+
+        fun newInstance(x: Float, y: Float): TouchBindingBottomSheetDialogFragment {
+            return TouchBindingBottomSheetDialogFragment().apply {
+                arguments = Bundle().apply {
+                    putFloat(ARG_X, x)
+                    putFloat(ARG_Y, y)
+                }
+            }
+        }
+    }
 
     private var _binding: DialogInputBinding? = null
 
@@ -37,6 +52,8 @@ class TouchBindingBottomSheetDialogFragment : BottomSheetDialogFragment() {
 
         touchX = arguments?.getFloat(ARG_X) ?: 0f
         touchY = arguments?.getFloat(ARG_Y) ?: 0f
+
+        Log.d(TAG, "onCreate: touchX=$touchX touchY=$touchY")
     }
 
     override fun onCreateView(
@@ -95,7 +112,7 @@ class TouchBindingBottomSheetDialogFragment : BottomSheetDialogFragment() {
 
         val key = event.keyCode
 
-        Log.debug("[TouchBinding] button=$key x=$touchX y=$touchY")
+        Log.d(TAG, "handleKeyEvent: keyCode=$key x=$touchX y=$touchY")
 
         TouchBindingManager.addBinding(
             TouchBinding(
@@ -130,7 +147,7 @@ class TouchBindingBottomSheetDialogFragment : BottomSheetDialogFragment() {
 
             val positive = value > 0f
 
-            Log.debug("[TouchBinding] axis=$axis value=$value positive=$positive")
+            Log.d(TAG, "handleAxisEvent: axis=$axis value=$value positive=$positive")
 
             TouchBindingManager.addBinding(
                 TouchBinding(
@@ -164,19 +181,5 @@ class TouchBindingBottomSheetDialogFragment : BottomSheetDialogFragment() {
     override fun onDestroyView() {
         super.onDestroyView()
         _binding = null
-    }
-
-    companion object {
-        private const val ARG_X = "touch_x"
-        private const val ARG_Y = "touch_y"
-
-        fun newInstance(x: Float, y: Float): TouchBindingBottomSheetDialogFragment {
-            return TouchBindingBottomSheetDialogFragment().apply {
-                arguments = Bundle().apply {
-                    putFloat(ARG_X, x)
-                    putFloat(ARG_Y, y)
-                }
-            }
-        }
     }
 }
