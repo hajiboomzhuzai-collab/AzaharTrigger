@@ -12,6 +12,7 @@ import android.view.MotionEvent
 import android.view.View
 import kotlin.math.max
 import kotlin.math.min
+import org.citra.citra_emu.NativeLibrary
 import org.citra.citra_emu.features.settings.model.view.TouchBinding
 
 class TouchscreenBindingView @JvmOverloads constructor(
@@ -90,38 +91,47 @@ class TouchscreenBindingView @JvmOverloads constructor(
         val viewWidth = width.toFloat()
         val viewHeight = height.toFloat()
 
-        // 3DS bottom screen is 320x240 (4:3 aspect ratio)
-        val screenAspectRatio = 320f / 240f
-        val viewAspectRatio = viewWidth / viewHeight
-
-        val rectWidth: Float
-        val rectHeight: Float
-        val rectLeft: Float
-        val rectTop: Float
-
-        if (viewAspectRatio > screenAspectRatio) {
-            // View is wider than 4:3, fit height
-            rectHeight = viewHeight
-            rectWidth = rectHeight * screenAspectRatio
-            rectLeft = (viewWidth - rectWidth) / 2f
-            rectTop = 0f
+        // Try to get the actual game rect from JNI
+        val rect = NativeLibrary.getBottomScreenRect()
+        if (rect != null && rect.size == 4) {
+            // Use the actual game rect
+            bottomScreenRect.set(
+                rect[0],
+                rect[1],
+                rect[2],
+                rect[3]
+            )
+            Log.d(TAG, "Using game rect: $bottomScreenRect")
         } else {
-            // View is taller than 4:3, fit width
-            rectWidth = viewWidth
-            rectHeight = rectWidth / screenAspectRatio
-            rectLeft = 0f
-            rectTop = (viewHeight - rectHeight) / 2f
+            // Fallback to calculated rect (4:3 aspect ratio)
+            val screenAspectRatio = 320f / 240f
+            val viewAspectRatio = viewWidth / viewHeight
+
+            val rectWidth: Float
+            val rectHeight: Float
+            val rectLeft: Float
+            val rectTop: Float
+
+            if (viewAspectRatio > screenAspectRatio) {
+                rectHeight = viewHeight
+                rectWidth = rectHeight * screenAspectRatio
+                rectLeft = (viewWidth - rectWidth) / 2f
+                rectTop = 0f
+            } else {
+                rectWidth = viewWidth
+                rectHeight = rectWidth / screenAspectRatio
+                rectLeft = 0f
+                rectTop = (viewHeight - rectHeight) / 2f
+            }
+
+            bottomScreenRect.set(
+                rectLeft,
+                rectTop,
+                rectLeft + rectWidth,
+                rectTop + rectHeight
+            )
+            Log.d(TAG, "Using fallback rect: $bottomScreenRect")
         }
-
-        bottomScreenRect.set(
-            rectLeft,
-            rectTop,
-            rectLeft + rectWidth,
-            rectTop + rectHeight
-        )
-
-        Log.d(TAG, "updateBottomScreenRect: viewWidth=$viewWidth viewHeight=$viewHeight")
-        Log.d(TAG, "updateBottomScreenRect: rect=$bottomScreenRect")
     }
 
     override fun onDraw(canvas: Canvas) {
