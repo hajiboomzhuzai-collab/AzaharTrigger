@@ -82,14 +82,6 @@ class TouchscreenBindingFragment : Fragment() {
 
     }
 
-
-
-
-
-
-
-
-
     override fun onViewCreated(
         view: View,
         savedInstanceState: Bundle?
@@ -101,7 +93,16 @@ class TouchscreenBindingFragment : Fragment() {
             savedInstanceState
         )
 
+        binding.touchscreenView.post {
 
+            val size =
+                binding.touchscreenView.width
+
+            binding.touchscreenView.layoutParams.height =
+                size
+
+            binding.touchscreenView.requestLayout()
+        }
 
         /*
          * Touchscreen editor.
