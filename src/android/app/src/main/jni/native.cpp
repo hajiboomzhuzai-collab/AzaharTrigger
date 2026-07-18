@@ -471,20 +471,17 @@ void Java_org_citra_citra_1emu_NativeLibrary_updateFramebuffer([[maybe_unused]] 
 
 jintArray Java_org_citra_citra_1emu_NativeLibrary_getBottomScreenRect(
         JNIEnv* env,
-        jobject obj) {
-
+        [[maybe_unused]] jobject obj)
+{
     if (!window) {
         return nullptr;
     }
 
-
     const auto& layout =
         window->GetCurrentFramebufferLayout();
 
-
     const auto& rect =
         layout.bottom_screen;
-
 
     jint data[4] = {
         static_cast<jint>(rect.left),
@@ -493,10 +490,8 @@ jintArray Java_org_citra_citra_1emu_NativeLibrary_getBottomScreenRect(
         static_cast<jint>(rect.bottom)
     };
 
-
     jintArray result =
         env->NewIntArray(4);
-
 
     env->SetIntArrayRegion(
         result,
@@ -505,14 +500,16 @@ jintArray Java_org_citra_citra_1emu_NativeLibrary_getBottomScreenRect(
         data
     );
 
-
     return result;
 }
 
-jintArray Java_org_citra_citra_1emu_NativeLibrary_getFramebufferSize(...)
-{
-    if (!window)
+jintArray Java_org_citra_citra_1emu_NativeLibrary_getFramebufferSize(
+        JNIEnv* env,
+        jobject obj) {
+
+    if (!window) {
         return nullptr;
+    }
 
     const auto& layout =
         window->GetCurrentFramebufferLayout();
