@@ -86,41 +86,20 @@ object TouchBindingManager {
      * Actual scaling happens in NativeLibrary.
      */
     
-    private fun sendTouch(
-    binding: TouchBinding,
-    pressed: Boolean
-) {
+    private fun sendTouch(binding: TouchBinding, pressed: Boolean) {
+    Log.d(TAG, "Touch binding x=${binding.x} y=${binding.y} pressed=$pressed")
 
-    Log.d(
-        TAG,
-        "Touch binding x=${binding.x} y=${binding.y} pressed=$pressed"
-    )
+    val rect = NativeLibrary.getBottomScreenRect() ?: return
+    if (rect.size != 4) return
 
-    val rect =
-        NativeLibrary.getBottomScreenRect()
-            ?: return
+    val x = rect[0] + binding.x * (rect[2] - rect[0])
+    val y = rect[1] + binding.y * (rect[3] - rect[1])
 
-    if (rect.size != 4)
-        return
+    Log.d(TAG, "Screen rect: L=${rect[0]} R=${rect[2]} T=${rect[1]} B=${rect[3]}")
+    Log.d(TAG, "Calculated screen: x=$x y=$y")
 
-
-    val x =
-        rect[0] +
-        binding.x *
-        (rect[2] - rect[0])
-
-
-    val y =
-        rect[1] +
-        binding.y *
-        (rect[3] - rect[1])
-
-
-    NativeLibrary.onTouchEvent(
-        if (pressed) x else 0f,
-        if (pressed) y else 0f,
-        pressed
-    )
+    // FIX: Always send actual coordinates, even on release
+    NativeLibrary.onTouchEvent(x, y, pressed)
 }
     
     fun onKeyEvent(
