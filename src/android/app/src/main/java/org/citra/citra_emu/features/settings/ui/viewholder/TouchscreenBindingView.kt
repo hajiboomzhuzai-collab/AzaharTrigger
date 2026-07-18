@@ -82,18 +82,37 @@ class TouchscreenBindingView @JvmOverloads constructor(
     }
 
     private fun updateBottomScreenRect() {
-
-    val screenWidth =
-        width.toFloat()
-
-    val screenHeight =
-        height.toFloat()
-
+    val viewWidth = width.toFloat()
+    val viewHeight = height.toFloat()
+    
+    // 3DS bottom screen is 320x240 (4:3 aspect ratio)
+    val screenAspectRatio = 320f / 240f  // = 1.333...
+    val viewAspectRatio = viewWidth / viewHeight
+    
+    val rectWidth: Float
+    val rectHeight: Float
+    val rectLeft: Float
+    val rectTop: Float
+    
+    if (viewAspectRatio > screenAspectRatio) {
+        // View is wider than 4:3, fit height
+        rectHeight = viewHeight
+        rectWidth = rectHeight * screenAspectRatio
+        rectLeft = (viewWidth - rectWidth) / 2f
+        rectTop = 0f
+    } else {
+        // View is taller than 4:3, fit width
+        rectWidth = viewWidth
+        rectHeight = rectWidth / screenAspectRatio
+        rectLeft = 0f
+        rectTop = (viewHeight - rectHeight) / 2f
+    }
+    
     bottomScreenRect.set(
-        0f,
-        0f,
-        screenWidth,
-        screenHeight
+        rectLeft,
+        rectTop,
+        rectLeft + rectWidth,
+        rectTop + rectHeight
     )
 }
 
