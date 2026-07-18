@@ -73,7 +73,7 @@ object TouchBindingManager {
      * Actual scaling happens in NativeLibrary.
      */
     private fun sendTouch(binding: TouchBinding, pressed: Boolean) {
-        Log.d(TAG, "Touch binding x=${binding.x} y=${binding.y} pressed=$pressed")
+        Log.d(TAG, "sendTouch called: binding.x=${binding.x} binding.y=${binding.y} pressed=$pressed")
 
         val rect = NativeLibrary.getBottomScreenRect() ?: return
 
@@ -82,8 +82,11 @@ object TouchBindingManager {
         val x = rect[0] + binding.x * (rect[2] - rect[0])
         val y = rect[1] + binding.y * (rect[3] - rect[1])
 
-        Log.d(TAG, "Screen rect: L=${rect[0]} R=${rect[2]} T=${rect[1]} B=${rect[3]}")
+        Log.d(TAG, "=== sendTouch Debug ===")
+        Log.d(TAG, "Binding normalized: x=${binding.x} y=${binding.y}")
+        Log.d(TAG, "BottomScreenRect: L=${rect[0]} T=${rect[1]} R=${rect[2]} B=${rect[3]}")
         Log.d(TAG, "Calculated screen: x=$x y=$y")
+        Log.d(TAG, "Pressed: $pressed")
 
         // Always send actual coordinates, even on release
         NativeLibrary.onTouchEvent(x, y, pressed)
@@ -99,6 +102,7 @@ object TouchBindingManager {
 
         bindings.forEach { binding ->
             if (binding.axis == -1 && binding.keyCode == event.keyCode) {
+                Log.d(TAG, "onKeyEvent: Found binding for keyCode=${event.keyCode}")
                 sendTouch(binding, true)
                 handled = true
             }
@@ -119,6 +123,7 @@ object TouchBindingManager {
 
         bindings.forEach { binding ->
             if (binding.axis == -1 && binding.keyCode == event.keyCode) {
+                Log.d(TAG, "onKeyRelease: Found binding for keyCode=${event.keyCode}")
                 sendTouch(binding, false)
                 handled = true
             }
@@ -157,6 +162,7 @@ object TouchBindingManager {
             val old = axisStates[stateKey] ?: false
 
             if (old != pressed) {
+                Log.d(TAG, "onAxisEvent: axis=${binding.axis} value=$value pressed=$pressed")
                 sendTouch(binding, pressed)
                 axisStates[stateKey] = pressed
                 handled = true
