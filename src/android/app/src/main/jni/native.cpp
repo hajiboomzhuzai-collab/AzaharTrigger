@@ -552,6 +552,111 @@ jintArray Java_org_citra_citra_1emu_NativeLibrary_getBottomScreenRect(
     return result;
 }
 
+jintArray Java_org_citra_citra_1emu_NativeLibrary_getSavedBottomScreenRect(
+        JNIEnv* env,
+        [[maybe_unused]] jobject obj) {
+
+    jint data[4] = {
+        0,
+        0,
+        320,
+        240
+    };
+
+    const auto layout =
+        Settings::values.layout_option.GetValue();
+
+    if (layout == Settings::LayoutOption::CustomLayout) {
+
+        const jint left =
+            static_cast<jint>(
+                Settings::values.custom_bottom_x.GetValue()
+            );
+
+        const jint top =
+            static_cast<jint>(
+                Settings::values.custom_bottom_y.GetValue()
+            );
+
+        const jint width =
+            static_cast<jint>(
+                Settings::values.custom_bottom_width.GetValue()
+            );
+
+        const jint height =
+            static_cast<jint>(
+                Settings::values.custom_bottom_height.GetValue()
+            );
+
+        data[0] = left;
+        data[1] = top;
+        data[2] = left + width;
+        data[3] = top + height;
+
+    } else {
+
+        /*
+         * Temporary values for non-custom layouts.
+         *
+         * These will be replaced later with Azahar's
+         * real framebuffer layout calculation.
+         */
+
+        data[0] = 0;
+        data[1] = 0;
+        data[2] = 320;
+        data[3] = 240;
+    }
+
+
+    jintArray result =
+        env->NewIntArray(4);
+
+
+    env->SetIntArrayRegion(
+        result,
+        0,
+        4,
+        data
+    );
+
+
+    return result;
+}
+
+jintArray Java_org_citra_citra_1emu_NativeLibrary_getFramebufferSize(
+        JNIEnv* env,
+        [[maybe_unused]] jobject obj) {
+
+    if (!window) {
+        return nullptr;
+    }
+
+    const auto& layout =
+        window->GetCurrentFramebufferLayout();
+
+
+    jint data[2] = {
+        static_cast<jint>(layout.width),
+        static_cast<jint>(layout.height)
+    };
+
+
+    jintArray result =
+        env->NewIntArray(2);
+
+
+    env->SetIntArrayRegion(
+        result,
+        0,
+        2,
+        data
+    );
+
+
+    return result;
+}
+
 void Java_org_citra_citra_1emu_NativeLibrary_setCustomLayout(
     JNIEnv* env,
     jobject obj,
