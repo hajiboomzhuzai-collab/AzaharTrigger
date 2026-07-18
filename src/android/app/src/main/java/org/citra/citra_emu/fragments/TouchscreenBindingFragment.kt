@@ -25,8 +25,8 @@ class TouchscreenBindingFragment : Fragment() {
 
     private var isAddingBinding = false
 
-
-
+    private var selectedX = 0.5f
+    private var selectedY = 0.5f
 
     override fun onCreate(
         savedInstanceState: Bundle?
@@ -56,12 +56,6 @@ class TouchscreenBindingFragment : Fragment() {
         }
 
     }
-
-
-
-
-
-
 
     override fun onCreateView(
         inflater: LayoutInflater,
@@ -119,20 +113,25 @@ class TouchscreenBindingFragment : Fragment() {
          */
         binding.touchscreenView.onTouchPointSelected = { x, y ->
 
+    selectedX = x
+    selectedY = y
+
     if (!isAddingBinding) {
+
         isAddingBinding = true
 
         TouchBindingBottomSheetDialogFragment
-            .newInstance(x, y)
-            .show(parentFragmentManager, "TouchBinding")
+            .newInstance(
+                x,
+                y
+            )
+            .show(
+                parentFragmentManager,
+                "TouchBinding"
+            )
     }
 }
-
-
-
-
-
-
+        
         binding.buttonDelete
             .setOnClickListener {
 
@@ -170,12 +169,6 @@ class TouchscreenBindingFragment : Fragment() {
 
 
     private fun refreshBindings() {
-
-
-        val currentBinding =
-            _binding ?: return
-
-
 
         val bindings =
             TouchBindingManager
@@ -237,13 +230,7 @@ class TouchscreenBindingFragment : Fragment() {
 
         }
 
-
-
-
-
-
-
-        bindings.forEachIndexed { index, data ->
+        bindings.forEach { data ->
 
 
             val text =
