@@ -94,8 +94,6 @@ object TouchBindingManager {
      *
      * Actual scaling happens in NativeLibrary.
      */
-
-    external fun getBottomScreenRect(): IntArray?
     
     private fun sendTouch(
         binding: TouchBinding,
