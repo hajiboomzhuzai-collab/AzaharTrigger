@@ -256,12 +256,12 @@ class TouchBindingBottomSheetDialogFragment :
             event.action !=
             KeyEvent.ACTION_DOWN
         )
+            return false    
+
+        if(event.device == null)
             return false
-
-
-
-
-
+        if(event.keyCode == KeyEvent.KEYCODE_BACK)
+            return false
         val key =
             event.keyCode
 
@@ -382,14 +382,8 @@ class TouchBindingBottomSheetDialogFragment :
 
 
 
-            if(
-                abs(value) < 0.5f
-            )
-                continue
-
-
-
-
+            if(abs(value) < 0.7f)
+    continue
 
             val positive =
                 value > 0f
@@ -412,19 +406,12 @@ class TouchBindingBottomSheetDialogFragment :
                 .addBinding(
 
                     TouchBinding(
-
                         keyCode = -1,
-
                         axis = axis,
-
                         positive = positive,
-
                         analog = false,
-
-                        threshold = 0.5f,
-
+                        threshold = 0.7f,
                         x = touchX,
-
                         y = touchY
 
                     )
