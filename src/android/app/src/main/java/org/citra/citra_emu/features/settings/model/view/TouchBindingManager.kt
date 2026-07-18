@@ -90,16 +90,31 @@ object TouchBindingManager {
     binding: TouchBinding,
     pressed: Boolean
 ) {
+
     Log.d(
         TAG,
         "Touch binding x=${binding.x} y=${binding.y} pressed=$pressed"
     )
 
+    val rect =
+        NativeLibrary.getBottomScreenRect()
+            ?: return
+
+    if (rect.size != 4)
+        return
+
+
     val x =
-        binding.x * 320f
+        rect[0] +
+        binding.x *
+        (rect[2] - rect[0])
+
 
     val y =
-        binding.y * 240f
+        rect[1] +
+        binding.y *
+        (rect[3] - rect[1])
+
 
     NativeLibrary.onTouchEvent(
         if (pressed) x else 0f,
