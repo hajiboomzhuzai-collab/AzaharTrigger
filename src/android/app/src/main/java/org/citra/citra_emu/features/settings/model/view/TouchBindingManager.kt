@@ -199,6 +199,11 @@ object TouchBindingManager {
         event: MotionEvent
     ): Boolean {
 
+        if (
+            event.action != MotionEvent.ACTION_MOVE
+        )
+           return false
+
 
         var handled = false
 
