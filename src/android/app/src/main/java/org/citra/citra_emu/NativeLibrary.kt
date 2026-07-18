@@ -220,6 +220,8 @@ object NativeLibrary {
      */
     external fun updateFramebuffer(isPortrait: Boolean)
 
+    external fun getBottomScreenRect(): IntArray?
+
     external fun setCustomLayout(
         topX: Int,
         topY: Int,
