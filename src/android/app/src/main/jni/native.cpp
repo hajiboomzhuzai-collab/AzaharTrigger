@@ -509,6 +509,32 @@ jintArray Java_org_citra_citra_1emu_NativeLibrary_getBottomScreenRect(
     return result;
 }
 
+jintArray Java_org_citra_citra_1emu_NativeLibrary_getFramebufferSize(...)
+{
+    if (!window)
+        return nullptr;
+
+    const auto& layout =
+        window->GetCurrentFramebufferLayout();
+
+    jint data[2] = {
+        static_cast<jint>(layout.width),
+        static_cast<jint>(layout.height)
+    };
+
+    jintArray result =
+        env->NewIntArray(2);
+
+    env->SetIntArrayRegion(
+        result,
+        0,
+        2,
+        data
+    );
+
+    return result;
+}
+
 void Java_org_citra_citra_1emu_NativeLibrary_setCustomLayout(
     JNIEnv* env,
     jobject obj,
