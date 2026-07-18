@@ -12,7 +12,6 @@ import android.view.MotionEvent
 import android.view.View
 import kotlin.math.max
 import kotlin.math.min
-import org.citra.citra_emu.NativeLibrary
 import org.citra.citra_emu.features.settings.model.view.TouchBinding
 
 class TouchscreenBindingView @JvmOverloads constructor(
@@ -56,7 +55,6 @@ class TouchscreenBindingView @JvmOverloads constructor(
         isAntiAlias = true
     }
 
-    // Label paint for showing numbers
     private val labelPaint = Paint().apply {
         color = Color.WHITE
         style = Paint.Style.FILL
@@ -66,7 +64,6 @@ class TouchscreenBindingView @JvmOverloads constructor(
         isFakeBoldText = true
     }
 
-    // Background for label text
     private val labelBackgroundPaint = Paint().apply {
         color = Color.argb(200, 0, 0, 0)
         style = Paint.Style.FILL
@@ -91,47 +88,38 @@ class TouchscreenBindingView @JvmOverloads constructor(
         val viewWidth = width.toFloat()
         val viewHeight = height.toFloat()
 
-        // Try to get the actual game rect from JNI
-        val rect = NativeLibrary.getBottomScreenRect()
-        if (rect != null && rect.size == 4) {
-            // Use the actual game rect
-            bottomScreenRect.set(
-                rect[0],
-                rect[1],
-                rect[2],
-                rect[3]
-            )
-            Log.d(TAG, "Using game rect: $bottomScreenRect")
+        // 3DS bottom screen is 320x240 (4:3 aspect ratio)
+        val screenAspectRatio = 320f / 240f
+        val viewAspectRatio = viewWidth / viewHeight
+
+        val rectWidth: Float
+        val rectHeight: Float
+        val rectLeft: Float
+        val rectTop: Float
+
+        if (viewAspectRatio > screenAspectRatio) {
+            // View is wider than 4:3, fit height
+            rectHeight = viewHeight
+            rectWidth = rectHeight * screenAspectRatio
+            rectLeft = (viewWidth - rectWidth) / 2f
+            rectTop = 0f
         } else {
-            // Fallback to calculated rect (4:3 aspect ratio)
-            val screenAspectRatio = 320f / 240f
-            val viewAspectRatio = viewWidth / viewHeight
-
-            val rectWidth: Float
-            val rectHeight: Float
-            val rectLeft: Float
-            val rectTop: Float
-
-            if (viewAspectRatio > screenAspectRatio) {
-                rectHeight = viewHeight
-                rectWidth = rectHeight * screenAspectRatio
-                rectLeft = (viewWidth - rectWidth) / 2f
-                rectTop = 0f
-            } else {
-                rectWidth = viewWidth
-                rectHeight = rectWidth / screenAspectRatio
-                rectLeft = 0f
-                rectTop = (viewHeight - rectHeight) / 2f
-            }
-
-            bottomScreenRect.set(
-                rectLeft,
-                rectTop,
-                rectLeft + rectWidth,
-                rectTop + rectHeight
-            )
-            Log.d(TAG, "Using fallback rect: $bottomScreenRect")
+            // View is taller than 4:3, fit width
+            rectWidth = viewWidth
+            rectHeight = rectWidth / screenAspectRatio
+            rectLeft = 0f
+            rectTop = (viewHeight - rectHeight) / 2f
         }
+
+        bottomScreenRect.set(
+            rectLeft,
+            rectTop,
+            rectLeft + rectWidth,
+            rectTop + rectHeight
+        )
+
+        Log.d(TAG, "updateBottomScreenRect: viewWidth=$viewWidth viewHeight=$viewHeight")
+        Log.d(TAG, "updateBottomScreenRect: rect=$bottomScreenRect")
     }
 
     override fun onDraw(canvas: Canvas) {
@@ -149,10 +137,8 @@ class TouchscreenBindingView @JvmOverloads constructor(
             val x = bottomScreenRect.left + binding.x * bottomScreenRect.width()
             val y = bottomScreenRect.top + binding.y * bottomScreenRect.height()
 
-            // Draw the touch point
             canvas.drawCircle(x, y, 12f, pointPaint)
 
-            // Draw number label
             val number = "${index + 1}"
             drawNumberLabel(canvas, x, y, number)
         }
@@ -166,15 +152,12 @@ class TouchscreenBindingView @JvmOverloads constructor(
     }
 
     private fun drawNumberLabel(canvas: Canvas, pointX: Float, pointY: Float, number: String) {
-        // Measure text bounds
         val textBounds = Rect()
         labelPaint.getTextBounds(number, 0, number.length, textBounds)
 
-        // Position label to the right of the point
         val labelX = pointX + 18f
         val labelY = pointY
 
-        // Draw background for better visibility
         val padding = 4f
         val bgLeft = labelX - padding
         val bgTop = labelY - textBounds.height() - padding
@@ -183,7 +166,6 @@ class TouchscreenBindingView @JvmOverloads constructor(
 
         canvas.drawRect(bgLeft, bgTop, bgRight, bgBottom, labelBackgroundPaint)
 
-        // Draw the number text
         canvas.drawText(number, labelX, labelY, labelPaint)
     }
 
