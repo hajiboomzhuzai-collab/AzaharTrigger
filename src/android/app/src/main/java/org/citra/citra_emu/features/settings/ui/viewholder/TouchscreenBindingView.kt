@@ -10,7 +10,6 @@ import android.view.MotionEvent
 import android.view.View
 import kotlin.math.max
 import kotlin.math.min
-import org.citra.citra_emu.NativeLibrary
 import org.citra.citra_emu.features.settings.model.view.TouchBinding
 
 class TouchscreenBindingView @JvmOverloads constructor(
@@ -55,8 +54,10 @@ class TouchscreenBindingView @JvmOverloads constructor(
             isAntiAlias = true
         }
 
-    private val bottomScreenRect =
-        RectF()
+    private val bottomScreenRect = RectF()
+
+    private var framebufferWidth = 400f
+    private var framebufferHeight = 240f
 
     private var bindings: List<TouchBinding> =
         emptyList()
@@ -85,38 +86,19 @@ class TouchscreenBindingView @JvmOverloads constructor(
 
     private fun updateBottomScreenRect() {
 
-        val rect =
-            NativeLibrary.getSavedBottomScreenRect()
-                ?: return
-
-        if (rect.size != 4) {
-            return
-        }
-
-        /*
-         * Settings preview uses the virtual framebuffer size.
-         * This matches the layout coordinate system.
-         */
-
-        val virtualWidth =
-            400f
-
-        val virtualHeight =
-            480f
-
         val scaleX =
             width.toFloat() /
-                    virtualWidth
+                framebufferWidth
 
         val scaleY =
             height.toFloat() /
-                    virtualHeight
+                framebufferHeight
 
         bottomScreenRect.set(
-            rect[0] * scaleX,
-            rect[1] * scaleY,
-            rect[2] * scaleX,
-            rect[3] * scaleY
+            0f,
+            0f,
+            framebufferWidth * scaleX,
+            framebufferHeight * scaleY
         )
     }
 
