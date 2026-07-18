@@ -4,6 +4,7 @@ import android.content.Context
 import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Paint
+import android.graphics.RectF
 import android.util.AttributeSet
 import android.view.MotionEvent
 import android.view.View
@@ -35,6 +36,19 @@ class TouchscreenBindingView @JvmOverloads constructor(
         }
 
 
+    private val bottomScreenPaint =
+        Paint().apply {
+            color = Color.argb(
+                100,
+                0,
+                255,
+                0
+            )
+            style = Paint.Style.FILL
+            isAntiAlias = true
+        }
+
+
     private val pointPaint =
         Paint().apply {
             color = Color.RED
@@ -52,43 +66,104 @@ class TouchscreenBindingView @JvmOverloads constructor(
         }
 
 
+    private val bottomScreenRect =
+        RectF()
+
+
 
     private var bindings: List<TouchBinding> =
         emptyList()
 
 
 
-    /*
-     * Current selected point in VIEW PIXELS
-     */
     private var selectedX = -1f
     private var selectedY = -1f
 
 
 
     /*
-     * Callback returns normalized coordinates
+     * Bottom screen size ratio.
      *
-     * X:
-     * 0.0 = left
-     * 1.0 = right
+     * These should match your framebuffer layout.
      *
-     * Y:
-     * 0.0 = top
-     * 1.0 = bottom
+     * Default:
+     * Top screen    800x480
+     * Bottom screen 640x480
+     *
+     * Change these later if your custom layout differs.
      */
+    private var bottomX = 80f
+    private var bottomY = 480f
+    private var bottomWidth = 640f
+    private var bottomHeight = 480f
+
+
+
     var onTouchPointSelected:
             ((Float, Float) -> Unit)? = null
 
 
 
+    override fun onSizeChanged(
+        w: Int,
+        h: Int,
+        oldw: Int,
+        oldh: Int
+    ) {
 
-    override fun onDraw(canvas: Canvas) {
+        super.onSizeChanged(
+            w,
+            h,
+            oldw,
+            oldh
+        )
+
+
+        updateBottomScreenRect()
+    }
+
+
+
+    private fun updateBottomScreenRect() {
+
+        /*
+         * Same scaling logic as CustomLayoutEditorView
+         */
+
+        val sx =
+            width /
+                800f
+
+
+        val sy =
+            height /
+                960f
+
+
+
+        bottomScreenRect.set(
+
+            bottomX * sx,
+
+            bottomY * sy,
+
+            (bottomX + bottomWidth) * sx,
+
+            (bottomY + bottomHeight) * sy
+
+        )
+    }
+
+
+
+    override fun onDraw(
+        canvas: Canvas
+    ) {
 
         super.onDraw(canvas)
 
 
-        // Background
+
         canvas.drawRect(
             0f,
             0f,
@@ -98,29 +173,44 @@ class TouchscreenBindingView @JvmOverloads constructor(
         )
 
 
-        // Border
+
+        /*
+         * Only draw bottom screen.
+         */
+
         canvas.drawRect(
-            0f,
-            0f,
-            width.toFloat(),
-            height.toFloat(),
+            bottomScreenRect,
+            bottomScreenPaint
+        )
+
+
+        canvas.drawRect(
+            bottomScreenRect,
             borderPaint
         )
 
 
 
         /*
-         * Draw saved touchscreen bindings
+         * Existing saved bindings
+         *
+         * Coordinates are relative to bottom screen.
          */
+
         bindings.forEach { binding ->
 
 
             val x =
-                binding.x * width
+                bottomScreenRect.left +
+                        binding.x *
+                        bottomScreenRect.width()
+
 
 
             val y =
-                binding.y * height
+                bottomScreenRect.top +
+                        binding.y *
+                        bottomScreenRect.height()
 
 
 
@@ -135,9 +225,7 @@ class TouchscreenBindingView @JvmOverloads constructor(
 
 
 
-        /*
-         * Draw currently selected point
-         */
+
         if (
             selectedX >= 0 &&
             selectedY >= 0
@@ -152,7 +240,6 @@ class TouchscreenBindingView @JvmOverloads constructor(
             )
 
 
-            // Crosshair
             canvas.drawLine(
                 selectedX - 20,
                 selectedY,
@@ -176,8 +263,6 @@ class TouchscreenBindingView @JvmOverloads constructor(
 
 
 
-
-
     override fun onTouchEvent(
         event: MotionEvent
     ): Boolean {
@@ -188,6 +273,22 @@ class TouchscreenBindingView @JvmOverloads constructor(
 
             MotionEvent.ACTION_DOWN,
             MotionEvent.ACTION_MOVE -> {
+
+
+                /*
+                 * Ignore touches outside bottom screen
+                 */
+
+                if (
+                    !bottomScreenRect.contains(
+                        event.x,
+                        event.y
+                    )
+                ) {
+
+                    return true
+                }
+
 
 
                 selectedX =
@@ -203,31 +304,26 @@ class TouchscreenBindingView @JvmOverloads constructor(
 
 
 
-                if (
-                    width > 0 &&
-                    height > 0
-                ) {
-
-
-                    val normalizedX =
-                        clamp(
-                            selectedX / width.toFloat()
-                        )
-
-
-                    val normalizedY =
-                        clamp(
-                            selectedY / height.toFloat()
-                        )
-
-
-
-                    onTouchPointSelected?.invoke(
-                        normalizedX,
-                        normalizedY
+                val normalizedX =
+                    clamp(
+                        (event.x - bottomScreenRect.left) /
+                                bottomScreenRect.width()
                     )
 
-                }
+
+
+                val normalizedY =
+                    clamp(
+                        (event.y - bottomScreenRect.top) /
+                                bottomScreenRect.height()
+                    )
+
+
+
+                onTouchPointSelected?.invoke(
+                    normalizedX,
+                    normalizedY
+                )
 
 
                 return true
@@ -237,8 +333,8 @@ class TouchscreenBindingView @JvmOverloads constructor(
 
             MotionEvent.ACTION_UP -> {
 
-
                 return true
+
             }
 
         }
@@ -246,8 +342,6 @@ class TouchscreenBindingView @JvmOverloads constructor(
 
         return true
     }
-
-
 
 
 
@@ -269,13 +363,9 @@ class TouchscreenBindingView @JvmOverloads constructor(
 
 
 
-
-
-
     fun setBindings(
         newBindings: List<TouchBinding>
     ) {
-
 
         bindings =
             newBindings.toList()
@@ -287,12 +377,7 @@ class TouchscreenBindingView @JvmOverloads constructor(
 
 
 
-
-
-
-
     fun clearBindings() {
-
 
         bindings =
             emptyList()
@@ -308,14 +393,9 @@ class TouchscreenBindingView @JvmOverloads constructor(
 
 
 
-
-
-
-
     fun getSelectedX(): Float {
 
         if (
-            width <= 0 ||
             selectedX < 0
         ) {
             return -1f
@@ -323,13 +403,10 @@ class TouchscreenBindingView @JvmOverloads constructor(
 
 
         return clamp(
-            selectedX / width.toFloat()
+            (selectedX - bottomScreenRect.left) /
+                    bottomScreenRect.width()
         )
-
     }
-
-
-
 
 
 
@@ -337,7 +414,6 @@ class TouchscreenBindingView @JvmOverloads constructor(
     fun getSelectedY(): Float {
 
         if (
-            height <= 0 ||
             selectedY < 0
         ) {
             return -1f
@@ -345,9 +421,11 @@ class TouchscreenBindingView @JvmOverloads constructor(
 
 
         return clamp(
-            selectedY / height.toFloat()
+            (selectedY - bottomScreenRect.top) /
+                    bottomScreenRect.height()
         )
-
     }
+
+
 
 }
