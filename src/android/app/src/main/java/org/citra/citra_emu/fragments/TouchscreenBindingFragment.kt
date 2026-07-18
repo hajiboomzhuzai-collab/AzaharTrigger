@@ -178,7 +178,7 @@ class TouchscreenBindingFragment : Fragment() {
 
 
 
-        currentBinding.touchscreenView
+        binding.touchscreenView
             .setBindings(
                 bindings
             )
@@ -188,7 +188,7 @@ class TouchscreenBindingFragment : Fragment() {
 
 
 
-        currentBinding.bindingList
+        binding.bindingList
             .removeAllViews()
 
 
@@ -220,7 +220,7 @@ class TouchscreenBindingFragment : Fragment() {
             )
 
 
-            currentBinding.bindingList
+            binding.bindingList
                 .addView(
                     emptyText
                 )
@@ -276,7 +276,7 @@ class TouchscreenBindingFragment : Fragment() {
 
 
 
-            currentBinding.bindingList
+            binding.bindingList
                 .addView(
                     text
                 )
