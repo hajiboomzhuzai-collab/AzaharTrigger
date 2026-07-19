@@ -74,19 +74,17 @@ object TouchBindingManager {
      * Actual scaling happens in NativeLibrary.
      */
     fun sendTouch(binding: TouchBinding, pressed: Boolean) {
-        val screenWidth: Int = Resources.getSystem().displayMetrics.widthPixels
-        val screenHeight: Int = Resources.getSystem().displayMetrics.heightPixels
-        val rect: IntArray? = NativeLibrary.getBottomScreenRect(screenWidth, screenHeight)
+        val layout = NativeLibrary.getFramebufferLayout()
 
-        if (rect == null || rect.size < 4) {
-            Log.w(TAG, "sendTouch: rect is null or too small")
+        if (layout.size < 6) {
+            Log.w(TAG, "sendTouch: layout is too small")
             return
-        }
+         }
 
-        val rectLeft: Float = rect[0].toFloat()
-        val rectTop: Float = rect[1].toFloat()
-        val rectRight: Float = rect[2].toFloat()
-        val rectBottom: Float = rect[3].toFloat()
+        val rectLeft: Float = layout[2].toFloat()
+        val rectTop: Float = layout[3].toFloat()
+        val rectRight: Float = layout[4].toFloat()
+        val rectBottom: Float = layout[5].toFloat()
         val bindingX: Float = binding.x
         val bindingY: Float = binding.y
 
