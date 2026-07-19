@@ -8,6 +8,7 @@ package org.citra.citra_emu
 
 import android.Manifest.permission
 import android.app.Dialog
+import android.content.Context
 import android.content.DialogInterface
 import android.content.SharedPreferences
 import android.content.pm.PackageManager
@@ -223,18 +224,15 @@ object NativeLibrary {
 
     external fun getFramebufferSize(): IntArray?
 
-    fun getBottomScreenRect(viewWidth: Int, viewHeight: Int): IntArray? {
+    fun getFramebufferLayout(): IntArray {
         return try {
-            getBottomScreenRectNative(viewWidth, viewHeight)
+            getFramebufferLayoutNative()
         } catch (e: Exception) {
-            null
+            intArrayOf()
         }
     }
 
-    private external fun getBottomScreenRectNative(
-        viewWidth: Int,
-        viewHeight: Int
-    ): IntArray
+    private external fun getFramebufferLayoutNative(): IntArray
 
     external fun setCustomLayout(
         topX: Int,
