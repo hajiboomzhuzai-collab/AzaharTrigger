@@ -4,77 +4,42 @@ import android.content.Context
 import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Paint
-import android.graphics.Rect
 import android.graphics.RectF
 import android.util.AttributeSet
-import android.util.Log
 import android.view.MotionEvent
 import android.view.View
-import kotlin.math.max
-import kotlin.math.min
-import org.citra.citra_emu.NativeLibrary
 import org.citra.citra_emu.features.settings.model.view.TouchBinding
+import org.citra.citra_emu.features.settings.model.view.TouchBindingManager
 
 class TouchscreenBindingView @JvmOverloads constructor(
     context: Context,
     attrs: AttributeSet? = null
 ) : View(context, attrs) {
 
-    companion object {
-        private const val TAG = "TouchscreenBindingView"
-    }
-
-    private val borderPaint = Paint().apply {
-        color = Color.WHITE
-        style = Paint.Style.STROKE
-        strokeWidth = 4f
-        isAntiAlias = true
-    }
-
-    private val backgroundPaint = Paint().apply {
-        color = Color.rgb(30, 30, 30)
-        style = Paint.Style.FILL
-        isAntiAlias = true
-    }
-
+    private val bottomScreenRect = RectF()
+    
     private val bottomScreenPaint = Paint().apply {
-        color = Color.argb(100, 0, 255, 0)
+        color = Color.BLACK
         style = Paint.Style.FILL
         isAntiAlias = true
     }
-
+    
     private val pointPaint = Paint().apply {
-        color = Color.RED
+        color = Color.parseColor("#FF4444")
         style = Paint.Style.FILL
         isAntiAlias = true
     }
-
-    private val crossPaint = Paint().apply {
-        color = Color.YELLOW
-        style = Paint.Style.STROKE
-        strokeWidth = 2f
-        isAntiAlias = true
-    }
-
+    
     private val labelPaint = Paint().apply {
         color = Color.WHITE
         style = Paint.Style.FILL
         isAntiAlias = true
-        textSize = 28f
-        textAlign = Paint.Align.LEFT
+        textSize = 22f
         isFakeBoldText = true
+        setShadowLayer(2f, 1f, 1f, Color.BLACK)
     }
 
-    private val labelBackgroundPaint = Paint().apply {
-        color = Color.argb(200, 0, 0, 0)
-        style = Paint.Style.FILL
-        isAntiAlias = true
-    }
-
-    private val bottomScreenRect = RectF()
-
-    private var bindings: List<TouchBinding> = emptyList()
-
+    private var bindings = mutableListOf<TouchBinding>()
     private var selectedX = -1f
     private var selectedY = -1f
 
@@ -89,154 +54,103 @@ class TouchscreenBindingView @JvmOverloads constructor(
         val viewWidth = width.toFloat()
         val viewHeight = height.toFloat()
 
-        // Try to get rect from JNI
-        val rect = NativeLibrary.getBottomScreenRect(width, height)
+        if (viewWidth <= 0 || viewHeight <= 0) return
 
-        if (rect != null && rect.size == 4) {
+        val rect = TouchBindingManager.getBottomScreenRect(width, height)
+        
+        if (rect != null && rect.size >= 4) {
             bottomScreenRect.set(
                 rect[0].toFloat(),
                 rect[1].toFloat(),
                 rect[2].toFloat(),
                 rect[3].toFloat()
             )
-            Log.d(TAG, "Using JNI rect: $bottomScreenRect")
-        } else {
-            // Fallback to 4:3
-            val screenAspectRatio = 320f / 240f
-            val viewAspectRatio = viewWidth / viewHeight
-
-            val rectWidth: Float
-            val rectHeight: Float
-            val rectLeft: Float
-            val rectTop: Float
-
-            if (viewAspectRatio > screenAspectRatio) {
-                rectHeight = viewHeight
-                rectWidth = rectHeight * screenAspectRatio
-                rectLeft = (viewWidth - rectWidth) / 2f
-                rectTop = 0f
-            } else {
-                rectWidth = viewWidth
-                rectHeight = rectWidth / screenAspectRatio
-                rectLeft = 0f
-                rectTop = (viewHeight - rectHeight) / 2f
-            }
-
-            bottomScreenRect.set(rectLeft, rectTop, rectLeft + rectWidth, rectTop + rectHeight)
-            Log.d(TAG, "Using fallback 4:3 rect: $bottomScreenRect")
         }
     }
 
     override fun onDraw(canvas: Canvas) {
         super.onDraw(canvas)
 
-        updateBottomScreenRect()
-
-        canvas.drawRect(0f, 0f, width.toFloat(), height.toFloat(), backgroundPaint)
-
+        // Draw BLACK bottom screen rectangle
         canvas.drawRect(bottomScreenRect, bottomScreenPaint)
 
-        canvas.drawRect(bottomScreenRect, borderPaint)
-
+        // Draw existing bindings as red dots with numbers
         bindings.forEachIndexed { index, binding ->
             val x = bottomScreenRect.left + binding.x * bottomScreenRect.width()
             val y = bottomScreenRect.top + binding.y * bottomScreenRect.height()
 
-            canvas.drawCircle(x, y, 12f, pointPaint)
+            // Red dot
+            canvas.drawCircle(x, y, 10f, pointPaint)
 
-            val number = "${index + 1}"
-            drawNumberLabel(canvas, x, y, number)
+            // Number label beside the dot
+            val label = "${index + 1}"
+            val textBounds = android.graphics.Rect()
+            labelPaint.getTextBounds(label, 0, label.length, textBounds)
+            canvas.drawText(label, x + 16f, y + textBounds.height() / 2f, labelPaint)
         }
 
+        // Draw selected point
         if (selectedX >= 0 && selectedY >= 0) {
-            canvas.drawCircle(selectedX, selectedY, 14f, pointPaint)
-
-            canvas.drawLine(selectedX - 20, selectedY, selectedX + 20, selectedY, crossPaint)
-            canvas.drawLine(selectedX, selectedY - 20, selectedX, selectedY + 20, crossPaint)
+            canvas.drawCircle(selectedX, selectedY, 12f, pointPaint)
         }
-    }
-
-    private fun drawNumberLabel(canvas: Canvas, pointX: Float, pointY: Float, number: String) {
-        val textBounds = Rect()
-        labelPaint.getTextBounds(number, 0, number.length, textBounds)
-
-        val labelX = pointX + 18f
-        val labelY = pointY
-
-        val padding = 4f
-        val bgLeft = labelX - padding
-        val bgTop = labelY - textBounds.height() - padding
-        val bgRight = labelX + textBounds.width() + padding
-        val bgBottom = labelY + padding
-
-        canvas.drawRect(bgLeft, bgTop, bgRight, bgBottom, labelBackgroundPaint)
-
-        canvas.drawText(number, labelX, labelY, labelPaint)
     }
 
     override fun onTouchEvent(event: MotionEvent): Boolean {
         when (event.action) {
             MotionEvent.ACTION_DOWN -> {
                 if (!bottomScreenRect.contains(event.x, event.y)) {
-                    Log.d(TAG, "Touch outside bottom screen rect")
                     return true
                 }
 
                 selectedX = event.x
                 selectedY = event.y
-
                 invalidate()
 
-                val normalizedX = clamp(
-                    (event.x - bottomScreenRect.left) / bottomScreenRect.width()
-                )
-                val normalizedY = clamp(
-                    (event.y - bottomScreenRect.top) / bottomScreenRect.height()
-                )
+                val normalizedX = (event.x - bottomScreenRect.left) / bottomScreenRect.width()
+                val normalizedY = (event.y - bottomScreenRect.top) / bottomScreenRect.height()
 
-                Log.d(TAG, "onTouchEvent: screenX=${event.x} screenY=${event.y}")
-                Log.d(TAG, "onTouchEvent: normalizedX=$normalizedX normalizedY=$normalizedY")
+                val clampedX = normalizedX.coerceIn(0f, 1f)
+                val clampedY = normalizedY.coerceIn(0f, 1f)
 
-                onTouchPointSelected?.invoke(normalizedX, normalizedY)
-
-                return true
-            }
-
-            MotionEvent.ACTION_UP -> {
+                onTouchPointSelected?.invoke(clampedX, clampedY)
                 return true
             }
         }
-
         return true
     }
 
-    private fun clamp(value: Float): Float {
-        return max(0f, min(1f, value))
+    fun addBinding(binding: TouchBinding) {
+        bindings.add(binding)
+        invalidate()
     }
 
-    fun setBindings(newBindings: List<TouchBinding>) {
-        bindings = newBindings.toList()
+    fun removeBinding(binding: TouchBinding) {
+        bindings.remove(binding)
         invalidate()
     }
 
     fun clearBindings() {
-        bindings = emptyList()
+        bindings.clear()
         selectedX = -1f
         selectedY = -1f
         invalidate()
     }
 
-    fun getSelectedX(): Float {
-        if (selectedX < 0 || bottomScreenRect.width() <= 0) {
-            return -1f
-        }
-        return clamp((selectedX - bottomScreenRect.left) / bottomScreenRect.width())
+    fun setBindings(newBindings: List<TouchBinding>) {
+        bindings.clear()
+        bindings.addAll(newBindings)
+        invalidate()
     }
 
-    fun getSelectedY(): Float {
-        if (selectedY < 0 || bottomScreenRect.height() <= 0) {
-            return -1f
-        }
-        return clamp((selectedY - bottomScreenRect.top) / bottomScreenRect.height())
+    fun setSelectedPoint(normalizedX: Float, normalizedY: Float) {
+        selectedX = bottomScreenRect.left + normalizedX * bottomScreenRect.width()
+        selectedY = bottomScreenRect.top + normalizedY * bottomScreenRect.height()
+        invalidate()
+    }
+
+    fun clearSelectedPoint() {
+        selectedX = -1f
+        selectedY = -1f
+        invalidate()
     }
 }
