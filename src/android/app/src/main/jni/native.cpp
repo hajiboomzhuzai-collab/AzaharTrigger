@@ -472,7 +472,7 @@ void Java_org_citra_citra_1emu_NativeLibrary_updateFramebuffer([[maybe_unused]] 
     }
 }
 
-jintArray Java_org_citra_citra_1emu_NativeLibrary_getFramebufferLayout(
+jintArray Java_org_citra_citra_1emu_NativeLibrary_getFramebufferLayoutNative(
     JNIEnv* env,
     jobject /*obj*/) {
     
