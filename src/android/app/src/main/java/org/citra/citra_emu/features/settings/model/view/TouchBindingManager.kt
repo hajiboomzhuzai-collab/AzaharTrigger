@@ -79,8 +79,8 @@ object TouchBindingManager {
             Resources.getSystem().displayMetrics.heightPixels
         ) ?: return
 
-        val x = rect[0] + binding.x * (rect[2] - rect[0])
-        val y = rect[1] + binding.y * (rect[3] - rect[1])
+        val x = rect[0].toFloat() + binding.x * (rect[2].toFloat() - rect[0].toFloat())
+        val y = rect[1].toFloat() + binding.y * (rect[3].toFloat() - rect[1].toFloat())
 
         Log.d(TAG, "sendTouch: binding.x=${binding.x} binding.y=${binding.y}")
         Log.d(TAG, "sendTouch: rect L=${rect[0]} R=${rect[2]} T=${rect[1]} B=${rect[3]}")
@@ -88,7 +88,7 @@ object TouchBindingManager {
 
         NativeLibrary.onTouchEvent(x.toInt(), y.toInt(), pressed)
     }
-
+    
     fun onKeyEvent(event: KeyEvent): Boolean {
         if (event.action != KeyEvent.ACTION_DOWN) return false
         if (ControllerMappingHelper.shouldKeyBeIgnored(event.device, event.keyCode)) return false
