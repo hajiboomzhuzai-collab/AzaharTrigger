@@ -470,108 +470,6 @@ void Java_org_citra_citra_1emu_NativeLibrary_updateFramebuffer([[maybe_unused]] 
     }
 }
 
-jintArray Java_org_citra_citra_1emu_NativeLibrary_getBottomScreenRect(
-    JNIEnv* env,
-    jobject obj,
-    jint view_width,
-    jint view_height) {
-
-    jint data[4]{};
-
-    const auto layout = Settings::values.layout_option.GetValue();
-
-    if (layout == Settings::LayoutOption::CustomLayout) {
-        // Custom layout - use custom values
-        if (NativeLibrary.isPortraitMode) {
-            data[0] = static_cast<jint>(Settings::values.custom_portrait_bottom_x.GetValue());
-            data[1] = static_cast<jint>(Settings::values.custom_portrait_bottom_y.GetValue());
-            data[2] = data[0] + static_cast<jint>(Settings::values.custom_portrait_bottom_width.GetValue());
-            data[3] = data[1] + static_cast<jint>(Settings::values.custom_portrait_bottom_height.GetValue());
-        } else {
-            data[0] = static_cast<jint>(Settings::values.custom_bottom_x.GetValue());
-            data[1] = static_cast<jint>(Settings::values.custom_bottom_y.GetValue());
-            data[2] = data[0] + static_cast<jint>(Settings::values.custom_bottom_width.GetValue());
-            data[3] = data[1] + static_cast<jint>(Settings::values.custom_bottom_height.GetValue());
-        }
-    } else if (window) {
-        // In-game: use actual framebuffer layout
-        const auto& framebuffer = window->GetCurrentFramebufferLayout();
-        const auto& rect = framebuffer.bottom_screen;
-        data[0] = static_cast<jint>(rect.left);
-        data[1] = static_cast<jint>(rect.top);
-        data[2] = static_cast<jint>(rect.right);
-        data[3] = static_cast<jint>(rect.bottom);
-    } else {
-        // Not in-game: calculate based on layout mode
-        // This is the key part!
-        
-        // 3DS screen dimensions
-        const int TOP_SCREEN_WIDTH = 400;
-        const int TOP_SCREEN_HEIGHT = 240;
-        const int BOTTOM_SCREEN_WIDTH = 320;
-        const int BOTTOM_SCREEN_HEIGHT = 240;
-        
-        float scale = 1.0f;
-        int offset_x = 0;
-        int offset_y = 0;
-        
-        switch (layout) {
-            case Settings::LayoutOption::SingleScreen:
-                // Only bottom screen, centered
-                scale = std::min(
-                    (float)view_width / BOTTOM_SCREEN_WIDTH,
-                    (float)view_height / BOTTOM_SCREEN_HEIGHT
-                ) * 0.9f; // 90% of max size
-                data[0] = (view_width - BOTTOM_SCREEN_WIDTH * scale) / 2;
-                data[1] = (view_height - BOTTOM_SCREEN_HEIGHT * scale) / 2;
-                data[2] = data[0] + BOTTOM_SCREEN_WIDTH * scale;
-                data[3] = data[1] + BOTTOM_SCREEN_HEIGHT * scale;
-                break;
-                
-            case Settings::LayoutOption::Original:
-                // Original 3DS layout: top screen centered, bottom screen at bottom-right
-                {
-                    float screen_scale = std::min(
-                        (float)view_width / TOP_SCREEN_WIDTH,
-                        (float)view_height / (TOP_SCREEN_HEIGHT + BOTTOM_SCREEN_HEIGHT)
-                    ) * 0.8f;
-                    
-                    // Top screen position
-                    int top_x = (view_width - TOP_SCREEN_WIDTH * screen_scale) / 2;
-                    int top_y = (view_height - (TOP_SCREEN_HEIGHT + BOTTOM_SCREEN_HEIGHT) * screen_scale) / 2;
-                    
-                    // Bottom screen position (below top screen, aligned right)
-                    int bottom_x = top_x + (TOP_SCREEN_WIDTH - BOTTOM_SCREEN_WIDTH) * screen_scale;
-                    int bottom_y = top_y + TOP_SCREEN_HEIGHT * screen_scale;
-                    
-                    data[0] = bottom_x;
-                    data[1] = bottom_y;
-                    data[2] = bottom_x + BOTTOM_SCREEN_WIDTH * screen_scale;
-                    data[3] = bottom_y + BOTTOM_SCREEN_HEIGHT * screen_scale;
-                }
-                break;
-                
-            case Settings::LayoutOption::LargeScreen:
-                // Large screen layout: one screen large, one small
-                {
-                    float large_scale = std::min(
-                        (float)view_width / TOP_SCREEN_WIDTH,
-                        (float)view_height / TOP_SCREEN_HEIGHT
-                    ) * 0.85f;
-                    
-                    // Bottom screen is small, at bottom-right
-                    float small_scale = large_scale * 0.4f;
-                    data[0] = view_width - BOTTOM_SCREEN_WIDTH * small_scale - 20;
-                    data[1] = view_height - BOTTOM_SCREEN_HEIGHT * small_scale - 20;
-                    data[2] = data[0] + BOTTOM_SCREEN_WIDTH * small_scale;
-                    data[3] = data[1] + BOTTOM_SCREEN_HEIGHT * small_scale;
-                }
-                break;
-                
-            case Settings::LayoutOption::SideScreen:
-                // Side by side layout
-                {
-                    float side_scale = std::min(
 
 jintArray Java_org_citra_citra_1emu_NativeLibrary_getBottomScreenRect(
     JNIEnv* env,
@@ -580,11 +478,9 @@ jintArray Java_org_citra_citra_1emu_NativeLibrary_getBottomScreenRect(
     jint view_height) {
 
     jint data[4]{};
-
     const auto layout = Settings::values.layout_option.GetValue();
 
     if (layout == Settings::LayoutOption::CustomLayout) {
-        // Custom layout - use custom values
         if (IsPortraitMode()) {
             data[0] = static_cast<jint>(Settings::values.custom_portrait_bottom_x.GetValue());
             data[1] = static_cast<jint>(Settings::values.custom_portrait_bottom_y.GetValue());
@@ -597,7 +493,6 @@ jintArray Java_org_citra_citra_1emu_NativeLibrary_getBottomScreenRect(
             data[3] = data[1] + static_cast<jint>(Settings::values.custom_bottom_height.GetValue());
         }
     } else if (window) {
-        // In-game: use actual framebuffer layout
         const auto& framebuffer = window->GetCurrentFramebufferLayout();
         const auto& rect = framebuffer.bottom_screen;
         data[0] = static_cast<jint>(rect.left);
@@ -605,90 +500,53 @@ jintArray Java_org_citra_citra_1emu_NativeLibrary_getBottomScreenRect(
         data[2] = static_cast<jint>(rect.right);
         data[3] = static_cast<jint>(rect.bottom);
     } else {
-        // Not in-game: calculate based on layout mode
-        const int TOP_SCREEN_WIDTH = 400;
-        const int TOP_SCREEN_HEIGHT = 240;
-        const int BOTTOM_SCREEN_WIDTH = 320;
-        const int BOTTOM_SCREEN_HEIGHT = 240;
+        const int TOP_W = 400, TOP_H = 240, BOT_W = 320, BOT_H = 240;
 
         switch (layout) {
-            case Settings::LayoutOption::SingleScreen:
-                {
-                    float scale = std::min(
-                        (float)view_width / BOTTOM_SCREEN_WIDTH,
-                        (float)view_height / BOTTOM_SCREEN_HEIGHT
-                    ) * 0.9f;
-                    data[0] = (view_width - BOTTOM_SCREEN_WIDTH * scale) / 2;
-                    data[1] = (view_height - BOTTOM_SCREEN_HEIGHT * scale) / 2;
-                    data[2] = data[0] + BOTTOM_SCREEN_WIDTH * scale;
-                    data[3] = data[1] + BOTTOM_SCREEN_HEIGHT * scale;
-                }
+            case Settings::LayoutOption::SingleScreen: {
+                float scale = std::min((float)view_width / BOT_W, (float)view_height / BOT_H) * 0.9f;
+                data[0] = (view_width - BOT_W * scale) / 2;
+                data[1] = (view_height - BOT_H * scale) / 2;
+                data[2] = data[0] + BOT_W * scale;
+                data[3] = data[1] + BOT_H * scale;
                 break;
-
-            case Settings::LayoutOption::LargeScreen:
-                {
-                    float large_scale = std::min(
-                        (float)view_width / TOP_SCREEN_WIDTH,
-                        (float)view_height / TOP_SCREEN_HEIGHT
-                    ) * 0.85f;
-
-                    float small_scale = large_scale * 0.4f;
-                    data[0] = view_width - BOTTOM_SCREEN_WIDTH * small_scale - 20;
-                    data[1] = view_height - BOTTOM_SCREEN_HEIGHT * small_scale - 20;
-                    data[2] = data[0] + BOTTOM_SCREEN_WIDTH * small_scale;
-                    data[3] = data[1] + BOTTOM_SCREEN_HEIGHT * small_scale;
-                }
+            }
+            case Settings::LayoutOption::LargeScreen: {
+                float large = std::min((float)view_width / TOP_W, (float)view_height / TOP_H) * 0.85f;
+                float small = large * 0.4f;
+                data[0] = view_width - BOT_W * small - 20;
+                data[1] = view_height - BOT_H * small - 20;
+                data[2] = data[0] + BOT_W * small;
+                data[3] = data[1] + BOT_H * small;
                 break;
-
-            case Settings::LayoutOption::SideScreen:
-                {
-                    float side_scale = std::min(
-                        (float)view_width / (TOP_SCREEN_WIDTH + BOTTOM_SCREEN_WIDTH),
-                        (float)view_height / TOP_SCREEN_HEIGHT
-                    ) * 0.9f;
-
-                    data[0] = (view_width - (TOP_SCREEN_WIDTH + BOTTOM_SCREEN_WIDTH) * side_scale) / 2 + TOP_SCREEN_WIDTH * side_scale;
-                    data[1] = (view_height - BOTTOM_SCREEN_HEIGHT * side_scale) / 2;
-                    data[2] = data[0] + BOTTOM_SCREEN_WIDTH * side_scale;
-                    data[3] = data[1] + BOTTOM_SCREEN_HEIGHT * side_scale;
-                }
+            }
+            case Settings::LayoutOption::SideScreen: {
+                float s = std::min((float)view_width / (TOP_W + BOT_W), (float)view_height / TOP_H) * 0.9f;
+                data[0] = (view_width - (TOP_W + BOT_W) * s) / 2 + TOP_W * s;
+                data[1] = (view_height - BOT_H * s) / 2;
+                data[2] = data[0] + BOT_W * s;
+                data[3] = data[1] + BOT_H * s;
                 break;
-
-            case Settings::LayoutOption::HybridScreen:
-                {
-                    float large_scale = std::min(
-                        (float)view_width / TOP_SCREEN_WIDTH,
-                        (float)view_height / TOP_SCREEN_HEIGHT
-                    ) * 0.85f;
-
-                    float small_scale = large_scale * 0.35f;
-                    data[0] = view_width - BOTTOM_SCREEN_WIDTH * small_scale - 20;
-                    data[1] = view_height - BOTTOM_SCREEN_HEIGHT * small_scale - 20;
-                    data[2] = data[0] + BOTTOM_SCREEN_WIDTH * small_scale;
-                    data[3] = data[1] + BOTTOM_SCREEN_HEIGHT * small_scale;
-                }
+            }
+            case Settings::LayoutOption::HybridScreen: {
+                float large = std::min((float)view_width / TOP_W, (float)view_height / TOP_H) * 0.85f;
+                float small = large * 0.35f;
+                data[0] = view_width - BOT_W * small - 20;
+                data[1] = view_height - BOT_H * small - 20;
+                data[2] = data[0] + BOT_W * small;
+                data[3] = data[1] + BOT_H * small;
                 break;
-
-            case Settings::LayoutOption::Default:
-            default:
-                {
-                    float screen_scale = std::min(
-                        (float)view_width / TOP_SCREEN_WIDTH,
-                        (float)view_height / (TOP_SCREEN_HEIGHT + BOTTOM_SCREEN_HEIGHT)
-                    ) * 0.85f;
-
-                    int top_x = (view_width - TOP_SCREEN_WIDTH * screen_scale) / 2;
-                    int top_y = (view_height - (TOP_SCREEN_HEIGHT + BOTTOM_SCREEN_HEIGHT) * screen_scale) / 2;
-
-                    int bottom_x = top_x + (TOP_SCREEN_WIDTH - BOTTOM_SCREEN_WIDTH) * screen_scale;
-                    int bottom_y = top_y + TOP_SCREEN_HEIGHT * screen_scale;
-
-                    data[0] = bottom_x;
-                    data[1] = bottom_y;
-                    data[2] = bottom_x + BOTTOM_SCREEN_WIDTH * screen_scale;
-                    data[3] = bottom_y + BOTTOM_SCREEN_HEIGHT * screen_scale;
-                }
+            }
+            default: {
+                float scale = std::min((float)view_width / TOP_W, (float)view_height / (TOP_H + BOT_H)) * 0.85f;
+                int top_x = (view_width - TOP_W * scale) / 2;
+                int top_y = (view_height - (TOP_H + BOT_H) * scale) / 2;
+                data[0] = top_x + (TOP_W - BOT_W) * scale;
+                data[1] = top_y + TOP_H * scale;
+                data[2] = data[0] + BOT_W * scale;
+                data[3] = data[1] + BOT_H * scale;
                 break;
+            }
         }
     }
 
@@ -696,6 +554,7 @@ jintArray Java_org_citra_citra_1emu_NativeLibrary_getBottomScreenRect(
     env->SetIntArrayRegion(result, 0, 4, data);
     return result;
 }
+
 void Java_org_citra_citra_1emu_NativeLibrary_setCustomLayout(
     JNIEnv* env,
     jobject obj,
