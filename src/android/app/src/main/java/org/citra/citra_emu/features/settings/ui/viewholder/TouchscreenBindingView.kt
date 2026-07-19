@@ -1,12 +1,10 @@
 package org.citra.citra_emu.features.settings.ui.viewholder
 
 import android.content.Context
-import android.content.SharedPreferences
 import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Paint
 import android.graphics.RectF
-import android.preference.PreferenceManager
 import android.util.AttributeSet
 import android.view.MotionEvent
 import android.view.View
@@ -52,28 +50,37 @@ class TouchscreenBindingView @JvmOverloads constructor(
         updateScreenRects()
     }
 
-    private fun getPreferences(): SharedPreferences {
-        return PreferenceManager.getDefaultSharedPreferences(context)
-    }
-
-    private fun getLayoutOption(): Int {
-        return getPreferences().getInt("layout_option", 0)
-    }
-
     private fun updateScreenRects() {
         val viewWidth = width
         val viewHeight = height
 
         if (viewWidth <= 0 || viewHeight <= 0) return
         
-        val nativeRect = NativeLibrary.getBottomScreenRect(viewWidth, viewHeight)
+        val layoutArr = NativeLibrary.getFramebufferLayout()
         
-        if (nativeRect != null) {
+        if (layoutArr.size >= 6) {
+            val fbWidth = layoutArr[0]
+            val fbHeight = layoutArr[1]
+            val bottomLeft = layoutArr[2]
+            val bottomTop = layoutArr[3]
+            val bottomRight = layoutArr[4]
+            val bottomBottom = layoutArr[5]
+            
+            // Scale framebuffer coordinates to view coordinates
+            val scaleX = viewWidth.toFloat() / fbWidth.toFloat()
+            val scaleY = viewHeight.toFloat() / fbHeight.toFloat()
+            val scale = minOf(scaleX, scaleY)
+            
+            val scaledWidth = fbWidth * scale
+            val scaledHeight = fbHeight * scale
+            val offsetX = (viewWidth - scaledWidth) / 2f
+            val offsetY = (viewHeight - scaledHeight) / 2f
+            
             bottomScreenRect.set(
-                nativeRect[0].toFloat(),
-                nativeRect[1].toFloat(),
-                nativeRect[2].toFloat(),
-                nativeRect[3].toFloat()
+                offsetX + bottomLeft * scale,
+                offsetY + bottomTop * scale,
+                offsetX + bottomRight * scale,
+                offsetY + bottomBottom * scale
             )
         }
         
@@ -83,7 +90,7 @@ class TouchscreenBindingView @JvmOverloads constructor(
     override fun onDraw(canvas: Canvas) {
         super.onDraw(canvas)
 
-        // Draw bottom screen only
+        // Draw bottom screen
         canvas.drawRect(bottomScreenRect, bottomScreenPaint)
 
         // Draw bindings
