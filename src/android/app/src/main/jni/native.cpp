@@ -472,64 +472,33 @@ void Java_org_citra_citra_1emu_NativeLibrary_updateFramebuffer([[maybe_unused]] 
     }
 }
 
-jintArray Java_org_citra_citra_1emu_NativeLibrary_getBottomScreenRectNative(
+jintArray Java_org_citra_citra_1emu_NativeLibrary_getFramebufferLayout(
     JNIEnv* env,
-    jobject obj,
-    jint view_width,
-    jint view_height) {
-
-    jint data[4]{};
-    const auto layout_option = Settings::values.layout_option.GetValue();
-
-    if (layout_option == Settings::LayoutOption::CustomLayout) {
-        // Custom layout - use raw custom coordinates
-        if (IsPortraitMode()) {
-            data[0] = static_cast<jint>(Settings::values.custom_portrait_bottom_x.GetValue());
-            data[1] = static_cast<jint>(Settings::values.custom_portrait_bottom_y.GetValue());
-            data[2] = data[0] + static_cast<jint>(Settings::values.custom_portrait_bottom_width.GetValue());
-            data[3] = data[1] + static_cast<jint>(Settings::values.custom_portrait_bottom_height.GetValue());
-        } else {
-            data[0] = static_cast<jint>(Settings::values.custom_bottom_x.GetValue());
-            data[1] = static_cast<jint>(Settings::values.custom_bottom_y.GetValue());
-            data[2] = data[0] + static_cast<jint>(Settings::values.custom_bottom_width.GetValue());
-            data[3] = data[1] + static_cast<jint>(Settings::values.custom_bottom_height.GetValue());
-        }
-        
-        // Scale to view dimensions
-        int customWidth = data[2] - data[0];
-        int customHeight = data[3] - data[1];
-        float scaleX = static_cast<float>(view_width) / customWidth;
-        float scaleY = static_cast<float>(view_height) / customHeight;
-        float scale = std::min(scaleX, scaleY) * 0.9f;
-        
-        data[0] = static_cast<jint>((view_width - customWidth * scale) / 2);
-        data[1] = static_cast<jint>((view_height - customHeight * scale) / 2);
-        data[2] = data[0] + static_cast<jint>(customWidth * scale);
-        data[3] = data[1] + static_cast<jint>(customHeight * scale);
+    jobject /*obj*/) {
+    
+    Layout::FramebufferLayout layout;
+    
+    if (!window) {
+        // Fall back to FrameLayoutFromResolutionScale when not in-game
+        layout = Layout::FrameLayoutFromResolutionScale(1, false, false);
     } else {
-        // Other layouts - use FrameLayoutFromResolutionScale
-        auto layout = Layout::FrameLayoutFromResolutionScale(1, false, false);
-        
-        jint layoutWidth = layout.width;
-        jint layoutHeight = layout.height;
-        
-        float scaleX = static_cast<float>(view_width) / layoutWidth;
-        float scaleY = static_cast<float>(view_height) / layoutHeight;
-        float scale = std::min(scaleX, scaleY) * 0.9f;
-        
-        float scaledWidth = layoutWidth * scale;
-        float scaledHeight = layoutHeight * scale;
-        float offsetX = (view_width - scaledWidth) / 2.0f;
-        float offsetY = (view_height - scaledHeight) / 2.0f;
-        
-        data[0] = static_cast<jint>(offsetX + layout.bottom_screen.left * scale);
-        data[1] = static_cast<jint>(offsetY + layout.bottom_screen.top * scale);
-        data[2] = static_cast<jint>(offsetX + layout.bottom_screen.right * scale);
-        data[3] = static_cast<jint>(offsetY + layout.bottom_screen.bottom * scale);
+        // Use actual framebuffer layout when in-game
+        layout = window->GetFramebufferLayout();
     }
-
-    jintArray result = env->NewIntArray(4);
-    env->SetIntArrayRegion(result, 0, 4, data);
+    
+    // Return: [width, height, bottom_left, bottom_top, bottom_right, bottom_bottom, is_rotated]
+    jint data[7] = {
+        static_cast<jint>(layout.width),
+        static_cast<jint>(layout.height),
+        static_cast<jint>(layout.bottom_screen.left),
+        static_cast<jint>(layout.bottom_screen.top),
+        static_cast<jint>(layout.bottom_screen.right),
+        static_cast<jint>(layout.bottom_screen.bottom),
+        layout.is_rotated ? 1 : 0
+    };
+    
+    jintArray result = env->NewIntArray(7);
+    env->SetIntArrayRegion(result, 0, 7, data);
     return result;
 }
 
