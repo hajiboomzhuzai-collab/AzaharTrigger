@@ -76,7 +76,7 @@ object TouchBindingManager {
     fun sendTouch(binding: TouchBinding, pressed: Boolean) {
         val screenWidth: Int = Resources.getSystem().displayMetrics.widthPixels
         val screenHeight: Int = Resources.getSystem().displayMetrics.heightPixels
-        val rect: IntArray? = getBottomScreenRect(screenWidth, screenHeight)
+        val rect: IntArray? = NativeLibrary.getBottomScreenRect(screenWidth, screenHeight)
 
         if (rect == null || rect.size < 4) {
             Log.w(TAG, "sendTouch: rect is null or too small")
@@ -97,7 +97,7 @@ object TouchBindingManager {
         Log.d(TAG, "sendTouch: rect L=$rectLeft R=$rectRight T=$rectTop B=$rectBottom")
         Log.d(TAG, "sendTouch: calculated x=$x y=$y")
 
-        NativeLibrary.onTouchEvent(x, y, pressed)
+        NativeLibrary.onTouchEvent(x.toInt(), y.toInt(), pressed)
     }
 
     fun onKeyEvent(event: KeyEvent): Boolean {
@@ -183,42 +183,6 @@ object TouchBindingManager {
     fun getBindingAt(x: Float, y: Float): TouchBinding? {
         return bindings.firstOrNull {
             abs(it.x - x) < 0.02f && abs(it.y - y) < 0.02f
-        }
-    }
-
-    /**
-     * Calculates the bottom screen rectangle.
-     *
-     * 3DS bottom screen is 320x240 (4:3 aspect ratio).
-     * Returns int array of [left, top, right, bottom].
-     */
-    fun getBottomScreenRect(viewWidth: Int, viewHeight: Int): IntArray? {
-        if (viewWidth <= 0 || viewHeight <= 0) return null
-
-        return try {
-            val bottomScreenAspect = 320f / 240f
-            val viewAspect = viewWidth.toFloat() / viewHeight.toFloat()
-
-            val rectWidth: Int
-            val rectHeight: Int
-
-            if (viewAspect > bottomScreenAspect) {
-                rectHeight = (viewHeight * 0.85f).toInt()
-                rectWidth = (rectHeight * bottomScreenAspect).toInt()
-            } else {
-                rectWidth = (viewWidth * 0.85f).toInt()
-                rectHeight = (rectWidth / bottomScreenAspect).toInt()
-            }
-
-            val rectLeft = (viewWidth - rectWidth) / 2
-            val rectTop = (viewHeight - rectHeight) / 2
-            val rectRight = rectLeft + rectWidth
-            val rectBottom = rectTop + rectHeight
-
-            intArrayOf(rectLeft, rectTop, rectRight, rectBottom)
-        } catch (e: Exception) {
-            Log.e(TAG, "getBottomScreenRect failed", e)
-            null
         }
     }
 
