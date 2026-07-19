@@ -8,6 +8,7 @@ import android.graphics.RectF
 import android.util.AttributeSet
 import android.view.MotionEvent
 import android.view.View
+import org.citra.citra_emu.NativeLibrary
 import org.citra.citra_emu.features.settings.model.view.TouchBinding
 
 class TouchscreenBindingView @JvmOverloads constructor(
@@ -55,58 +56,109 @@ class TouchscreenBindingView @JvmOverloads constructor(
 
         if (viewWidth <= 0 || viewHeight <= 0) return
 
-        // Pure Kotlin calculation for preview (works without emulator running)
-        val bottomScreenAspect = 320f / 240f
-        val viewAspect = viewWidth.toFloat() / viewHeight.toFloat()
+        val layoutOption = getLayoutOption()
+        val rect: IntArray?
 
-        val rectWidth: Int
-        val rectHeight: Int
-
-        if (viewAspect > bottomScreenAspect) {
-            rectHeight = (viewHeight * 0.85f).toInt()
-            rectWidth = (rectHeight * bottomScreenAspect).toInt()
+        if (layoutOption == 5) {
+            // Custom layout - use native function (already works!)
+            rect = NativeLibrary.getBottomScreenRect(viewWidth, viewHeight)
         } else {
-            rectWidth = (viewWidth * 0.85f).toInt()
-            rectHeight = (rectWidth / bottomScreenAspect).toInt()
+            // Non-custom layouts - calculate in Kotlin
+            rect = calculateBottomScreenRect(viewWidth, viewHeight, layoutOption)
         }
 
-        val rectLeft = (viewWidth - rectWidth) / 2
-        val rectTop = (viewHeight - rectHeight) / 2
-        val rectRight = rectLeft + rectWidth
-        val rectBottom = rectTop + rectHeight
-
-        bottomScreenRect.set(
-            rectLeft.toFloat(),
-            rectTop.toFloat(),
-            rectRight.toFloat(),
-            rectBottom.toFloat()
-        )
+        if (rect != null && rect.size >= 4) {
+            bottomScreenRect.set(
+                rect[0].toFloat(),
+                rect[1].toFloat(),
+                rect[2].toFloat(),
+                rect[3].toFloat()
+            )
+        }
         
         invalidate()
+    }
+
+    private fun calculateBottomScreenRect(viewWidth: Int, viewHeight: Int, layoutOption: Int): IntArray {
+        val TOP_W = 400
+        val TOP_H = 240
+        val BOT_W = 320
+        val BOT_H = 240
+
+        val data = IntArray(4)
+
+        when (layoutOption) {
+            0 -> { // Default
+                val scale = (viewWidth.toFloat() / TOP_W)
+                    .coerceAtMost(viewHeight.toFloat() / (TOP_H + BOT_H)) * 0.85f
+                val topX = (viewWidth - TOP_W * scale) / 2
+                val topY = (viewHeight - (TOP_H + BOT_H) * scale) / 2
+                data[0] = (topX + (TOP_W - BOT_W) * scale / 2).toInt()
+                data[1] = (topY + TOP_H * scale).toInt()
+                data[2] = (data[0] + BOT_W * scale).toInt()
+                data[3] = (data[1] + BOT_H * scale).toInt()
+            }
+            1 -> { // Single Screen
+                val scale = (viewWidth.toFloat() / BOT_W)
+                    .coerceAtMost(viewHeight.toFloat() / BOT_H) * 0.9f
+                data[0] = (viewWidth - BOT_W * scale) / 2
+                data[1] = (viewHeight - BOT_H * scale) / 2
+                data[2] = (data[0] + BOT_W * scale).toInt()
+                data[3] = (data[1] + BOT_H * scale).toInt()
+            }
+            2 -> { // Large Screen
+                val large = (viewWidth.toFloat() / TOP_W)
+                    .coerceAtMost(viewHeight.toFloat() / TOP_H) * 0.85f
+                val small = large * 0.4f
+                data[0] = (viewWidth - BOT_W * small - 20).toInt()
+                data[1] = (viewHeight - BOT_H * small - 20).toInt()
+                data[2] = (data[0] + BOT_W * small).toInt()
+                data[3] = (data[1] + BOT_H * small).toInt()
+            }
+            3 -> { // Side Screen
+                val s = (viewWidth.toFloat() / (TOP_W + BOT_W))
+                    .coerceAtMost(viewHeight.toFloat() / TOP_H) * 0.9f
+                data[0] = ((viewWidth - (TOP_W + BOT_W) * s) / 2 + TOP_W * s).toInt()
+                data[1] = ((viewHeight - BOT_H * s) / 2).toInt()
+                data[2] = (data[0] + BOT_W * s).toInt()
+                data[3] = (data[1] + BOT_H * s).toInt()
+            }
+            4 -> { // Hybrid Screen
+                val large = (viewWidth.toFloat() / TOP_W)
+                    .coerceAtMost(viewHeight.toFloat() / TOP_H) * 0.85f
+                val small = large * 0.35f
+                data[0] = (viewWidth - BOT_W * small - 20).toInt()
+                data[1] = (viewHeight - BOT_H * small - 20).toInt()
+                data[2] = (data[0] + BOT_W * small).toInt()
+                data[3] = (data[1] + BOT_H * small).toInt()
+            }
+        }
+
+        return data
+    }
+
+    private fun getLayoutOption(): Int {
+        return org.citra.citra_emu.features.settings.model.Settings.globalSettings
+            .getInt("layout_option", 0)
     }
 
     override fun onDraw(canvas: Canvas) {
         super.onDraw(canvas)
 
-        // Draw BLACK bottom screen rectangle
         canvas.drawRect(bottomScreenRect, bottomScreenPaint)
 
-        // Draw existing bindings as red dots with numbers
         bindings.forEachIndexed { index, binding ->
             val x = bottomScreenRect.left + binding.x * bottomScreenRect.width()
             val y = bottomScreenRect.top + binding.y * bottomScreenRect.height()
 
-            // Red dot
             canvas.drawCircle(x, y, 10f, pointPaint)
 
-            // Number label beside the dot
             val label = "${index + 1}"
             val textBounds = android.graphics.Rect()
             labelPaint.getTextBounds(label, 0, label.length, textBounds)
             canvas.drawText(label, x + 16f, y + textBounds.height() / 2f, labelPaint)
         }
 
-        // Draw selected point
         if (selectedX >= 0 && selectedY >= 0) {
             canvas.drawCircle(selectedX, selectedY, 12f, pointPaint)
         }
