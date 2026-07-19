@@ -97,7 +97,7 @@ object TouchBindingManager {
         Log.d(TAG, "sendTouch: rect L=$rectLeft R=$rectRight T=$rectTop B=$rectBottom")
         Log.d(TAG, "sendTouch: calculated x=$x y=$y")
 
-        NativeLibrary.onTouchEvent(x.toInt(), y.toInt(), pressed)
+        NativeLibrary.onTouchEvent(x, y, pressed)
     }
 
     fun onKeyEvent(event: KeyEvent): Boolean {
