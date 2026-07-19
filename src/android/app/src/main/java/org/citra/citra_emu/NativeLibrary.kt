@@ -12,6 +12,7 @@ import android.content.DialogInterface
 import android.content.SharedPreferences
 import android.content.pm.PackageManager
 import android.content.res.Configuration
+import android.content.res.Resources
 import android.net.Uri
 import android.os.Bundle
 import android.os.Environment
@@ -222,7 +223,7 @@ object NativeLibrary {
 
     external fun getSavedBottomScreenRect(): IntArray?
 
-    object NativeLibrary {
+    
     fun getBottomScreenRect(viewWidth: Int, viewHeight: Int): IntArray? {
         return try {
             getBottomScreenRectNative(viewWidth, viewHeight)
@@ -231,11 +232,10 @@ object NativeLibrary {
         }
     }
 
-        private external fun getBottomScreenRectNative(
-            viewWidth: Int,
-            viewHeight: Int
-        ): IntArray?
-    }
+    private external fun getBottomScreenRectNative(
+        viewWidth: Int,
+        viewHeight: Int
+    ): IntArray?
 
     external fun getFramebufferSize(): IntArray?
 
