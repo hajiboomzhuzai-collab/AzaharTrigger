@@ -6,6 +6,7 @@
 
 #include <algorithm>
 #include <codecvt>
+#include <cmath>
 #include <thread>
 #include <dlfcn.h>
 
@@ -38,6 +39,7 @@
 #include "common/string_util.h"
 #include "common/zstd_compression.h"
 #include "core/core.h"
+#include "core/frontend/framebuffer_layout.h"
 #include "core/frontend/applets/default_applets.h"
 #include "core/frontend/camera/factory.h"
 #include "core/hle/service/am/am.h"
@@ -477,9 +479,10 @@ jintArray Java_org_citra_citra_1emu_NativeLibrary_getBottomScreenRectNative(
     jint view_height) {
 
     jint data[4]{};
-    const auto layout = Settings::values.layout_option.GetValue();
+    const auto layout_option = Settings::values.layout_option.GetValue();
 
-    if (layout == Settings::LayoutOption::CustomLayout) {
+    if (layout_option == Settings::LayoutOption::CustomLayout) {
+        // Custom layout - use raw custom coordinates
         if (IsPortraitMode()) {
             data[0] = static_cast<jint>(Settings::values.custom_portrait_bottom_x.GetValue());
             data[1] = static_cast<jint>(Settings::values.custom_portrait_bottom_y.GetValue());
@@ -491,62 +494,38 @@ jintArray Java_org_citra_citra_1emu_NativeLibrary_getBottomScreenRectNative(
             data[2] = data[0] + static_cast<jint>(Settings::values.custom_bottom_width.GetValue());
             data[3] = data[1] + static_cast<jint>(Settings::values.custom_bottom_height.GetValue());
         }
-    } else if (window) {
-        const auto& framebuffer = window->GetCurrentFramebufferLayout();
-        const auto& rect = framebuffer.bottom_screen;
-        data[0] = static_cast<jint>(rect.left);
-        data[1] = static_cast<jint>(rect.top);
-        data[2] = static_cast<jint>(rect.right);
-        data[3] = static_cast<jint>(rect.bottom);
+        
+        // Scale to view dimensions
+        int customWidth = data[2] - data[0];
+        int customHeight = data[3] - data[1];
+        float scaleX = static_cast<float>(view_width) / customWidth;
+        float scaleY = static_cast<float>(view_height) / customHeight;
+        float scale = std::min(scaleX, scaleY) * 0.9f;
+        
+        data[0] = static_cast<jint>((view_width - customWidth * scale) / 2);
+        data[1] = static_cast<jint>((view_height - customHeight * scale) / 2);
+        data[2] = data[0] + static_cast<jint>(customWidth * scale);
+        data[3] = data[1] + static_cast<jint>(customHeight * scale);
     } else {
-        const int TOP_W = 400, TOP_H = 240, BOT_W = 320, BOT_H = 240;
-
-        switch (layout) {
-            case Settings::LayoutOption::SingleScreen: {
-                float scale = std::min((float)view_width / BOT_W, (float)view_height / BOT_H) * 0.9f;
-                data[0] = (view_width - BOT_W * scale) / 2;
-                data[1] = (view_height - BOT_H * scale) / 2;
-                data[2] = data[0] + BOT_W * scale;
-                data[3] = data[1] + BOT_H * scale;
-                break;
-            }
-            case Settings::LayoutOption::LargeScreen: {
-                float large = std::min((float)view_width / TOP_W, (float)view_height / TOP_H) * 0.85f;
-                float small = large * 0.4f;
-                data[0] = view_width - BOT_W * small - 20;
-                data[1] = view_height - BOT_H * small - 20;
-                data[2] = data[0] + BOT_W * small;
-                data[3] = data[1] + BOT_H * small;
-                break;
-            }
-            case Settings::LayoutOption::SideScreen: {
-                float s = std::min((float)view_width / (TOP_W + BOT_W), (float)view_height / TOP_H) * 0.9f;
-                data[0] = (view_width - (TOP_W + BOT_W) * s) / 2 + TOP_W * s;
-                data[1] = (view_height - BOT_H * s) / 2;
-                data[2] = data[0] + BOT_W * s;
-                data[3] = data[1] + BOT_H * s;
-                break;
-            }
-            case Settings::LayoutOption::HybridScreen: {
-                float large = std::min((float)view_width / TOP_W, (float)view_height / TOP_H) * 0.85f;
-                float small = large * 0.35f;
-                data[0] = view_width - BOT_W * small - 20;
-                data[1] = view_height - BOT_H * small - 20;
-                data[2] = data[0] + BOT_W * small;
-                data[3] = data[1] + BOT_H * small;
-                break;
-            }
-            default: {
-                float scale = std::min((float)view_width / TOP_W, (float)view_height / (TOP_H + BOT_H)) * 0.85f;
-                int top_x = (view_width - TOP_W * scale) / 2;
-                int top_y = (view_height - (TOP_H + BOT_H) * scale) / 2;
-                data[0] = top_x + (TOP_W - BOT_W) * scale;
-                data[1] = top_y + TOP_H * scale;
-                data[2] = data[0] + BOT_W * scale;
-                data[3] = data[1] + BOT_H * scale;
-                break;
-            }
-        }
+        // Other layouts - use FrameLayoutFromResolutionScale
+        auto layout = Layout::FrameLayoutFromResolutionScale(1, false, false);
+        
+        jint layoutWidth = layout.width;
+        jint layoutHeight = layout.height;
+        
+        float scaleX = static_cast<float>(view_width) / layoutWidth;
+        float scaleY = static_cast<float>(view_height) / layoutHeight;
+        float scale = std::min(scaleX, scaleY) * 0.9f;
+        
+        float scaledWidth = layoutWidth * scale;
+        float scaledHeight = layoutHeight * scale;
+        float offsetX = (view_width - scaledWidth) / 2.0f;
+        float offsetY = (view_height - scaledHeight) / 2.0f;
+        
+        data[0] = static_cast<jint>(offsetX + layout.bottom_screen.left * scale);
+        data[1] = static_cast<jint>(offsetY + layout.bottom_screen.top * scale);
+        data[2] = static_cast<jint>(offsetX + layout.bottom_screen.right * scale);
+        data[3] = static_cast<jint>(offsetY + layout.bottom_screen.bottom * scale);
     }
 
     jintArray result = env->NewIntArray(4);
