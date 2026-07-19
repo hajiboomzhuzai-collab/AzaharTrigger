@@ -470,8 +470,7 @@ void Java_org_citra_citra_1emu_NativeLibrary_updateFramebuffer([[maybe_unused]] 
     }
 }
 
-
-jintArray Java_org_citra_citra_1emu_NativeLibrary_getBottomScreenRect(
+jintArray Java_org_citra_citra_1emu_NativeLibrary_getBottomScreenRectNative(
     JNIEnv* env,
     jobject obj,
     jint view_width,
