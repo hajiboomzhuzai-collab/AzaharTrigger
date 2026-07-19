@@ -225,17 +225,17 @@ object NativeLibrary {
 
     
     fun getBottomScreenRect(viewWidth: Int, viewHeight: Int): IntArray? {
-        return try {
-            getBottomScreenRectNative(viewWidth, viewHeight)
-        } catch (e: Exception) {
-            null
-        }
+    return try {
+        getBottomScreenRectNative(viewWidth, viewHeight)
+    } catch (e: Exception) {
+        null
     }
+}
 
-    private external fun getBottomScreenRectNative(
-        viewWidth: Int,
-        viewHeight: Int
-    ): IntArray?
+private external fun getBottomScreenRectNative(
+    viewWidth: Int,
+    viewHeight: Int
+): IntArray
 
     external fun getFramebufferSize(): IntArray?
 
