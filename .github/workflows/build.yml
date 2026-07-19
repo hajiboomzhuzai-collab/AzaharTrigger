@@ -2,7 +2,7 @@ name: citra-build
 
 on:
   push:
-    branches: [ "Rework-Touch-Binding" ]
+    branches: [ "hajiboomzhuzai-collab-patch-7" ]
     tags: [ "1.0.0" ]
   pull_request:
     branches: [ "*" ]
