@@ -12,6 +12,7 @@ import android.view.MotionEvent
 import android.view.View
 import kotlin.math.max
 import kotlin.math.min
+import org.citra.citra_emu.NativeLibrary
 import org.citra.citra_emu.features.settings.model.view.TouchBinding
 
 class TouchscreenBindingView @JvmOverloads constructor(
@@ -90,7 +91,7 @@ class TouchscreenBindingView @JvmOverloads constructor(
 
         // Try to get rect from JNI
         val rect = NativeLibrary.getBottomScreenRect(width, height)
-    
+
         if (rect != null && rect.size == 4) {
             bottomScreenRect.set(
                 rect[0].toFloat(),
