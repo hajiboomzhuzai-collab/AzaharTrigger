@@ -1,10 +1,12 @@
 package org.citra.citra_emu.features.settings.ui.viewholder
 
 import android.content.Context
+import android.content.SharedPreferences
 import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Paint
 import android.graphics.RectF
+import android.preference.PreferenceManager
 import android.util.AttributeSet
 import android.view.MotionEvent
 import android.view.View
@@ -101,8 +103,8 @@ class TouchscreenBindingView @JvmOverloads constructor(
             1 -> { // Single Screen
                 val scale = (viewWidth.toFloat() / BOT_W)
                     .coerceAtMost(viewHeight.toFloat() / BOT_H) * 0.9f
-                data[0] = (viewWidth - BOT_W * scale) / 2
-                data[1] = (viewHeight - BOT_H * scale) / 2
+                data[0] = ((viewWidth - BOT_W * scale) / 2).toInt()
+                data[1] = ((viewHeight - BOT_H * scale) / 2).toInt()
                 data[2] = (data[0] + BOT_W * scale).toInt()
                 data[3] = (data[1] + BOT_H * scale).toInt()
             }
@@ -137,9 +139,28 @@ class TouchscreenBindingView @JvmOverloads constructor(
         return data
     }
 
+    private fun getPreferences(): SharedPreferences {
+        return PreferenceManager.getDefaultSharedPreferences(context)
+    }
+
     private fun getLayoutOption(): Int {
-        return org.citra.citra_emu.features.settings.model.Settings.globalSettings
-            .getInt("layout_option", 0)
+        return getPreferences().getInt("layout_option", 0)
+    }
+
+    private fun getCustomBottomX(): Int {
+        return getPreferences().getInt("custom_bottom_x", 0)
+    }
+
+    private fun getCustomBottomY(): Int {
+        return getPreferences().getInt("custom_bottom_y", 0)
+    }
+
+    private fun getCustomBottomWidth(): Int {
+        return getPreferences().getInt("custom_bottom_width", 320)
+    }
+
+    private fun getCustomBottomHeight(): Int {
+        return getPreferences().getInt("custom_bottom_height", 240)
     }
 
     override fun onDraw(canvas: Canvas) {
