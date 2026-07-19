@@ -470,85 +470,145 @@ void Java_org_citra_citra_1emu_NativeLibrary_updateFramebuffer([[maybe_unused]] 
 }
 
 jintArray Java_org_citra_citra_1emu_NativeLibrary_getBottomScreenRect(
-        JNIEnv* env,
-        [[maybe_unused]] jobject obj) {
+    JNIEnv* env,
+    jobject obj,
+    jint view_width,
+    jint view_height) {
 
     jint data[4]{};
 
-    const auto layout =
-        Settings::values.layout_option.GetValue();
+    const auto layout = Settings::values.layout_option.GetValue();
 
     if (layout == Settings::LayoutOption::CustomLayout) {
-
-        const jint left =
-            static_cast<jint>(
-                Settings::values.custom_bottom_x.GetValue()
-            );
-
-        const jint top =
-            static_cast<jint>(
-                Settings::values.custom_bottom_y.GetValue()
-            );
-
-        const jint right =
-            left +
-            static_cast<jint>(
-                Settings::values.custom_bottom_width.GetValue()
-            );
-
-        const jint bottom =
-            top +
-            static_cast<jint>(
-                Settings::values.custom_bottom_height.GetValue()
-            );
-
-
-        data[0] = left;
-        data[1] = top;
-        data[2] = right;
-        data[3] = bottom;
-
-    } else {
-
-        if (!window) {
-            return nullptr;
+        // Custom layout - use custom values
+        if (NativeLibrary.isPortraitMode) {
+            data[0] = static_cast<jint>(Settings::values.custom_portrait_bottom_x.GetValue());
+            data[1] = static_cast<jint>(Settings::values.custom_portrait_bottom_y.GetValue());
+            data[2] = data[0] + static_cast<jint>(Settings::values.custom_portrait_bottom_width.GetValue());
+            data[3] = data[1] + static_cast<jint>(Settings::values.custom_portrait_bottom_height.GetValue());
+        } else {
+            data[0] = static_cast<jint>(Settings::values.custom_bottom_x.GetValue());
+            data[1] = static_cast<jint>(Settings::values.custom_bottom_y.GetValue());
+            data[2] = data[0] + static_cast<jint>(Settings::values.custom_bottom_width.GetValue());
+            data[3] = data[1] + static_cast<jint>(Settings::values.custom_bottom_height.GetValue());
         }
-
-
-        const auto& framebuffer =
-            window->GetCurrentFramebufferLayout();
-
-
-        const auto& rect =
-            framebuffer.bottom_screen;
-
-
-        data[0] =
-            static_cast<jint>(rect.left);
-
-        data[1] =
-            static_cast<jint>(rect.top);
-
-        data[2] =
-            static_cast<jint>(rect.right);
-
-        data[3] =
-            static_cast<jint>(rect.bottom);
+    } else if (window) {
+        // In-game: use actual framebuffer layout
+        const auto& framebuffer = window->GetCurrentFramebufferLayout();
+        const auto& rect = framebuffer.bottom_screen;
+        data[0] = static_cast<jint>(rect.left);
+        data[1] = static_cast<jint>(rect.top);
+        data[2] = static_cast<jint>(rect.right);
+        data[3] = static_cast<jint>(rect.bottom);
+    } else {
+        // Not in-game: calculate based on layout mode
+        // This is the key part!
+        
+        // 3DS screen dimensions
+        const int TOP_SCREEN_WIDTH = 400;
+        const int TOP_SCREEN_HEIGHT = 240;
+        const int BOTTOM_SCREEN_WIDTH = 320;
+        const int BOTTOM_SCREEN_HEIGHT = 240;
+        
+        float scale = 1.0f;
+        int offset_x = 0;
+        int offset_y = 0;
+        
+        switch (layout) {
+            case Settings::LayoutOption::SingleScreen:
+                // Only bottom screen, centered
+                scale = std::min(
+                    (float)view_width / BOTTOM_SCREEN_WIDTH,
+                    (float)view_height / BOTTOM_SCREEN_HEIGHT
+                ) * 0.9f; // 90% of max size
+                data[0] = (view_width - BOTTOM_SCREEN_WIDTH * scale) / 2;
+                data[1] = (view_height - BOTTOM_SCREEN_HEIGHT * scale) / 2;
+                data[2] = data[0] + BOTTOM_SCREEN_WIDTH * scale;
+                data[3] = data[1] + BOTTOM_SCREEN_HEIGHT * scale;
+                break;
+                
+            case Settings::LayoutOption::Original:
+                // Original 3DS layout: top screen centered, bottom screen at bottom-right
+                {
+                    float screen_scale = std::min(
+                        (float)view_width / TOP_SCREEN_WIDTH,
+                        (float)view_height / (TOP_SCREEN_HEIGHT + BOTTOM_SCREEN_HEIGHT)
+                    ) * 0.8f;
+                    
+                    // Top screen position
+                    int top_x = (view_width - TOP_SCREEN_WIDTH * screen_scale) / 2;
+                    int top_y = (view_height - (TOP_SCREEN_HEIGHT + BOTTOM_SCREEN_HEIGHT) * screen_scale) / 2;
+                    
+                    // Bottom screen position (below top screen, aligned right)
+                    int bottom_x = top_x + (TOP_SCREEN_WIDTH - BOTTOM_SCREEN_WIDTH) * screen_scale;
+                    int bottom_y = top_y + TOP_SCREEN_HEIGHT * screen_scale;
+                    
+                    data[0] = bottom_x;
+                    data[1] = bottom_y;
+                    data[2] = bottom_x + BOTTOM_SCREEN_WIDTH * screen_scale;
+                    data[3] = bottom_y + BOTTOM_SCREEN_HEIGHT * screen_scale;
+                }
+                break;
+                
+            case Settings::LayoutOption::LargeScreen:
+                // Large screen layout: one screen large, one small
+                {
+                    float large_scale = std::min(
+                        (float)view_width / TOP_SCREEN_WIDTH,
+                        (float)view_height / TOP_SCREEN_HEIGHT
+                    ) * 0.85f;
+                    
+                    // Bottom screen is small, at bottom-right
+                    float small_scale = large_scale * 0.4f;
+                    data[0] = view_width - BOTTOM_SCREEN_WIDTH * small_scale - 20;
+                    data[1] = view_height - BOTTOM_SCREEN_HEIGHT * small_scale - 20;
+                    data[2] = data[0] + BOTTOM_SCREEN_WIDTH * small_scale;
+                    data[3] = data[1] + BOTTOM_SCREEN_HEIGHT * small_scale;
+                }
+                break;
+                
+            case Settings::LayoutOption::SideScreen:
+                // Side by side layout
+                {
+                    float side_scale = std::min(
+                        (float)view_width / (TOP_SCREEN_WIDTH + BOTTOM_SCREEN_WIDTH),
+                        (float)view_height / TOP_SCREEN_HEIGHT
+                    ) * 0.9f;
+                    
+                    // Bottom screen on the right
+                    data[0] = (view_width - (TOP_SCREEN_WIDTH + BOTTOM_SCREEN_WIDTH) * side_scale) / 2 + TOP_SCREEN_WIDTH * side_scale;
+                    data[1] = (view_height - BOTTOM_SCREEN_HEIGHT * side_scale) / 2;
+                    data[2] = data[0] + BOTTOM_SCREEN_WIDTH * side_scale;
+                    data[3] = data[1] + BOTTOM_SCREEN_HEIGHT * side_scale;
+                }
+                break;
+                
+            default:
+                // Default: centered 4:3
+                {
+                    float screen_aspect = (float)BOTTOM_SCREEN_WIDTH / BOTTOM_SCREEN_HEIGHT;
+                    float view_aspect = (float)view_width / view_height;
+                    
+                    float rect_width, rect_height;
+                    if (view_aspect > screen_aspect) {
+                        rect_height = view_height * 0.8f;
+                        rect_width = rect_height * screen_aspect;
+                    } else {
+                        rect_width = view_width * 0.8f;
+                        rect_height = rect_width / screen_aspect;
+                    }
+                    
+                    data[0] = (view_width - rect_width) / 2;
+                    data[1] = (view_height - rect_height) / 2;
+                    data[2] = data[0] + rect_width;
+                    data[3] = data[1] + rect_height;
+                }
+                break;
+        }
     }
 
-
-    jintArray result =
-        env->NewIntArray(4);
-
-
-    env->SetIntArrayRegion(
-        result,
-        0,
-        4,
-        data
-    );
-
-
+    jintArray result = env->NewIntArray(4);
+    env->SetIntArrayRegion(result, 0, 4, data);
     return result;
 }
 
