@@ -74,20 +74,26 @@ object TouchBindingManager {
      * Actual scaling happens in NativeLibrary.
      */
     fun sendTouch(binding: TouchBinding, pressed: Boolean) {
-        val rect = NativeLibrary.getBottomScreenRect(
-            Resources.getSystem().displayMetrics.widthPixels,
-            Resources.getSystem().displayMetrics.heightPixels
-        ) ?: return
+        val screenWidth: Int = Resources.getSystem().displayMetrics.widthPixels
+        val screenHeight: Int = Resources.getSystem().displayMetrics.heightPixels
+        val rect: IntArray? = NativeLibrary.getBottomScreenRect(screenWidth, screenHeight)
+        
+        if (rect == null || rect.size < 4) {
+            Log.w(TAG, "sendTouch: rect is null or too small")
+            return
+        }
 
-        val rectLeft = rect[0].toFloat()
-        val rectTop = rect[1].toFloat()
-        val rectRight = rect[2].toFloat()
-        val rectBottom = rect[3].toFloat()
+        val rectLeft: Float = rect[0].toFloat()
+        val rectTop: Float = rect[1].toFloat()
+        val rectRight: Float = rect[2].toFloat()
+        val rectBottom: Float = rect[3].toFloat()
+        val bindingX: Float = binding.x
+        val bindingY: Float = binding.y
 
-        val x = rectLeft + binding.x * (rectRight - rectLeft)
-        val y = rectTop + binding.y * (rectBottom - rectTop)
+        val x: Float = rectLeft + bindingX * (rectRight - rectLeft)
+        val y: Float = rectTop + bindingY * (rectBottom - rectTop)
 
-        Log.d(TAG, "sendTouch: binding.x=${binding.x} binding.y=${binding.y}")
+        Log.d(TAG, "sendTouch: binding.x=$bindingX binding.y=$bindingY")
         Log.d(TAG, "sendTouch: rect L=$rectLeft R=$rectRight T=$rectTop B=$rectBottom")
         Log.d(TAG, "sendTouch: calculated x=$x y=$y")
 
