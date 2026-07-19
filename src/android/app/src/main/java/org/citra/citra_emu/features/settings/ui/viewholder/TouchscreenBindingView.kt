@@ -88,38 +88,42 @@ class TouchscreenBindingView @JvmOverloads constructor(
         val viewWidth = width.toFloat()
         val viewHeight = height.toFloat()
 
-        // 3DS bottom screen is 320x240 (4:3 aspect ratio)
-        val screenAspectRatio = 320f / 240f
-        val viewAspectRatio = viewWidth / viewHeight
-
-        val rectWidth: Float
-        val rectHeight: Float
-        val rectLeft: Float
-        val rectTop: Float
-
-        if (viewAspectRatio > screenAspectRatio) {
-            // View is wider than 4:3, fit height
-            rectHeight = viewHeight
-            rectWidth = rectHeight * screenAspectRatio
-            rectLeft = (viewWidth - rectWidth) / 2f
-            rectTop = 0f
+        // Try to get rect from JNI
+        val rect = NativeLibrary.getBottomScreenRect(width, height)
+    
+        if (rect != null && rect.size == 4) {
+            bottomScreenRect.set(
+                rect[0].toFloat(),
+                rect[1].toFloat(),
+                rect[2].toFloat(),
+                rect[3].toFloat()
+            )
+            Log.d(TAG, "Using JNI rect: $bottomScreenRect")
         } else {
-            // View is taller than 4:3, fit width
-            rectWidth = viewWidth
-            rectHeight = rectWidth / screenAspectRatio
-            rectLeft = 0f
-            rectTop = (viewHeight - rectHeight) / 2f
+            // Fallback to 4:3
+            val screenAspectRatio = 320f / 240f
+            val viewAspectRatio = viewWidth / viewHeight
+
+            val rectWidth: Float
+            val rectHeight: Float
+            val rectLeft: Float
+            val rectTop: Float
+
+            if (viewAspectRatio > screenAspectRatio) {
+                rectHeight = viewHeight
+                rectWidth = rectHeight * screenAspectRatio
+                rectLeft = (viewWidth - rectWidth) / 2f
+                rectTop = 0f
+            } else {
+                rectWidth = viewWidth
+                rectHeight = rectWidth / screenAspectRatio
+                rectLeft = 0f
+                rectTop = (viewHeight - rectHeight) / 2f
+            }
+
+            bottomScreenRect.set(rectLeft, rectTop, rectLeft + rectWidth, rectTop + rectHeight)
+            Log.d(TAG, "Using fallback 4:3 rect: $bottomScreenRect")
         }
-
-        bottomScreenRect.set(
-            rectLeft,
-            rectTop,
-            rectLeft + rectWidth,
-            rectTop + rectHeight
-        )
-
-        Log.d(TAG, "updateBottomScreenRect: viewWidth=$viewWidth viewHeight=$viewHeight")
-        Log.d(TAG, "updateBottomScreenRect: rect=$bottomScreenRect")
     }
 
     override fun onDraw(canvas: Canvas) {
