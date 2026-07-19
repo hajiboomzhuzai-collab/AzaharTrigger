@@ -8,7 +8,6 @@ import android.graphics.RectF
 import android.util.AttributeSet
 import android.view.MotionEvent
 import android.view.View
-import org.citra.citra_emu.NativeLibrary
 import org.citra.citra_emu.features.settings.model.view.TouchBinding
 
 class TouchscreenBindingView @JvmOverloads constructor(
@@ -51,21 +50,39 @@ class TouchscreenBindingView @JvmOverloads constructor(
     }
 
     private fun updateBottomScreenRect() {
-        val viewWidth = width.toFloat()
-        val viewHeight = height.toFloat()
+        val viewWidth = width
+        val viewHeight = height
 
         if (viewWidth <= 0 || viewHeight <= 0) return
 
-        val rect = NativeLibrary.getBottomScreenRect(width, height)
-        
-        if (rect != null && rect.size >= 4) {
-            bottomScreenRect.set(
-                rect[0].toFloat(),
-                rect[1].toFloat(),
-                rect[2].toFloat(),
-                rect[3].toFloat()
-            )
+        // Pure Kotlin calculation for preview (works without emulator running)
+        val bottomScreenAspect = 320f / 240f
+        val viewAspect = viewWidth.toFloat() / viewHeight.toFloat()
+
+        val rectWidth: Int
+        val rectHeight: Int
+
+        if (viewAspect > bottomScreenAspect) {
+            rectHeight = (viewHeight * 0.85f).toInt()
+            rectWidth = (rectHeight * bottomScreenAspect).toInt()
+        } else {
+            rectWidth = (viewWidth * 0.85f).toInt()
+            rectHeight = (rectWidth / bottomScreenAspect).toInt()
         }
+
+        val rectLeft = (viewWidth - rectWidth) / 2
+        val rectTop = (viewHeight - rectHeight) / 2
+        val rectRight = rectLeft + rectWidth
+        val rectBottom = rectTop + rectHeight
+
+        bottomScreenRect.set(
+            rectLeft.toFloat(),
+            rectTop.toFloat(),
+            rectRight.toFloat(),
+            rectBottom.toFloat()
+        )
+        
+        invalidate()
     }
 
     override fun onDraw(canvas: Canvas) {
