@@ -221,22 +221,6 @@ object NativeLibrary {
      */
     external fun updateFramebuffer(isPortrait: Boolean)
 
-    external fun getSavedBottomScreenRect(): IntArray?
-
-    
-    fun getBottomScreenRect(viewWidth: Int, viewHeight: Int): IntArray? {
-    return try {
-        getBottomScreenRectNative(viewWidth, viewHeight)
-    } catch (e: Exception) {
-        null
-    }
-}
-
-private external fun getBottomScreenRectNative(
-    viewWidth: Int,
-    viewHeight: Int
-): IntArray
-
     external fun getFramebufferSize(): IntArray?
 
     external fun setCustomLayout(
