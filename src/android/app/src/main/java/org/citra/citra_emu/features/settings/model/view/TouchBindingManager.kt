@@ -1,6 +1,7 @@
 package org.citra.citra_emu.features.settings.model.view
 
 import android.content.SharedPreferences
+import android.content.res.Resources
 import android.util.Log
 import android.view.KeyEvent
 import android.view.MotionEvent
@@ -73,20 +74,20 @@ object TouchBindingManager {
      * Actual scaling happens in NativeLibrary.
      */
     fun sendTouch(binding: TouchBinding, pressed: Boolean) {
-    val rect = NativeLibrary.getBottomScreenRect(
-        Resources.getSystem().displayMetrics.widthPixels,
-        Resources.getSystem().displayMetrics.heightPixels
-    ) ?: return
+        val rect = NativeLibrary.getBottomScreenRect(
+            Resources.getSystem().displayMetrics.widthPixels,
+            Resources.getSystem().displayMetrics.heightPixels
+        ) ?: return
 
-    val x = rect[0] + binding.x * (rect[2] - rect[0])
-    val y = rect[1] + binding.y * (rect[3] - rect[1])
+        val x = rect[0] + binding.x * (rect[2] - rect[0])
+        val y = rect[1] + binding.y * (rect[3] - rect[1])
 
-    Log.d("TouchBinding", "sendTouch: binding.x=${binding.x} binding.y=${binding.y}")
-    Log.d("TouchBinding", "sendTouch: rect L=${rect[0]} R=${rect[2]} T=${rect[1]} B=${rect[3]}")
-    Log.d("TouchBinding", "sendTouch: calculated x=$x y=$y")
+        Log.d(TAG, "sendTouch: binding.x=${binding.x} binding.y=${binding.y}")
+        Log.d(TAG, "sendTouch: rect L=${rect[0]} R=${rect[2]} T=${rect[1]} B=${rect[3]}")
+        Log.d(TAG, "sendTouch: calculated x=$x y=$y")
 
-    NativeLibrary.onTouchEvent(x.toInt(), y.toInt(), pressed)
-}
+        NativeLibrary.onTouchEvent(x.toInt(), y.toInt(), pressed)
+    }
 
     fun onKeyEvent(event: KeyEvent): Boolean {
         if (event.action != KeyEvent.ACTION_DOWN) return false
