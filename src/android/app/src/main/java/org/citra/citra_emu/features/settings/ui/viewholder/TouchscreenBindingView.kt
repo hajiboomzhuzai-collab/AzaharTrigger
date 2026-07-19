@@ -8,8 +8,8 @@ import android.graphics.RectF
 import android.util.AttributeSet
 import android.view.MotionEvent
 import android.view.View
+import org.citra.citra_emu.NativeLibrary
 import org.citra.citra_emu.features.settings.model.view.TouchBinding
-import org.citra.citra_emu.features.settings.model.view.TouchBindingManager
 
 class TouchscreenBindingView @JvmOverloads constructor(
     context: Context,
@@ -56,7 +56,7 @@ class TouchscreenBindingView @JvmOverloads constructor(
 
         if (viewWidth <= 0 || viewHeight <= 0) return
 
-        val rect = TouchBindingManager.getBottomScreenRect(width, height)
+        val rect = NativeLibrary.getBottomScreenRect(width, height)
         
         if (rect != null && rect.size >= 4) {
             bottomScreenRect.set(
