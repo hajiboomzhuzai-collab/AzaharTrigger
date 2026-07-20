@@ -1,48 +1,65 @@
 <?xml version="1.0" encoding="utf-8"?>
+
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical"
-    android:background="#1E1E1E">
+    android:background="?attr/colorSurface"
+    android:paddingTop="12dp">
 
-    <!-- Touchscreen Preview - Fixed height -->
-    <org.citra.citra_emu.features.settings.ui.viewholder.TouchscreenBindingView
-        android:id="@+id/touchscreenView"
+    <com.google.android.material.card.MaterialCardView
         android:layout_width="match_parent"
-        android:layout_height="200dp"
-        android:layout_margin="16dp" />
+        android:layout_height="wrap_content"
+        android:layout_marginHorizontal="16dp"
+        android:layout_marginBottom="20dp"
+        app:cardCornerRadius="20dp"
+        app:cardElevation="2dp"
+        app:strokeWidth="0dp">
 
-    <!-- Header with title and delete all button -->
+        <org.citra.citra_emu.features.settings.ui.viewholder.TouchscreenBindingView
+            android:id="@+id/touchscreenView"
+            android:layout_width="match_parent"
+            android:layout_height="200dp"
+            android:layout_margin="16dp" />
+
+    </com.google.android.material.card.MaterialCardView>
+
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="horizontal"
         android:gravity="center_vertical"
-        android:paddingHorizontal="16dp"
-        android:paddingVertical="8dp">
+        android:paddingHorizontal="20dp"
+        android:paddingBottom="12dp">
 
         <TextView
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:text="Bindings"
-            android:textSize="18sp"
-            android:textColor="@android:color/white"
+            android:text="@string/touch_bindings"
+            android:textAppearance="?attr/textAppearanceHeadlineSmall"
             android:textStyle="bold" />
 
-        <Button
+        <com.google.android.material.button.MaterialButton
             android:id="@+id/buttonDelete"
+            style="@style/Widget.Material3.Button.OutlinedButton"
+
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Delete All"
-            android:textSize="12sp"
-            style="@style/Widget.MaterialComponents.Button.OutlinedButton"
-            android:textColor="#FF4444"
-            app:strokeColor="#FF4444" />
+
+            android:text="@string/delete_all"
+
+            android:minHeight="40dp"
+            android:insetTop="0dp"
+            android:insetBottom="0dp"
+
+            app:icon="@drawable/ic_delete"
+            app:iconGravity="textStart"
+            app:strokeColor="?attr/colorError"
+            android:textColor="?attr/colorError"/>
     </LinearLayout>
 
-    <!-- Scrollable Binding List -->
     <ScrollView
         android:layout_width="match_parent"
         android:layout_height="0dp"
@@ -55,7 +72,8 @@
             android:layout_height="wrap_content"
             android:orientation="vertical"
             android:paddingHorizontal="16dp"
-            android:paddingBottom="16dp" />
+            android:paddingBottom="24dp" />
+
     </ScrollView>
 
 </LinearLayout>
