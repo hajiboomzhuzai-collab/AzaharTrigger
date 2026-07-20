@@ -1,7 +1,6 @@
 package org.citra.citra_emu.features.settings.model.view
 
 import android.content.SharedPreferences
-import android.content.res.Resources
 import android.util.Log
 import android.view.KeyEvent
 import android.view.MotionEvent
@@ -63,6 +62,11 @@ object TouchBindingManager {
             .apply()
     }
 
+    fun setBindings(newBindings: List<TouchBinding>) {
+        bindings.clear()
+        bindings.addAll(newBindings)
+    }
+
     /**
      * Sends touchscreen press.
      *
@@ -79,7 +83,7 @@ object TouchBindingManager {
         if (layout.size < 6) {
             Log.w(TAG, "sendTouch: layout is too small")
             return
-         }
+        }
 
         val rectLeft: Float = layout[2].toFloat()
         val rectTop: Float = layout[3].toFloat()
