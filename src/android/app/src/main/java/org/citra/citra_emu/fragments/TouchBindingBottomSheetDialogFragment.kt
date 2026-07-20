@@ -42,7 +42,6 @@ class TouchBindingBottomSheetDialogFragment : BottomSheetDialogFragment() {
     private var touchX = 0f
     private var touchY = 0f
     
-    // Track if a binding was added
     private var bindingAdded = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -77,7 +76,9 @@ class TouchBindingBottomSheetDialogFragment : BottomSheetDialogFragment() {
         binding.textTitle.text = getString(R.string.bind_touch_point)
         binding.textMessage.text = getString(R.string.bind_touch_message)
         binding.buttonCancel.text = getString(R.string.bind_touch_cancel)
-        binding.buttonClear.text = getString(R.string.bind_touch_clear)
+
+        // Remove Clear button from parent
+        (binding.buttonClear.parent as? ViewGroup)?.removeView(binding.buttonClear)
 
         dialog?.setOnKeyListener { _, _, event ->
             handleKeyEvent(event)
@@ -85,19 +86,6 @@ class TouchBindingBottomSheetDialogFragment : BottomSheetDialogFragment() {
 
         dialog?.window?.decorView?.setOnGenericMotionListener { _, event ->
             handleAxisEvent(event)
-        }
-
-        binding.buttonClear.setOnClickListener {
-            val existing = TouchBindingManager.getBindings().firstOrNull {
-                abs(it.x - touchX) < 0.01f && abs(it.y - touchY) < 0.01f
-            }
-
-            existing?.let {
-                TouchBindingManager.removeBinding(it)
-                parentFragmentManager.setFragmentResult("touch_binding_removed", Bundle())
-            }
-
-            dismiss()
         }
 
         binding.buttonCancel.setOnClickListener {
@@ -179,7 +167,6 @@ class TouchBindingBottomSheetDialogFragment : BottomSheetDialogFragment() {
     override fun onDismiss(dialog: DialogInterface) {
         super.onDismiss(dialog)
         
-        // Notify fragment if no binding was added (cancelled)
         if (!bindingAdded) {
             parentFragmentManager.setFragmentResult("touch_binding_cancelled", Bundle())
         }
