@@ -14,9 +14,9 @@ import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
 import com.google.android.material.R
 import org.citra.citra_emu.databinding.FragmentTouchscreenBindingBinding
-import org.citra.citra_emu.features.settings.model.view.ProfileManager
 import org.citra.citra_emu.features.settings.model.view.TouchBinding
 import org.citra.citra_emu.features.settings.model.view.TouchBindingManager
+import org.citra.citra_emu.features.settings.model.view.TouchBindingProfileManager
 
 class TouchscreenBindingFragment : Fragment() {
 
@@ -26,7 +26,7 @@ class TouchscreenBindingFragment : Fragment() {
 
     private var _binding: FragmentTouchscreenBindingBinding? = null
     private val binding get() = _binding!!
-    private lateinit var profileManager: ProfileManager
+    private lateinit var profileManager: TouchBindingProfileManager
     private var currentProfile = "Default"
 
     private var isAddingBinding = false
@@ -35,7 +35,7 @@ class TouchscreenBindingFragment : Fragment() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        profileManager = ProfileManager(requireContext())
+        profileManager = TouchBindingProfileManager(requireContext())
         currentProfile = profileManager.getCurrentProfile()
 
         parentFragmentManager.setFragmentResultListener("touch_binding_added", this) { _, _ ->
@@ -279,8 +279,8 @@ class TouchscreenBindingFragment : Fragment() {
 
         row.addView(infoContainer)
 
-        val deleteButton = ImageView(requireContext()).apply {
-            setImageResource(org.citra.citra_emu.R.drawable.ic_delete)
+        val overflowButton = ImageView(requireContext()).apply {
+            setImageResource(org.citra.citra_emu.R.drawable.ic_more_vert)
             layoutParams = LinearLayout.LayoutParams(
                 (40 * density).toInt(),
                 (40 * density).toInt()
@@ -291,23 +291,72 @@ class TouchscreenBindingFragment : Fragment() {
                 (8 * density).toInt(),
                 (8 * density).toInt()
             )
-            background = ContextCompat.getDrawable(
-                requireContext(),
-                org.citra.citra_emu.R.drawable.bg_delete_button
-            )
+            setBackgroundResource(org.citra.citra_emu.R.drawable.bg_overflow_button)
             imageTintList = android.content.res.ColorStateList.valueOf(
-                getThemeColor(com.google.android.material.R.attr.colorError)
+                getThemeColor(com.google.android.material.R.attr.colorOnSurfaceVariant)
             )
             setOnClickListener {
-                TouchBindingManager.removeBinding(data)
-                saveCurrentBindings()
-                refreshBindings()
+                showBindingOptionsMenu(data, this)
             }
         }
 
-        row.addView(deleteButton)
+        row.addView(overflowButton)
 
         return card
+    }
+
+    private fun showBindingOptionsMenu(data: TouchBinding, anchorView: View) {
+        val popupMenu = PopupMenu(requireContext(), anchorView)
+        popupMenu.menuInflater.inflate(org.citra.citra_emu.R.menu.menu_binding_options, popupMenu.menu)
+        
+        popupMenu.setOnMenuItemClickListener { menuItem ->
+            when (menuItem.itemId) {
+                org.citra.citra_emu.R.id.action_edit -> {
+                    showEditBindingDialog(data)
+                    true
+                }
+                org.citra.citra_emu.R.id.action_delete -> {
+                    TouchBindingManager.removeBinding(data)
+                    saveCurrentBindings()
+                    refreshBindings()
+                    true
+                }
+                else -> false
+            }
+        }
+        
+        popupMenu.show()
+    }
+
+    private fun showEditBindingDialog(data: TouchBinding) {
+        val dialogView = LayoutInflater.from(requireContext())
+            .inflate(org.citra.citra_emu.R.layout.dialog_edit_binding, null)
+        
+        val xInput = dialogView.findViewById<EditText>(org.citra.citra_emu.R.id.editX)
+        val yInput = dialogView.findViewById<EditText>(org.citra.citra_emu.R.id.editY)
+        
+        xInput.setText(formatCoordinate(data.x))
+        yInput.setText(formatCoordinate(data.y))
+        
+        AlertDialog.Builder(requireContext())
+            .setTitle("Edit Binding")
+            .setView(dialogView)
+            .setPositiveButton("Save") { _, _ ->
+                val newX = xInput.text.toString().toFloatOrNull() ?: data.x
+                val newY = yInput.text.toString().toFloatOrNull() ?: data.y
+                
+                val updatedBinding = data.copy(
+                    x = newX.coerceIn(0f, 1f),
+                    y = newY.coerceIn(0f, 1f)
+                )
+                
+                TouchBindingManager.removeBinding(data)
+                TouchBindingManager.addBinding(updatedBinding)
+                saveCurrentBindings()
+                refreshBindings()
+            }
+            .setNegativeButton("Cancel", null)
+            .show()
     }
 
     private fun showCreateProfileDialog() {
