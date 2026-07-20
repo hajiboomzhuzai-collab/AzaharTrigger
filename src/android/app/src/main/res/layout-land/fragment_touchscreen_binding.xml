@@ -187,4 +187,4 @@
             android:paddingHorizontal="16dp"/>
 
     </LinearLayout>
-</android.core.widget.NestedScrollView>
+</androidx.core.widget.NestedScrollView>
