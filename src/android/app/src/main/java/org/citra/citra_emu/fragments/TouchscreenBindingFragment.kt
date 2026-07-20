@@ -482,4 +482,3 @@ class TouchscreenBindingFragment : Fragment() {
         _binding = null
     }
 }
-```
