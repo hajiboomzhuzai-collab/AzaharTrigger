@@ -1120,6 +1120,8 @@
     <string name="touch_coordinates">Touch (%1$s, %2$s)</string>
     <string name="touch_bindings">Touchscreen Bindings</string>
     <string name="delete_all">Delete All</string>
+    <string name="delete_all_confirm">Are you sure you want to delete all bindings?</string>
+    <string name="delete_binding_confirm">Delete this binding?</string>
     <string name="profile">Profile</string>
     <string name="new_text">New</string>
     <string name="create_new_profile">Create New Profile</string>
