@@ -1118,6 +1118,21 @@
     <string name="touch_coordinates">Touch (%1$s, %2$s)</string>
     <string name="touch_bindings">Touchscreen Bindings</string>
     <string name="delete_all">Delete All</string>
+    <string name="profile">Profile</string>
+    <string name="new_text">New</string>
+    <string name="create_new_profile">Create New Profile</string>
+    <string name="profile_name">Profile Name</string>
+    <string name="bindings">Bindings</string>
+    <string name="delete_all">Delete All</string>
+    <string name="touch_coordinates">Touch (%1$s, %2$s)</string>
+    <string name="edit_touch_bindings">Edit your on-screen touch bindings</string>
+    <string name="edit_touch_bindings_subtitle">Tap the ⋮ icon on a binding in the list to edit its coordinates manually or delete it.</string>
+    <string name="no_touch_bindings">No touch bindings yet</string>
+    <string name="no_touch_bindings_subtitle">Tap anywhere inside the preview above\nto create your first binding.</string>
+    <string name="edit">Edit</string>
+    <string name="delete">Delete</string>
+    <string name="x_coordinate">X Coordinate</string>
+    <string name="y_coordinate">Y Coordinate</string>
     
     <!-- melonDS LAN -->
     <string name="multiplayer_citra_tab">Citra NetPlay</string>
