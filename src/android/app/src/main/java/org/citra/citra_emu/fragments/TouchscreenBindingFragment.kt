@@ -99,10 +99,6 @@ class TouchscreenBindingFragment : Fragment() {
     }
 
     private fun setupButtons() {
-        binding.addProfileButton.setOnClickListener {
-            showCreateProfileDialog()
-        }
-
         binding.editProfileButton.setOnClickListener {
             showEditProfileDialog()
         }
@@ -111,28 +107,25 @@ class TouchscreenBindingFragment : Fragment() {
             showDeleteProfileDialog()
         }
 
+        binding.addProfileButton.setOnClickListener {
+            showCreateProfileDialog()
+        }
+
         binding.deleteAllButton.setOnClickListener {
             showDeleteAllBindingsDialog()
         }
     }
 
     private fun setupTouchscreenView() {
-        binding.touchscreenView.setOnTouchListener { _, event ->
-            if (event.action == android.view.MotionEvent.ACTION_DOWN) {
-                val x = event.x / binding.touchscreenView.width
-                val y = event.y / binding.touchscreenView.height
-
-                showBindingDialog(x, y)
-                true
-            } else {
-                false
-            }
+        binding.touchscreenView.onTouchPointSelected = { x, y ->
+            showBindingDialog(x, y)
         }
     }
 
     private fun loadProfileBindings() {
         val bindings = profileManager.loadProfile(currentProfile)
         TouchBindingManager.setBindings(bindings)
+        binding.touchscreenView.setBindings(bindings)
         refreshBindingList()
     }
 
@@ -143,6 +136,8 @@ class TouchscreenBindingFragment : Fragment() {
     private fun refreshBindingList() {
         val bindings = TouchBindingManager.getBindings()
         binding.bindingList.removeAllViews()
+        
+        binding.touchscreenView.setBindings(bindings)
 
         if (bindings.isEmpty()) {
             val emptyContainer = LinearLayout(requireContext()).apply {
@@ -364,7 +359,7 @@ class TouchscreenBindingFragment : Fragment() {
     private fun showDeleteAllBindingsDialog() {
         AlertDialog.Builder(requireContext())
             .setTitle(getString(R.string.delete_all))
-            .setMessage("Are you sure you want to delete all bindings?")
+            .setMessage(getString(R.string.delete_all_confirm))
             .setPositiveButton(android.R.string.ok) { _, _ ->
                 TouchBindingManager.clearBindings()
                 saveCurrentBindings()
@@ -430,7 +425,7 @@ class TouchscreenBindingFragment : Fragment() {
         dialogView.addView(yInput)
 
         AlertDialog.Builder(requireContext())
-            .setTitle("Edit Coordinates")
+            .setTitle(getString(R.string.edit))
             .setView(dialogView)
             .setPositiveButton(android.R.string.ok) { _, _ ->
                 val x = xInput.text.toString().toFloatOrNull()
@@ -453,7 +448,7 @@ class TouchscreenBindingFragment : Fragment() {
     private fun showDeleteBindingDialog(data: TouchBinding) {
         AlertDialog.Builder(requireContext())
             .setTitle(getString(R.string.delete))
-            .setMessage("Delete this binding?")
+            .setMessage(getString(R.string.delete_binding_confirm))
             .setPositiveButton(android.R.string.ok) { _, _ ->
                 TouchBindingManager.removeBinding(data)
                 saveCurrentBindings()
