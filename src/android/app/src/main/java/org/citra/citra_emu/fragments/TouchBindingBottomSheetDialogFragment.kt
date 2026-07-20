@@ -38,14 +38,11 @@ class TouchBindingBottomSheetDialogFragment : BottomSheetDialogFragment() {
     private val binding: DialogInputBinding
         get() = _binding!!
 
-    /*
-     * Normalized touchscreen position.
-     *
-     * 0.0 = left/top
-     * 1.0 = right/bottom
-     */
     private var touchX = 0f
     private var touchY = 0f
+    
+    // Track if a binding was added
+    private var bindingAdded = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -74,10 +71,12 @@ class TouchBindingBottomSheetDialogFragment : BottomSheetDialogFragment() {
             BottomSheetBehavior.from(it).state = BottomSheetBehavior.STATE_EXPANDED
         }
 
-        isCancelable = false
+        isCancelable = true
 
-        binding.textTitle.text = "Bind Touch Point"
-        binding.textMessage.text = "Press controller button or move joystick axis"
+        binding.textTitle.text = getString(R.string.bind_touch_point)
+        binding.textMessage.text = getString(R.string.bind_touch_message)
+        binding.buttonCancel.text = getString(R.string.bind_touch_cancel)
+        binding.buttonClear.text = getString(R.string.bind_touch_clear)
 
         dialog?.setOnKeyListener { _, _, event ->
             handleKeyEvent(event)
@@ -126,6 +125,7 @@ class TouchBindingBottomSheetDialogFragment : BottomSheetDialogFragment() {
             )
         )
 
+        bindingAdded = true
         notifyAdded()
         dismiss()
 
@@ -161,6 +161,7 @@ class TouchBindingBottomSheetDialogFragment : BottomSheetDialogFragment() {
                 )
             )
 
+            bindingAdded = true
             notifyAdded()
             dismiss()
 
@@ -176,6 +177,11 @@ class TouchBindingBottomSheetDialogFragment : BottomSheetDialogFragment() {
 
     override fun onDismiss(dialog: DialogInterface) {
         super.onDismiss(dialog)
+        
+        // Notify fragment if no binding was added (cancelled)
+        if (!bindingAdded) {
+            parentFragmentManager.setFragmentResult("touch_binding_cancelled", Bundle())
+        }
     }
 
     override fun onDestroyView() {
