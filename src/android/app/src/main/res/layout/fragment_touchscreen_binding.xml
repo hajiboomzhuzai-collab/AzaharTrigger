@@ -5,8 +5,7 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical"
-    android:background="?attr/colorSurface"
-    android:paddingTop="12dp">
+    android:background="?attr/colorSurface">
 
     <!-- Profile Selector -->
     <LinearLayout
@@ -15,6 +14,7 @@
         android:orientation="horizontal"
         android:gravity="center_vertical"
         android:paddingHorizontal="20dp"
+        android:paddingTop="16dp"
         android:paddingBottom="12dp">
 
         <TextView
@@ -44,23 +44,20 @@
             android:layout_marginStart="8dp"/>
     </LinearLayout>
 
-    <com.google.android.material.card.MaterialCardView
+    <!-- Touchscreen Preview -->
+    <FrameLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginHorizontal="16dp"
-        android:layout_marginBottom="20dp"
-        app:cardCornerRadius="20dp"
-        app:cardElevation="2dp"
-        app:strokeWidth="0dp">
+        android:layout_marginBottom="20dp">
 
         <org.citra.citra_emu.features.settings.ui.viewholder.TouchscreenBindingView
             android:id="@+id/touchscreenView"
             android:layout_width="match_parent"
-            android:layout_height="200dp"
-            android:layout_margin="16dp" />
+            android:layout_height="200dp"/>
+    </FrameLayout>
 
-    </com.google.android.material.card.MaterialCardView>
-
+    <!-- Info Section -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
@@ -69,43 +66,87 @@
         android:paddingHorizontal="20dp"
         android:paddingBottom="12dp">
 
-        <TextView
+        <ImageView
+            android:layout_width="24dp"
+            android:layout_height="24dp"
+            android:src="@drawable/ic_info"
+            android:tint="?attr/colorPrimary"/>
+
+        <LinearLayout
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:text="@string/touch_bindings"
-            android:textAppearance="?attr/textAppearanceHeadlineSmall"
-            android:textStyle="bold" />
+            android:layout_marginStart="12dp"
+            android:orientation="vertical">
 
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/deleteAllButton"
-            style="@style/Widget.Material3.Button.OutlinedButton"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="@string/delete_all"
-            android:minHeight="40dp"
-            android:insetTop="0dp"
-            android:insetBottom="0dp"
-            app:icon="@drawable/ic_delete"
-            app:iconGravity="textStart"
-            app:strokeColor="?attr/colorError"
-            android:textColor="?attr/colorError"/>
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/edit_touch_bindings"
+                android:textAppearance="?attr/textAppearanceTitleMedium"
+                android:textStyle="bold"/>
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/edit_touch_bindings_subtitle"
+                android:textAppearance="?attr/textAppearanceBodyMedium"
+                android:textColor="?attr/colorOnSurfaceVariant"
+                android:layout_marginTop="4dp"/>
+        </LinearLayout>
     </LinearLayout>
 
-    <ScrollView
+    <!-- Bindings Section -->
+    <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="0dp"
         android:layout_weight="1"
-        android:fillViewport="true">
+        android:orientation="vertical"
+        android:paddingHorizontal="20dp">
 
         <LinearLayout
-            android:id="@+id/bindingList"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:orientation="vertical"
-            android:paddingHorizontal="16dp"
-            android:paddingBottom="24dp" />
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:paddingBottom="12dp">
 
-    </ScrollView>
+            <TextView
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="@string/bindings"
+                android:textAppearance="?attr/textAppearanceHeadlineSmall"
+                android:textStyle="bold" />
 
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/deleteAllButton"
+                style="@style/Widget.Material3.Button.OutlinedButton"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/delete_all"
+                android:minHeight="40dp"
+                android:insetTop="0dp"
+                android:insetBottom="0dp"
+                app:icon="@drawable/ic_delete"
+                app:iconGravity="textStart"
+                app:strokeColor="?attr/colorError"
+                android:textColor="?attr/colorError"/>
+        </LinearLayout>
+
+        <ScrollView
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1"
+            android:fillViewport="true">
+
+            <LinearLayout
+                android:id="@+id/bindingList"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:paddingBottom="24dp" />
+
+        </ScrollView>
+    </LinearLayout>
 </LinearLayout>
