@@ -1,17 +1,19 @@
-package org.citra.citra_emu.features.settings.ui
+package org.citra.citra_emu.fragments
 
-import android.content.DialogInterface
 import android.os.Bundle
+import android.view.Gravity
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.EditText
-import android.widget.FrameLayout
 import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
+import androidx.appcompat.widget.PopupMenu
+import androidx.cardview.widget.CardView
+import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
 import org.citra.citra_emu.R
 import org.citra.citra_emu.databinding.FragmentTouchscreenBindingBinding
@@ -20,8 +22,6 @@ import org.citra.citra_emu.features.settings.model.view.TouchBindingManager
 import org.citra.citra_emu.features.settings.model.view.TouchBindingProfileManager
 import android.view.KeyEvent
 import android.widget.ArrayAdapter
-import androidx.cardview.widget.CardView
-import androidx.core.content.ContextCompat
 
 class TouchscreenBindingFragment : Fragment() {
 
@@ -134,21 +134,21 @@ class TouchscreenBindingFragment : Fragment() {
         if (bindings.isEmpty()) {
             val emptyContainer = LinearLayout(requireContext()).apply {
                 orientation = LinearLayout.VERTICAL
-                gravity = android.view.Gravity.CENTER
+                gravity = Gravity.CENTER
                 setPadding(16, 32, 16, 32)
             }
 
             val emptyTitle = TextView(requireContext()).apply {
                 text = getString(R.string.no_touch_bindings)
                 textSize = 16f
-                gravity = android.view.Gravity.CENTER
+                gravity = Gravity.CENTER
                 setTypeface(null, android.graphics.Typeface.BOLD)
             }
 
             val emptySubtitle = TextView(requireContext()).apply {
                 text = getString(R.string.no_touch_bindings_subtitle)
                 textSize = 14f
-                gravity = android.view.Gravity.CENTER
+                gravity = Gravity.CENTER
                 setPadding(0, 8, 0, 0)
             }
 
@@ -183,7 +183,7 @@ class TouchscreenBindingFragment : Fragment() {
 
         val row = LinearLayout(requireContext()).apply {
             orientation = LinearLayout.HORIZONTAL
-            gravity = android.view.Gravity.CENTER_VERTICAL
+            gravity = Gravity.CENTER_VERTICAL
             setPadding(
                 (16 * density).toInt(),
                 (12 * density).toInt(),
@@ -196,7 +196,7 @@ class TouchscreenBindingFragment : Fragment() {
 
         val numberContainer = TextView(requireContext()).apply {
             text = number.toString()
-            gravity = android.view.Gravity.CENTER
+            gravity = Gravity.CENTER
             textSize = 14f
             setTypeface(null, android.graphics.Typeface.BOLD)
             setTextColor(getThemeColor(com.google.android.material.R.attr.colorOnPrimaryContainer))
@@ -249,6 +249,8 @@ class TouchscreenBindingFragment : Fragment() {
 
         infoContainer.addView(nameText)
         infoContainer.addView(coordText)
+
+        row.addView(infoContainer)
 
         val overflowButton = ImageView(requireContext()).apply {
             setImageResource(R.drawable.ic_more_vert)
@@ -370,7 +372,7 @@ class TouchscreenBindingFragment : Fragment() {
     }
 
     private fun showBindingOptionsMenu(data: TouchBinding, anchor: View) {
-        val popup = androidx.appcompat.widget.PopupMenu(requireContext(), anchor)
+        val popup = PopupMenu(requireContext(), anchor)
         popup.menu.add(0, 1, 0, R.string.edit)
         popup.menu.add(0, 2, 1, R.string.delete)
 
@@ -411,3 +413,64 @@ class TouchscreenBindingFragment : Fragment() {
 
         val yInput = EditText(requireContext()).apply {
             hint = getString(R.string.y_coordinate)
+            setText(formatCoordinate(data.y))
+            inputType = android.text.InputType.TYPE_CLASS_NUMBER or
+                android.text.InputType.TYPE_NUMBER_FLAG_DECIMAL
+        }
+
+        dialogView.addView(xInput)
+        dialogView.addView(yInput)
+
+        AlertDialog.Builder(requireContext())
+            .setTitle("Edit Coordinates")
+            .setView(dialogView)
+            .setPositiveButton(android.R.string.ok) { _, _ ->
+                val x = xInput.text.toString().toFloatOrNull()
+                val y = yInput.text.toString().toFloatOrNull()
+
+                if (x != null && y != null && x in 0.0..1.0 && y in 0.0..1.0) {
+                    val updated = data.copy(x = x, y = y)
+                    TouchBindingManager.removeBinding(data)
+                    TouchBindingManager.addBinding(updated)
+                    saveCurrentBindings()
+                    refreshBindingList()
+                } else {
+                    Toast.makeText(requireContext(), "Invalid coordinates (must be 0.0-1.0)", Toast.LENGTH_SHORT).show()
+                }
+            }
+            .setNegativeButton(android.R.string.cancel, null)
+            .show()
+    }
+
+    private fun showDeleteBindingDialog(data: TouchBinding) {
+        AlertDialog.Builder(requireContext())
+            .setTitle(getString(R.string.delete))
+            .setMessage("Delete this binding?")
+            .setPositiveButton(android.R.string.ok) { _, _ ->
+                TouchBindingManager.removeBinding(data)
+                saveCurrentBindings()
+                refreshBindingList()
+            }
+            .setNegativeButton(android.R.string.cancel, null)
+            .show()
+    }
+
+    private fun formatCoordinate(value: Float): String {
+        return String.format("%.3f", value)
+    }
+
+    private fun getThemeColor(attr: Int): Int {
+        val typedValue = android.util.TypedValue()
+        requireContext().theme.resolveAttribute(attr, typedValue, true)
+        return if (typedValue.resourceId != 0) {
+            ContextCompat.getColor(requireContext(), typedValue.resourceId)
+        } else {
+            typedValue.data
+        }
+    }
+
+    override fun onDestroyView() {
+        super.onDestroyView()
+        _binding = null
+    }
+}
