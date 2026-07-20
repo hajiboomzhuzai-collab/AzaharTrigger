@@ -55,9 +55,9 @@ class TouchscreenBindingView @JvmOverloads constructor(
         val viewHeight = height
 
         if (viewWidth <= 0 || viewHeight <= 0) return
-        
+    
         val layoutArr = NativeLibrary.getFramebufferLayout()
-        
+    
         if (layoutArr.size >= 6) {
             val fbWidth = layoutArr[0]
             val fbHeight = layoutArr[1]
@@ -65,25 +65,30 @@ class TouchscreenBindingView @JvmOverloads constructor(
             val bottomTop = layoutArr[3]
             val bottomRight = layoutArr[4]
             val bottomBottom = layoutArr[5]
-            
-            // Scale framebuffer coordinates to view coordinates
-            val scaleX = viewWidth.toFloat() / fbWidth.toFloat()
-            val scaleY = viewHeight.toFloat() / fbHeight.toFloat()
+        
+            // Calculate bottom screen dimensions only
+            val bottomWidth = (bottomRight - bottomLeft).toFloat()
+            val bottomHeight = (bottomBottom - bottomTop).toFloat()
+        
+            // Scale to fill 80% of the view
+            val scaleX = (viewWidth * 0.8f) / bottomWidth
+            val scaleY = (viewHeight * 0.8f) / bottomHeight
             val scale = minOf(scaleX, scaleY)
-            
-            val scaledWidth = fbWidth * scale
-            val scaledHeight = fbHeight * scale
+        
+            // Center in view
+            val scaledWidth = bottomWidth * scale
+            val scaledHeight = bottomHeight * scale
             val offsetX = (viewWidth - scaledWidth) / 2f
             val offsetY = (viewHeight - scaledHeight) / 2f
-            
+        
             bottomScreenRect.set(
-                offsetX + bottomLeft * scale,
-                offsetY + bottomTop * scale,
-                offsetX + bottomRight * scale,
-                offsetY + bottomBottom * scale
+                offsetX,
+                offsetY,
+                offsetX + scaledWidth,
+                offsetY + scaledHeight
             )
         }
-        
+    
         invalidate()
     }
 
