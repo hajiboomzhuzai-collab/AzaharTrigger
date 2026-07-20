@@ -84,6 +84,21 @@ class TouchBindingProfileManager(context: Context) {
         return true
     }
     
+    fun renameProfile(oldName: String, newName: String): Boolean {
+        if (oldName == DEFAULT_PROFILE || getProfiles().contains(newName)) {
+            return false
+        }
+        val bindings = loadProfile(oldName)
+        deleteProfile(oldName)
+        createProfile(newName)
+        saveProfile(newName, bindings)
+        
+        if (getCurrentProfile() == oldName) {
+            setCurrentProfile(newName)
+        }
+        return true
+    }
+    
     fun saveProfile(profileName: String, bindings: List<TouchBinding>) {
         val array = JSONArray()
         bindings.forEach { binding ->
