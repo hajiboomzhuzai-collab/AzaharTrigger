@@ -1,5 +1,6 @@
 package org.citra.citra_emu.fragments
 
+import android.app.AlertDialog
 import android.os.Bundle
 import android.util.Log
 import android.util.TypedValue
@@ -8,13 +9,12 @@ import android.view.KeyEvent
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import android.widget.ImageView
-import android.widget.LinearLayout
-import android.widget.TextView
+import android.widget.*
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
 import com.google.android.material.R
 import org.citra.citra_emu.databinding.FragmentTouchscreenBindingBinding
+import org.citra.citra_emu.features.settings.model.view.ProfileManager
 import org.citra.citra_emu.features.settings.model.view.TouchBinding
 import org.citra.citra_emu.features.settings.model.view.TouchBindingManager
 
@@ -26,6 +26,8 @@ class TouchscreenBindingFragment : Fragment() {
 
     private var _binding: FragmentTouchscreenBindingBinding? = null
     private val binding get() = _binding!!
+    private lateinit var profileManager: ProfileManager
+    private var currentProfile = "Default"
 
     private var isAddingBinding = false
     private var selectedX = 0.5f
@@ -33,13 +35,17 @@ class TouchscreenBindingFragment : Fragment() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        profileManager = ProfileManager(requireContext())
+        currentProfile = profileManager.getCurrentProfile()
 
         parentFragmentManager.setFragmentResultListener("touch_binding_added", this) { _, _ ->
             isAddingBinding = false
+            saveCurrentBindings()
             refreshBindings()
         }
 
         parentFragmentManager.setFragmentResultListener("touch_binding_removed", this) { _, _ ->
+            saveCurrentBindings()
             refreshBindings()
         }
 
@@ -61,56 +67,115 @@ class TouchscreenBindingFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
+        setupProfileSelector()
+        setupTouchscreenView()
+        setupButtons()
+        loadProfileBindings()
+    }
+
+    private fun setupProfileSelector() {
+        updateProfileSpinner()
+
+        binding.addProfileButton.setOnClickListener {
+            showCreateProfileDialog()
+        }
+    }
+
+    private fun updateProfileSpinner() {
+        val profiles = profileManager.getProfiles()
+        val adapter = ArrayAdapter(requireContext(), android.R.layout.simple_spinner_item, profiles)
+        adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
+        binding.profileSpinner.adapter = adapter
+
+        val currentIndex = profiles.indexOf(currentProfile)
+        if (currentIndex >= 0) {
+            binding.profileSpinner.setSelection(currentIndex)
+        }
+
+        binding.profileSpinner.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
+            override fun onItemSelected(parent: AdapterView<*>?, view: View?, position: Int, id: Long) {
+                val selectedProfile = profiles[position]
+                if (selectedProfile != currentProfile) {
+                    saveCurrentBindings()
+                    currentProfile = selectedProfile
+                    profileManager.setCurrentProfile(currentProfile)
+                    loadProfileBindings()
+                }
+            }
+
+            override fun onNothingSelected(parent: AdapterView<*>?) {}
+        }
+    }
+
+    private fun setupTouchscreenView() {
         binding.touchscreenView.post {
             val size = binding.touchscreenView.width
-            binding.touchscreenView.layoutParams.height = size
-            binding.touchscreenView.requestLayout()
+            if (size > 0) {
+                binding.touchscreenView.layoutParams.height = size
+                binding.touchscreenView.requestLayout()
+            }
         }
 
         binding.touchscreenView.onTouchPointSelected = { x, y ->
             selectedX = x
             selectedY = y
-
             Log.d(TAG, "onTouchPointSelected: x=$x y=$y")
 
             if (!isAddingBinding) {
                 isAddingBinding = true
-
                 TouchBindingBottomSheetDialogFragment
                     .newInstance(x, y)
                     .show(parentFragmentManager, "TouchBinding")
             }
         }
+    }
 
-        binding.buttonDelete.setOnClickListener {
-            TouchBindingManager.clearBindings()
-            refreshBindings()
+    private fun setupButtons() {
+        binding.deleteAllButton.setOnClickListener {
+            showDeleteAllDialog()
         }
-
-        refreshBindings()
     }
 
-    override fun onResume() {
-        super.onResume()
-        refreshBindings()
-    }
-
-    private fun refreshBindings() {
+    private fun saveCurrentBindings() {
         val bindings = TouchBindingManager.getBindings()
+        profileManager.saveProfile(currentProfile, bindings)
+    }
 
-        Log.d(TAG, "refreshBindings: ${bindings.size} bindings")
-
+    private fun loadProfileBindings() {
+        val bindings = profileManager.loadProfile(currentProfile)
+        TouchBindingManager.setBindings(bindings)
         binding.touchscreenView.setBindings(bindings)
+        refreshBindingList()
+    }
+
+    private fun refreshBindingList() {
+        val bindings = TouchBindingManager.getBindings()
         binding.bindingList.removeAllViews()
 
         if (bindings.isEmpty()) {
-            val emptyText = TextView(requireContext()).apply {
-                text = getString(org.citra.citra_emu.R.string.no_touch_bindings)
-                textSize = 16f
+            val emptyContainer = LinearLayout(requireContext()).apply {
+                orientation = LinearLayout.VERTICAL
                 gravity = Gravity.CENTER
-                setPadding(16, 32, 16, 32)
+                setPadding(16, 48, 16, 48)
             }
-            binding.bindingList.addView(emptyText)
+
+            val emptyTitle = TextView(requireContext()).apply {
+                text = getString(org.citra.citra_emu.R.string.no_touch_bindings)
+                textSize = 18f
+                gravity = Gravity.CENTER
+                setTypeface(null, android.graphics.Typeface.BOLD)
+            }
+
+            val emptySubtitle = TextView(requireContext()).apply {
+                text = getString(org.citra.citra_emu.R.string.no_touch_bindings_subtitle)
+                textSize = 14f
+                gravity = Gravity.CENTER
+                setPadding(0, 8, 0, 0)
+            }
+
+            emptyContainer.addView(emptyTitle)
+            emptyContainer.addView(emptySubtitle)
+            binding.bindingList.addView(emptyContainer)
             return
         }
 
@@ -118,6 +183,11 @@ class TouchscreenBindingFragment : Fragment() {
             val cardView = createBindingCard(index + 1, data)
             binding.bindingList.addView(cardView)
         }
+    }
+
+    private fun refreshBindings() {
+        binding.touchscreenView.setBindings(TouchBindingManager.getBindings())
+        refreshBindingList()
     }
 
     private fun createBindingCard(number: Int, data: TouchBinding): View {
@@ -156,7 +226,6 @@ class TouchscreenBindingFragment : Fragment() {
             gravity = Gravity.CENTER
             textSize = 16f
             setTypeface(null, android.graphics.Typeface.BOLD)
-
             setTextColor(getThemeColor(com.google.android.material.R.attr.colorOnPrimaryContainer))
 
             layoutParams = LinearLayout.LayoutParams(
@@ -173,7 +242,6 @@ class TouchscreenBindingFragment : Fragment() {
 
         val infoContainer = LinearLayout(requireContext()).apply {
             orientation = LinearLayout.VERTICAL
-
             layoutParams = LinearLayout.LayoutParams(
                 0,
                 LinearLayout.LayoutParams.WRAP_CONTENT,
@@ -201,10 +269,8 @@ class TouchscreenBindingFragment : Fragment() {
                 formatCoordinate(data.x),
                 formatCoordinate(data.y)
             )
-
             textSize = 14f
             setPadding(0, (4 * density).toInt(), 0, 0)
-
             setTextColor(getThemeColor(com.google.android.material.R.attr.colorOnSurfaceVariant))
         }
 
@@ -214,32 +280,27 @@ class TouchscreenBindingFragment : Fragment() {
         row.addView(infoContainer)
 
         val deleteButton = ImageView(requireContext()).apply {
-
             setImageResource(org.citra.citra_emu.R.drawable.ic_delete)
-
             layoutParams = LinearLayout.LayoutParams(
                 (40 * density).toInt(),
                 (40 * density).toInt()
             )
-
             setPadding(
                 (8 * density).toInt(),
                 (8 * density).toInt(),
                 (8 * density).toInt(),
                 (8 * density).toInt()
             )
-
             background = ContextCompat.getDrawable(
                 requireContext(),
                 org.citra.citra_emu.R.drawable.bg_delete_button
             )
-
             imageTintList = android.content.res.ColorStateList.valueOf(
                 getThemeColor(com.google.android.material.R.attr.colorError)
             )
-
             setOnClickListener {
                 TouchBindingManager.removeBinding(data)
+                saveCurrentBindings()
                 refreshBindings()
             }
         }
@@ -247,6 +308,44 @@ class TouchscreenBindingFragment : Fragment() {
         row.addView(deleteButton)
 
         return card
+    }
+
+    private fun showCreateProfileDialog() {
+        val input = EditText(requireContext()).apply {
+            hint = getString(org.citra.citra_emu.R.string.profile_name)
+        }
+
+        AlertDialog.Builder(requireContext())
+            .setTitle(getString(org.citra.citra_emu.R.string.create_new_profile))
+            .setView(input)
+            .setPositiveButton("Create") { _, _ ->
+                val profileName = input.text.toString().trim()
+                if (profileName.isNotEmpty()) {
+                    if (profileManager.createProfile(profileName)) {
+                        currentProfile = profileName
+                        profileManager.setCurrentProfile(currentProfile)
+                        updateProfileSpinner()
+                        loadProfileBindings()
+                    } else {
+                        Toast.makeText(requireContext(), "Profile already exists", Toast.LENGTH_SHORT).show()
+                    }
+                }
+            }
+            .setNegativeButton("Cancel", null)
+            .show()
+    }
+
+    private fun showDeleteAllDialog() {
+        AlertDialog.Builder(requireContext())
+            .setTitle("Delete All Bindings")
+            .setMessage("Are you sure you want to delete all bindings for '$currentProfile'?")
+            .setPositiveButton("Delete") { _, _ ->
+                TouchBindingManager.clearBindings()
+                profileManager.saveProfile(currentProfile, emptyList())
+                refreshBindings()
+            }
+            .setNegativeButton("Cancel", null)
+            .show()
     }
 
     private fun getThemeColor(attr: Int): Int {
@@ -261,6 +360,7 @@ class TouchscreenBindingFragment : Fragment() {
 
     override fun onDestroyView() {
         super.onDestroyView()
+        saveCurrentBindings()
         _binding = null
     }
 }
