@@ -1114,6 +1114,8 @@
     <string name="bind_touch_message">Press or move an input</string>
     <string name="bind_touch_cancel">Cancel</string>
     <string name="bind_touch_clear">Clear</string>
+    <string name="no_touch_bindings">No touchscreen bindings</string>
+    <string name="touch_coordinates">Touch (%1$s, %2$s)</string>
     
     <!-- melonDS LAN -->
     <string name="multiplayer_citra_tab">Citra NetPlay</string>
