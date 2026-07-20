@@ -46,6 +46,7 @@ class TouchscreenBindingFragment : Fragment() {
         profileManager = TouchBindingProfileManager(requireContext())
         currentProfile = profileManager.getCurrentProfile()
 
+        setupFragmentResultListener()
         setupProfileSpinner()
         setupButtons()
         setupTouchscreenView()
@@ -55,6 +56,18 @@ class TouchscreenBindingFragment : Fragment() {
     override fun onResume() {
         super.onResume()
         refreshBindingList()
+    }
+
+    private fun setupFragmentResultListener() {
+        parentFragmentManager.setFragmentResultListener("touch_binding_added", viewLifecycleOwner) { _, _ ->
+            saveCurrentBindings()
+            refreshBindingList()
+        }
+        
+        parentFragmentManager.setFragmentResultListener("touch_binding_removed", viewLifecycleOwner) { _, _ ->
+            saveCurrentBindings()
+            refreshBindingList()
+        }
     }
 
     private fun setupProfileSpinner() {
@@ -363,11 +376,6 @@ class TouchscreenBindingFragment : Fragment() {
 
     private fun showBindingDialog(x: Float, y: Float) {
         val dialog = TouchBindingBottomSheetDialogFragment.newInstance(x, y)
-        dialog.setOnTouchBindingAddedListener { binding ->
-            TouchBindingManager.addBinding(binding)
-            saveCurrentBindings()
-            refreshBindingList()
-        }
         dialog.show(parentFragmentManager, "TouchBindingBottomSheet")
     }
 
@@ -474,3 +482,4 @@ class TouchscreenBindingFragment : Fragment() {
         _binding = null
     }
 }
+```
