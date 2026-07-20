@@ -121,34 +121,59 @@ class TouchscreenBindingFragment : Fragment() {
     }
 
     private fun createBindingCard(number: Int, data: TouchBinding): View {
-        val card = LinearLayout(requireContext()).apply {
-            orientation = LinearLayout.HORIZONTAL
-            setPadding(16, 12, 16, 12)
-            gravity = Gravity.CENTER_VERTICAL
+
+        val density = resources.displayMetrics.density
+
+        val card = androidx.cardview.widget.CardView(requireContext()).apply {
+            radius = 20f * density
+            cardElevation = 2f * density
+            useCompatPadding = false
+            setCardBackgroundColor(getThemeColor(com.google.android.material.R.attr.colorSurfaceContainer))
+
             layoutParams = LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT,
                 LinearLayout.LayoutParams.WRAP_CONTENT
             ).apply {
-                bottomMargin = 8
+                bottomMargin = (12 * density).toInt()
             }
         }
 
-        // Number circle - uses theme's colorPrimaryContainer automatically
+        val row = LinearLayout(requireContext()).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            setPadding(
+                (20 * density).toInt(),
+                (16 * density).toInt(),
+                (20 * density).toInt(),
+                (16 * density).toInt()
+            )
+        }
+
+        card.addView(row)
+
         val numberContainer = TextView(requireContext()).apply {
-            text = "$number"
-            textSize = 16f
+            text = number.toString()
             gravity = Gravity.CENTER
-            setTextColor(getThemeColor(R.attr.colorOnPrimaryContainer))
+            textSize = 16f
             setTypeface(null, android.graphics.Typeface.BOLD)
-            layoutParams = LinearLayout.LayoutParams(48, 48).apply {
-                rightMargin = 16
+
+            setTextColor(getThemeColor(com.google.android.material.R.attr.colorOnPrimaryContainer))
+
+            layoutParams = LinearLayout.LayoutParams(
+                (44 * density).toInt(),
+                (44 * density).toInt()
+            ).apply {
+                rightMargin = (16 * density).toInt()
             }
+
             setBackgroundResource(org.citra.citra_emu.R.drawable.bg_number_circle)
         }
 
-        // Info container
+        row.addView(numberContainer)
+
         val infoContainer = LinearLayout(requireContext()).apply {
             orientation = LinearLayout.VERTICAL
+
             layoutParams = LinearLayout.LayoutParams(
                 0,
                 LinearLayout.LayoutParams.WRAP_CONTENT,
@@ -156,47 +181,70 @@ class TouchscreenBindingFragment : Fragment() {
             )
         }
 
-        // Button/Key name
-        val buttonName = if (data.axis >= 0) {
-            val direction = if (data.positive) "+" else "-"
-            "Axis ${data.axis} $direction"
-        } else {
-            KeyEvent.keyCodeToString(data.keyCode)
-        }
+        val buttonName =
+            if (data.axis >= 0) {
+                "Axis ${data.axis} ${if (data.positive) "+" else "-"}"
+            } else {
+                KeyEvent.keyCodeToString(data.keyCode)
+            }
 
         val nameText = TextView(requireContext()).apply {
             text = buttonName
-            textSize = 16f
+            textSize = 17f
             setTypeface(null, android.graphics.Typeface.BOLD)
+            setTextColor(getThemeColor(com.google.android.material.R.attr.colorOnSurface))
         }
 
-        // Coordinates
         val coordText = TextView(requireContext()).apply {
-            text = getString(org.citra.citra_emu.R.string.touch_coordinates, formatCoordinate(data.x), formatCoordinate(data.y))
+            text = getString(
+                org.citra.citra_emu.R.string.touch_coordinates,
+                formatCoordinate(data.x),
+                formatCoordinate(data.y)
+            )
+
             textSize = 14f
-            setPadding(0, 4, 0, 0)
+            setPadding(0, (4 * density).toInt(), 0, 0)
+
+            setTextColor(getThemeColor(com.google.android.material.R.attr.colorOnSurfaceVariant))
         }
 
         infoContainer.addView(nameText)
         infoContainer.addView(coordText)
 
-        // Delete button
+        row.addView(infoContainer)
+
         val deleteButton = ImageView(requireContext()).apply {
+
             setImageResource(org.citra.citra_emu.R.drawable.ic_delete)
-            layoutParams = LinearLayout.LayoutParams(40, 40).apply {
-                leftMargin = 12
-            }
-            setPadding(8, 8, 8, 8)
-            setBackgroundResource(org.citra.citra_emu.R.drawable.bg_delete_button)
+
+            layoutParams = LinearLayout.LayoutParams(
+                (40 * density).toInt(),
+                (40 * density).toInt()
+            )
+
+            setPadding(
+                (8 * density).toInt(),
+                (8 * density).toInt(),
+                (8 * density).toInt(),
+                (8 * density).toInt()
+            )
+
+            background = ContextCompat.getDrawable(
+                requireContext(),
+                org.citra.citra_emu.R.drawable.bg_delete_button
+            )
+
+            imageTintList = android.content.res.ColorStateList.valueOf(
+                getThemeColor(com.google.android.material.R.attr.colorError)
+            )
+
             setOnClickListener {
                 TouchBindingManager.removeBinding(data)
                 refreshBindings()
             }
         }
 
-        card.addView(numberContainer)
-        card.addView(infoContainer)
-        card.addView(deleteButton)
+        row.addView(deleteButton)
 
         return card
     }
