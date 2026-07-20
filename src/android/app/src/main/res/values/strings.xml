@@ -1129,7 +1129,6 @@
     <string name="edit_touch_bindings_subtitle">Tap the ⋮ icon on a binding in the list to edit its coordinates manually or delete it.</string>
     <string name="no_touch_bindings_subtitle">Tap anywhere inside the preview above\nto create your first binding.</string>
     <string name="edit">Edit</string>
-    <string name="delete">Delete</string>
     <string name="x_coordinate">X Coordinate</string>
     <string name="y_coordinate">Y Coordinate</string>
     
