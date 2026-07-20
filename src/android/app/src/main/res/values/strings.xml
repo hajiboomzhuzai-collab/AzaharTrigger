@@ -1110,7 +1110,11 @@
     <string name="prefered_game_name">Preferred Game</string>
     <string name="multiplayer_no_game">No Games Found</string>
     <string name="multiplayer_prefered_game_name_invalid">You must choose a Preferred Application to host a room.</string>
-
+    <string name="bind_touch_point">Bind Touch Point</string>
+    <string name="bind_touch_message">Press or move an input</string>
+    <string name="bind_touch_cancel">Cancel</string>
+    <string name="bind_touch_clear">Clear</string>
+    
     <!-- melonDS LAN -->
     <string name="multiplayer_citra_tab">Citra NetPlay</string>
     <string name="multiplayer_melon_tab">DS LAN (melonDS)</string>
