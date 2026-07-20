@@ -2,6 +2,7 @@ package org.citra.citra_emu.fragments
 
 import android.os.Bundle
 import android.util.Log
+import android.util.TypedValue
 import android.view.Gravity
 import android.view.LayoutInflater
 import android.view.View
@@ -11,7 +12,7 @@ import android.widget.LinearLayout
 import android.widget.TextView
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
-import org.citra.citra_emu.R
+import com.google.android.material.R
 import org.citra.citra_emu.databinding.FragmentTouchscreenBindingBinding
 import org.citra.citra_emu.features.settings.model.view.TouchBinding
 import org.citra.citra_emu.features.settings.model.view.TouchBindingManager
@@ -23,12 +24,9 @@ class TouchscreenBindingFragment : Fragment() {
     }
 
     private var _binding: FragmentTouchscreenBindingBinding? = null
-
-    private val binding
-        get() = _binding!!
+    private val binding get() = _binding!!
 
     private var isAddingBinding = false
-
     private var selectedX = 0.5f
     private var selectedY = 0.5f
 
@@ -42,6 +40,11 @@ class TouchscreenBindingFragment : Fragment() {
 
         parentFragmentManager.setFragmentResultListener("touch_binding_removed", this) { _, _ ->
             refreshBindings()
+        }
+
+        parentFragmentManager.setFragmentResultListener("touch_binding_cancelled", this) { _, _ ->
+            isAddingBinding = false
+            binding.touchscreenView.clearSelectedPoint()
         }
     }
 
@@ -97,15 +100,15 @@ class TouchscreenBindingFragment : Fragment() {
         Log.d(TAG, "refreshBindings: ${bindings.size} bindings")
 
         binding.touchscreenView.setBindings(bindings)
-
         binding.bindingList.removeAllViews()
 
         if (bindings.isEmpty()) {
-            val emptyText = TextView(requireContext())
-            emptyText.text = "No touchscreen bindings"
-            emptyText.textSize = 16f
-            emptyText.gravity = Gravity.CENTER
-            emptyText.setPadding(16, 32, 16, 32)
+            val emptyText = TextView(requireContext()).apply {
+                text = getString(org.citra.citra_emu.R.string.no_touch_bindings)
+                textSize = 16f
+                gravity = Gravity.CENTER
+                setPadding(16, 32, 16, 32)
+            }
             binding.bindingList.addView(emptyText)
             return
         }
@@ -117,10 +120,9 @@ class TouchscreenBindingFragment : Fragment() {
     }
 
     private fun createBindingCard(number: Int, data: TouchBinding): View {
-        // Main card container
         val card = LinearLayout(requireContext()).apply {
             orientation = LinearLayout.HORIZONTAL
-            setPadding(12, 12, 12, 12)
+            setPadding(16, 12, 16, 12)
             gravity = Gravity.CENTER_VERTICAL
             layoutParams = LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT,
@@ -128,28 +130,20 @@ class TouchscreenBindingFragment : Fragment() {
             ).apply {
                 bottomMargin = 8
             }
-            setBackgroundResource(R.drawable.bg_card)
         }
 
-        // Number circle
-        val numberContainer = LinearLayout(requireContext()).apply {
-            orientation = LinearLayout.VERTICAL
-            gravity = Gravity.CENTER
-            layoutParams = LinearLayout.LayoutParams(56, 56).apply {
-                rightMargin = 12
-            }
-            setBackgroundResource(R.drawable.bg_number_circle)
-        }
-
-        val numberText = TextView(requireContext()).apply {
+        // Number circle - uses theme's colorPrimaryContainer automatically
+        val numberContainer = TextView(requireContext()).apply {
             text = "$number"
-            textSize = 18f
-            setTextColor(ContextCompat.getColor(requireContext(), android.R.color.white))
+            textSize = 16f
             gravity = Gravity.CENTER
+            setTextColor(getThemeColor(R.attr.colorOnPrimaryContainer))
             setTypeface(null, android.graphics.Typeface.BOLD)
+            layoutParams = LinearLayout.LayoutParams(48, 48).apply {
+                rightMargin = 16
+            }
+            setBackgroundResource(org.citra.citra_emu.R.drawable.bg_number_circle)
         }
-
-        numberContainer.addView(numberText)
 
         // Info container
         val infoContainer = LinearLayout(requireContext()).apply {
@@ -166,21 +160,19 @@ class TouchscreenBindingFragment : Fragment() {
             val direction = if (data.positive) "+" else "-"
             "Axis ${data.axis} $direction"
         } else {
-            android.view.KeyEvent.keyCodeToString(data.keyCode)
+            KeyEvent.keyCodeToString(data.keyCode)
         }
 
         val nameText = TextView(requireContext()).apply {
             text = buttonName
             textSize = 16f
-            setTextColor(ContextCompat.getColor(requireContext(), android.R.color.white))
             setTypeface(null, android.graphics.Typeface.BOLD)
         }
 
         // Coordinates
         val coordText = TextView(requireContext()).apply {
-            text = "Touch (${formatCoordinate(data.x)}, ${formatCoordinate(data.y)})"
+            text = getString(org.citra.citra_emu.R.string.touch_coordinates, formatCoordinate(data.x), formatCoordinate(data.y))
             textSize = 14f
-            setTextColor(ContextCompat.getColor(requireContext(), android.R.color.darker_gray))
             setPadding(0, 4, 0, 0)
         }
 
@@ -189,13 +181,12 @@ class TouchscreenBindingFragment : Fragment() {
 
         // Delete button
         val deleteButton = ImageView(requireContext()).apply {
-            setImageResource(android.R.drawable.ic_menu_close_clear_cancel)
-            layoutParams = LinearLayout.LayoutParams(48, 48).apply {
+            setImageResource(org.citra.citra_emu.R.drawable.ic_delete)
+            layoutParams = LinearLayout.LayoutParams(40, 40).apply {
                 leftMargin = 12
             }
             setPadding(8, 8, 8, 8)
-            setColorFilter(ContextCompat.getColor(requireContext(), android.R.color.holo_red_light))
-            setBackgroundResource(R.drawable.bg_delete_button)
+            setBackgroundResource(org.citra.citra_emu.R.drawable.bg_delete_button)
             setOnClickListener {
                 TouchBindingManager.removeBinding(data)
                 refreshBindings()
@@ -207,6 +198,12 @@ class TouchscreenBindingFragment : Fragment() {
         card.addView(deleteButton)
 
         return card
+    }
+
+    private fun getThemeColor(attr: Int): Int {
+        val typedValue = TypedValue()
+        requireContext().theme.resolveAttribute(attr, typedValue, true)
+        return ContextCompat.getColor(requireContext(), typedValue.resourceId)
     }
 
     private fun formatCoordinate(value: Float): String {
