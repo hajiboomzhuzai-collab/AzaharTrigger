@@ -1946,28 +1946,20 @@ Common::Expected<int, ResultStatus> NWM_UDS::PullPacketHLE(
     std::vector<u8>& output_buffer,
     void* secure_data_out) {
 
-    LOG_ERROR(Service_NWM,
-          "PullPacketHLE ENTER status={} bind={} channels={}",
-          static_cast<u32>(connection_status.status),
-          bind_node_id,
-          channel_data.size());
-
     u32 buff_size = std::min<u32>(max_out_buff_size_aligned, 0x172) << 2;
 
     std::scoped_lock lock(connection_status_mutex);
-
 
     if (connection_status.status != NetworkStatus::ConnectedAsHost &&
         connection_status.status != NetworkStatus::ConnectedAsClient &&
         connection_status.status != NetworkStatus::ConnectedAsSpectator) {
 
-        LOG_ERROR(Service_NWM,
-                  "PullPacketHLE FAIL: not connected status={}",
-                  static_cast<u32>(connection_status.status));
+        LOG_WARNING(Service_NWM,
+                    "PullPacketHLE FAIL: not connected status={}",
+                    static_cast<u32>(connection_status.status));
 
         return Common::Unexpected(ResultStatus::RecvError_NotConnected);
     }
-
 
     auto channel =
         std::find_if(channel_data.begin(),
@@ -1976,16 +1968,14 @@ Common::Expected<int, ResultStatus> NWM_UDS::PullPacketHLE(
                          return data.second.bind_node_id == bind_node_id;
                      });
 
-
     if (channel == channel_data.end()) {
 
-        LOG_ERROR(Service_NWM,
-                  "PullPacketHLE FAIL: channel missing bind={}",
-                  bind_node_id);
+        LOG_WARNING(Service_NWM,
+                    "PullPacketHLE FAIL: channel missing bind={}",
+                    bind_node_id);
 
         return Common::Unexpected(ResultStatus::RecvError_BadNode);
     }
-
 
     // No packet available.
     // Do not log this. The game polls this constantly.
@@ -1995,56 +1985,34 @@ Common::Expected<int, ResultStatus> NWM_UDS::PullPacketHLE(
         return int(0);
     }
 
-
     const auto& next_packet =
         channel->second.received_packets.front();
 
-
     auto secure_data = ParseSecureDataHeader(next_packet);
     auto data_size = secure_data.GetActualDataSize();
-
-
-    LOG_ERROR(Service_NWM,
-              "PullPacket RX src={} dst={} channel={} size={} bind={}",
-              static_cast<u32>(secure_data.src_node_id),
-              static_cast<u32>(secure_data.dest_node_id),
-              static_cast<u32>(secure_data.data_channel),
-              data_size,
-              bind_node_id);
-
 
     if (secure_data_out) {
         *reinterpret_cast<SecureDataHeader*>(secure_data_out) = secure_data;
     }
 
-
     if (data_size > max_out_buff_size) {
 
-        LOG_ERROR(Service_NWM,
-                  "PullPacketHLE FAIL: packet too large size={} max={}",
-                  data_size,
-                  max_out_buff_size);
+        LOG_WARNING(Service_NWM,
+                    "PullPacketHLE FAIL: packet too large size={} max={}",
+                    data_size,
+                    max_out_buff_size);
 
         return Common::Unexpected(ResultStatus::RecvError_PacketSizeTooLarge);
     }
 
-
     output_buffer.resize(buff_size);
 
-
     std::memcpy(output_buffer.data(),
-                next_packet.data() + sizeof(LLCHeader) +
+                next_packet.data() + sizeof(LCCHeader) +
                     sizeof(SecureDataHeader),
                 data_size);
 
-
     channel->second.received_packets.pop_front();
-
-
-    LOG_ERROR(Service_NWM,
-              "PullPacketHLE DONE remaining={}",
-              channel->second.received_packets.size());
-
 
     return int(data_size);
 }
