@@ -2008,7 +2008,7 @@ Common::Expected<int, ResultStatus> NWM_UDS::PullPacketHLE(
     output_buffer.resize(buff_size);
 
     std::memcpy(output_buffer.data(),
-                next_packet.data() + sizeof(LCCHeader) +
+                next_packet.data() + sizeof(LLCHeader) +
                     sizeof(SecureDataHeader),
                 data_size);
 
