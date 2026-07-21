@@ -351,11 +351,25 @@ void NWM_UDS::HandleEAPoLPacket(const Network::WifiPacket& packet) {
             return;
         }
 
+        // Add new nodes to node_map if they don't exist
         auto node_it = node_map.find(packet.transmitter_address);
         if (node_it == node_map.end()) {
-            LOG_DEBUG(Service_NWM, "Connection aborted: no auth frame received");
-            return;
+            LOG_DEBUG(Service_NWM, "HOST: new node connecting mac={:02X}:{:02X}:{:02X}:{:02X}:{:02X}:{:02X}",
+                      packet.transmitter_address[0], packet.transmitter_address[1],
+                      packet.transmitter_address[2], packet.transmitter_address[3],
+                      packet.transmitter_address[4], packet.transmitter_address[5]);
+
+            Node new_node;
+            new_node.node_id = 0;
+            new_node.connected = false;
+            new_node.reconnecting = false;
+            new_node.spec = false;
+            new_node.last_seen = std::chrono::steady_clock::now();
+
+            node_map[packet.transmitter_address] = new_node;
+            node_it = node_map.find(packet.transmitter_address);
         }
+
         if (node_it->second.connected) {
             LOG_DEBUG(Service_NWM, "Connection aborted: client already connected");
             return;
