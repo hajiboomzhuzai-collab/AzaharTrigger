@@ -174,9 +174,7 @@
     <string name="turbo_limit_hotkey">Turbo Speed</string>
     <string name="turbo_enabled_toast">Turbo Speed Enabled</string>
     <string name="turbo_disabled_toast">Turbo Speed Disabled</string>
-    <string name="touchscreen_bindings">Touchscreen Bindings</string>
-    <string name="touchscreen_bindings_description">Configure controller buttons to press the 3DS touchscreen.</string>
-
+    
     <!-- System files strings -->
     <string name="setup_system_files">System Files</string>
     <string name="system_files_download">Download System Files</string>
@@ -1112,6 +1110,8 @@
     <string name="multiplayer_prefered_game_name_invalid">You must choose a Preferred Application to host a room.</string>
 
     <!-- Touch Bindings -->
+    <string name="touchscreen_bindings">Touchscreen Bindings</string>
+    <string name="touchscreen_bindings_description">Configure controller buttons to press the 3DS touchscreen.</string>
     <string name="bind_touch_point">Bind Touch Point</string>
     <string name="bind_touch_message">Press or move an input</string>
     <string name="bind_touch_cancel">Cancel</string>
