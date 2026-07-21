@@ -344,31 +344,59 @@ class CustomLayoutEditorView @JvmOverloads constructor(
                     DragMode.MOVE_BOTTOM ->
                         moveRect(bottomRect, event)
 
+                    // Top screen
+
                     DragMode.TOP_TOP_LEFT ->
                         resizeTopLeft(topRect, event)
+
+                    DragMode.TOP_TOP ->
+                        resizeTop(topRect, event)
 
                     DragMode.TOP_TOP_RIGHT ->
                         resizeTopRight(topRect, event)
 
+                    DragMode.TOP_LEFT ->
+                        resizeLeft(topRect, event)
+
+                    DragMode.TOP_RIGHT ->
+                        resizeRight(topRect, event)
+
                     DragMode.TOP_BOTTOM_LEFT ->
                         resizeBottomLeft(topRect, event)
+
+                    DragMode.TOP_BOTTOM ->
+                        resizeBottom(topRect, event)
 
                     DragMode.TOP_BOTTOM_RIGHT ->
                         resizeBottomRight(topRect, event)
 
+                    // Bottom screen
+
                     DragMode.BOTTOM_TOP_LEFT ->
                         resizeTopLeft(bottomRect, event)
+
+                    DragMode.BOTTOM_TOP ->
+                        resizeTop(bottomRect, event)
 
                     DragMode.BOTTOM_TOP_RIGHT ->
                         resizeTopRight(bottomRect, event)
 
+                    DragMode.BOTTOM_LEFT ->
+                        resizeLeft(bottomRect, event)
+
+                    DragMode.BOTTOM_RIGHT ->
+                        resizeRight(bottomRect, event)
+
                     DragMode.BOTTOM_BOTTOM_LEFT ->
                         resizeBottomLeft(bottomRect, event)
+
+                    DragMode.BOTTOM_BOTTOM ->
+                        resizeBottom(bottomRect, event)
 
                     DragMode.BOTTOM_BOTTOM_RIGHT ->
                         resizeBottomRight(bottomRect, event)
 
-                else -> {}
+                    else -> {}
                 }
             }
 
@@ -403,9 +431,15 @@ class CustomLayoutEditorView @JvmOverloads constructor(
     private fun isOnHandle(r: RectF, x: Float, y: Float): Boolean {
 
         return isInsideHandle(x, y, r.left, r.top) ||
-            isInsideHandle(x, y, r.right, r.top) ||
-            isInsideHandle(x, y, r.left, r.bottom) ||
-            isInsideHandle(x, y, r.right, r.bottom)
+                isInsideHandle(x, y, r.centerX(), r.top) ||
+                isInsideHandle(x, y, r.right, r.top) ||
+
+                isInsideHandle(x, y, r.left, r.centerY()) ||
+                isInsideHandle(x, y, r.right, r.centerY()) ||
+
+                isInsideHandle(x, y, r.left, r.bottom) ||
+                isInsideHandle(x, y, r.centerX(), r.bottom) ||
+                isInsideHandle(x, y, r.right, r.bottom)
     }
 
     private fun detectMode(
