@@ -1021,7 +1021,7 @@ void NWM_UDS::ShutdownHLE() {
 
     channel_data.clear();
     node_map.clear();
-    node_lookup.fill(std::nullopt);
+    node_lookup.fill(boost::none);
 
     recv_buffer_memory.reset();
 }
