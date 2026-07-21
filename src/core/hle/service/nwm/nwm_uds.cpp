@@ -534,48 +534,26 @@ void NWM_UDS::HandleEAPoLPacket(const Network::WifiPacket& packet) {
 
 NWM_UDS::Node* NWM_UDS::FindNodeByNodeId(u16 node_id) {
     if (node_id == 0 || node_id > UDSMaxNodes) {
-        LOG_ERROR(Service_NWM, "FindNodeByNodeId invalid id={}", node_id);
         return nullptr;
     }
 
-    if (!node_lookup[node_id]) {
-        LOG_DEBUG(Service_NWM, "FindNodeByNodeId lookup missing id={}, attempting recovery",
-                  node_id);
-
-        // Recovery: scan node_map for this node_id
-        for (auto& [mac, node] : node_map) {
-            if (node.node_id == node_id) {
-                node_lookup[node_id] = mac;
-                LOG_WARNING(Service_NWM, "Recovered node {} via MAC scan", node_id);
-                return &node;
-            }
+    auto it = node_lookup.find(node_id);
+    if (it != node_lookup.end()) {
+        auto node_it = node_map.find(*it->second);
+        if (node_it != node_map.end()) {
+            return &node_it->second;
         }
-
-        LOG_ERROR(Service_NWM, "FindNodeByNodeId lookup missing id={}", node_id);
-        return nullptr;
     }
 
-    const auto& lookup_mac = *node_lookup[node_id];
-    auto it = node_map.find(lookup_mac);
-
-    if (it == node_map.end()) {
-        LOG_DEBUG(Service_NWM, "FindNodeByNodeId map missing id={}, attempting recovery",
-                  node_id);
-
-        // Recovery: scan node_map for this node_id
-        for (auto& [mac, node] : node_map) {
-            if (node.node_id == node_id) {
-                node_lookup[node_id] = mac;
-                LOG_WARNING(Service_NWM, "Recovered node {} via MAC scan", node_id);
-                return &node;
-            }
+    // Recovery: scan node_map for this node_id
+    for (auto& [mac, node] : node_map) {
+        if (node.node_id == node_id) {
+            node_lookup[node_id] = mac;
+            return &node;
         }
-
-        LOG_ERROR(Service_NWM, "FindNodeByNodeId map missing id={}", node_id);
-        return nullptr;
     }
 
-    return &it->second;
+    return nullptr;
 }
 
 void NWM_UDS::HandleSecureDataPacket(const Network::WifiPacket& packet) {
