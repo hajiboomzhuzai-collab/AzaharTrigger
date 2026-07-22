@@ -1967,27 +1967,15 @@ void NWM_UDS::ConnectToNetworkDeprecated(Kernel::HLERequestContext& ctx) {
 }
 
 ResultStatus NWM_UDS::DisconnectNetworkHLE() {
-    LOG_ERROR(Service_NWM,
-              "DisconnectNetworkHLE ENTER status={} node={} total_nodes={} channels={}",
-              static_cast<u32>(connection_status.status),
-              static_cast<u16>(connection_status.network_node_id),
-              connection_status.total_nodes,
-              channel_data.size());
-
     std::scoped_lock lock(connection_status_mutex);
 
     const u16_le node_id = connection_status.network_node_id;
 
-
     if (connection_status.status == NetworkStatus::ConnectedAsHost) {
-        LOG_ERROR(Service_NWM,
-                  "DisconnectNetworkHLE HOST RESET");
+        LOG_ERROR(Service_NWM, "DisconnectNetworkHLE HOST RESET");
 
         connection_status = {};
-
-        connection_status.status =
-            NetworkStatus::ConnectedAsHost;
-
+        connection_status.status = NetworkStatus::ConnectedAsHost;
         connection_status.network_node_id = node_id;
 
         node_map.clear();
@@ -1999,34 +1987,22 @@ ResultStatus NWM_UDS::DisconnectNetworkHLE() {
         return ResultStatus::DisconError_CalledAsHost;
     }
 
+    // CLIENT: Force reconnect - keep everything alive
+    LOG_ERROR(Service_NWM, "DisconnectNetworkHLE CLIENT - forcing reconnect");
 
-    /*
-     * CLIENT:
-     *
-     * Ignore game disconnect request.
-     * Keep current multiplayer session alive.
-     */
-
-    LOG_ERROR(Service_NWM,
-              "DisconnectNetworkHLE CLIENT IGNORE");
-
-
-    connection_status.status =
-        NetworkStatus::ConnectedAsClient;
-
-    connection_status.status_change_reason =
-        NetworkStatusChangeReason::None;
-
+    connection_status.status = NetworkStatus::ConnectedAsClient;
+    connection_status.status_change_reason = NetworkStatusChangeReason::None;
     connection_status.changed_nodes = 0;
-
     connection_status.network_node_id = node_id;
 
+    // Keep all nodes alive
+    for (auto& [mac, node] : node_map) {
+        node.connected = true;
+        node.last_seen = std::chrono::steady_clock::now();
+    }
 
-    LOG_ERROR(Service_NWM,
-              "DisconnectNetworkHLE CLIENT KEEP nodes={} channels={}",
-              node_map.size(),
-              channel_data.size());
-
+    LOG_ERROR(Service_NWM, "DisconnectNetworkHLE CLIENT KEEP nodes={} channels={}",
+              node_map.size(), channel_data.size());
 
     return ResultStatus::ResultSuccess;
 }
