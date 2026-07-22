@@ -291,6 +291,12 @@ void NWM_UDS::HandleAssociationResponseFrame(const Network::WifiPacket& packet) 
 void NWM_UDS::HandleEAPoLPacket(const Network::WifiPacket& packet) {
     std::scoped_lock lock{connection_status_mutex, system.Kernel().GetHLELock()};
 
+    // Ignore keepalive and other non-EAPoL packets
+    if (packet.data.size() < 50) {
+        LOG_DEBUG(Service_NWM, "HandleEAPoLPacket IGNORE small packet size={}", packet.data.size());
+        return;
+    }
+
     if (GetEAPoLFrameType(packet.data) == EAPoLStartMagic) {
         // Host receiving EAPoL-Start from client
         if (connection_status.status != NetworkStatus::ConnectedAsHost) {
