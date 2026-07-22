@@ -344,6 +344,10 @@ void NWM_UDS::HandleAssociationResponseFrame(const Network::WifiPacket& packet) 
 void NWM_UDS::HandleEAPoLPacket(const Network::WifiPacket& packet) {
     std::scoped_lock lock{connection_status_mutex, system.Kernel().GetHLELock()};
 
+    LOG_ERROR(Service_NWM, "HandleEAPoLPacket ENTER status={} eapol_type={}",
+              static_cast<u32>(connection_status.status),
+              static_cast<u32>(GetEAPoLFrameType(packet.data)));
+
     if (GetEAPoLFrameType(packet.data) == EAPoLStartMagic) {
         if (connection_status.status != NetworkStatus::ConnectedAsHost) {
             LOG_DEBUG(Service_NWM, "Connection sequence aborted, status={}",
