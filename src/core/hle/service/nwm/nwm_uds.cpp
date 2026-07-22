@@ -227,153 +227,55 @@ void NWM_UDS::HandleNodeMapPacket(const Network::WifiPacket& packet) {
     std::size_t num_entries;
     std::memcpy(&num_entries, packet.data.data(), sizeof(num_entries));
 
-    LOG_ERROR(Service_NWM,
-              "CLIENT <<< NodeMap entries={} total_nodes={} status={} node_map_before={}",
-              num_entries,
-              connection_status.total_nodes,
-              static_cast<u32>(connection_status.status),
-              node_map.size());
-
-
     if (num_entries == 0) {
-        LOG_ERROR(Service_NWM,
-                  "CLIENT ignoring empty NodeMap");
+        LOG_DEBUG(Service_NWM, "Ignoring empty NodeMap");
         return;
     }
 
-
-    LOG_ERROR(Service_NWM,
-              "CLIENT merging NodeMap existing_nodes={}",
-              node_map.size());
-
+    LOG_DEBUG(Service_NWM, "NodeMap entries={}", num_entries);
 
     Network::MacAddress address;
     u16 id;
     std::size_t offset = sizeof(num_entries);
 
-
     u16 new_bitmask = 0;
     u16 new_changed_nodes = 0;
     u8 new_total_nodes = 0;
 
-
     for (std::size_t i = 0; i < num_entries; i++) {
-
         if (offset + sizeof(address) + sizeof(id) > packet.data.size()) {
-            LOG_ERROR(Service_NWM,
-                      "CLIENT NodeMap packet truncated offset={} size={}",
-                      offset,
-                      packet.data.size());
+            LOG_WARNING(Service_NWM, "NodeMap packet truncated offset={} size={}",
+                        offset, packet.data.size());
             return;
         }
 
-
-        std::memcpy(&address,
-                    packet.data.data() + offset,
-                    sizeof(address));
-
-        std::memcpy(&id,
-                    packet.data.data() + offset + sizeof(address),
-                    sizeof(id));
-
+        std::memcpy(&address, packet.data.data() + offset, sizeof(address));
+        std::memcpy(&id, packet.data.data() + offset + sizeof(address), sizeof(id));
 
         auto& node = node_map[address];
-
-
-        if (node.connected && node.node_id != id) {
-            LOG_ERROR(Service_NWM,
-                      "CLIENT NodeMap updating MAC old_id={} new_id={}",
-                      node.node_id,
-                      id);
-        }
-
-
         node.connected = true;
         node.reconnecting = false;
         node.spec = false;
         node.node_id = id;
         node.last_seen = std::chrono::steady_clock::now();
 
-
-
         if (id != NodeIDSpec && id <= UDSMaxNodes) {
-
             node_lookup[id] = address;
-
             new_bitmask |= (1 << id);
             new_changed_nodes |= (1 << id);
-
             new_total_nodes++;
-
-
-            LOG_ERROR(Service_NWM,
-                      "CLIENT lookup updated id={} reconnect_ready=true",
-                      id);
         }
-
-
-
-        LOG_ERROR(Service_NWM,
-                  "CLIENT NodeMap entry={} id={} mac={:02X}:{:02X}:{:02X}:{:02X}:{:02X}:{:02X}",
-                  i,
-                  id,
-                  address[0],
-                  address[1],
-                  address[2],
-                  address[3],
-                  address[4],
-                  address[5]);
-
 
         offset += sizeof(address) + sizeof(id);
     }
 
-
-    /*
-     * Sync connection status.
-     *
-     * This fixes the case:
-     *
-     * status=6 node_id=1 total_nodes=0
-     *
-     * where SecureData arrives before status knows about nodes.
-     */
-
+    // Sync connection status
     connection_status.total_nodes = new_total_nodes;
     connection_status.node_bitmask = new_bitmask;
     connection_status.changed_nodes = new_changed_nodes;
 
-
-
-    LOG_ERROR(Service_NWM,
-              "CLIENT NodeMap DONE node_map={} total_nodes={} bitmask=0x{:X} lookup_ready={}",
-              node_map.size(),
-              connection_status.total_nodes,
-              static_cast<u16>(connection_status.node_bitmask),
-              std::count_if(node_lookup.begin(),
-                            node_lookup.end(),
-                            [](const auto& e) {
-                                return e.has_value();
-                            }));
-
-
-
-    for (u16 i = 1; i <= UDSMaxNodes; i++) {
-
-        if (node_lookup[i]) {
-
-            LOG_ERROR(Service_NWM,
-          "LOOKUP id={0} mac={1:02X}:{2:02X}:{3:02X}:{4:02X}:{5:02X}:{6:02X}",
-          static_cast<u32>(i),
-          static_cast<u32>((*node_lookup[i])[0]),
-          static_cast<u32>((*node_lookup[i])[1]),
-          static_cast<u32>((*node_lookup[i])[2]),
-          static_cast<u32>((*node_lookup[i])[3]),
-          static_cast<u32>((*node_lookup[i])[4]),
-          static_cast<u32>((*node_lookup[i])[5]));
-        }
-    }
-
+    LOG_ERROR(Service_NWM, "NodeMap DONE total_nodes={} bitmask=0x{:X}",
+              connection_status.total_nodes, connection_status.node_bitmask);
 
     connection_status_event->Signal();
 }
@@ -1037,10 +939,8 @@ boost::optional<Network::MacAddress> NWM_UDS::GetNodeMacAddress(u16 dest_node_id
 }
 
 void NWM_UDS::ShutdownHLE() {
-    LOG_ERROR(Service_NWM,
-              "ShutdownHLE CALLED channels={} nodes={}",
-              channel_data.size(),
-              node_map.size());
+    LOG_DEBUG(Service_NWM, "ShutdownHLE channels={} nodes={}",
+              channel_data.size(), node_map.size());
 
     initialized = false;
 
@@ -1050,11 +950,11 @@ void NWM_UDS::ShutdownHLE() {
 
     channel_data.clear();
     node_map.clear();
+    node_lookup = {};
 
     recv_buffer_memory.reset();
 
-    LOG_ERROR(Service_NWM,
-              "ShutdownHLE FINISHED");
+    LOG_DEBUG(Service_NWM, "ShutdownHLE done");
 }
 
 void NWM_UDS::Shutdown(Kernel::HLERequestContext& ctx) {
@@ -1431,63 +1331,38 @@ void NWM_UDS::Bind(Kernel::HLERequestContext& ctx) {
 void NWM_UDS::UnbindHLE(u32 bind_node_id) {
     std::scoped_lock lock(connection_status_mutex);
 
-    auto itr =
-        std::find_if(channel_data.begin(),
-                     channel_data.end(),
-                     [bind_node_id](const auto& data) {
-                         return data.second.bind_node_id == bind_node_id;
-                     });
+    auto itr = std::find_if(channel_data.begin(), channel_data.end(),
+                            [bind_node_id](const auto& data) {
+                                return data.second.bind_node_id == bind_node_id;
+                            });
 
     if (itr == channel_data.end()) {
-        LOG_WARNING(Service_NWM,
-                    "UnbindHLE unknown bind_node={}",
-                    bind_node_id);
+        LOG_WARNING(Service_NWM, "UnbindHLE unknown bind_node={}", bind_node_id);
         return;
     }
-
 
     /*
      * Emulator recovery mode:
-     *
      * Monster Hunter calls Unbind after a temporary disconnect.
-     * Removing the channel makes the next packets fail:
-     *
-     * SECUREDATA UNKNOWN CHANNEL=243
-     *
-     * Keep the channel alive.
+     * Removing the channel makes the next packets fail.
+     * Keep the channel alive for clients.
      */
     if (connection_status.status == NetworkStatus::ConnectedAsClient) {
+        LOG_DEBUG(Service_NWM, "UnbindHLE SOFT KEEP channel={} bind={}",
+                  static_cast<u32>(itr->second.channel), itr->second.bind_node_id);
 
-        LOG_ERROR(Service_NWM,
-                  "UnbindHLE SOFT KEEP channel={} bind={} node={}",
-                  static_cast<u32>(itr->second.channel),
-                  itr->second.bind_node_id,
-                  itr->second.network_node_id);
-
-
-        LOG_ERROR(Service_NWM,
-          "UnbindHLE KEEP queue={}",
-        itr->second.received_packets.size());
         itr->second.event->Signal();
-
         return;
     }
 
-
-    LOG_ERROR(Service_NWM,
-              "UnbindHLE removing channel={} bind={} node={}",
-              static_cast<u32>(itr->second.channel),
-              itr->second.bind_node_id,
+    LOG_ERROR(Service_NWM, "UnbindHLE removing channel={} bind={} node={}",
+              static_cast<u32>(itr->second.channel), itr->second.bind_node_id,
               itr->second.network_node_id);
-
 
     itr->second.event->Signal();
     channel_data.erase(itr);
 
-
-    LOG_ERROR(Service_NWM,
-              "UnbindHLE remaining channels={}",
-              channel_data.size());
+    LOG_DEBUG(Service_NWM, "UnbindHLE remaining channels={}", channel_data.size());
 }
 
 void NWM_UDS::Unbind(Kernel::HLERequestContext& ctx) {
@@ -1518,50 +1393,38 @@ Result NWM_UDS::BeginHostingNetwork(std::span<const u8> network_info_buffer,
 
     {
         std::scoped_lock lock(connection_status_mutex);
+
         network_info = {};
         std::memcpy(&network_info, network_info_buffer.data(), network_info_buffer.size());
 
-        // The real UDS module throws a fatal error if this assert fails.
         ASSERT_MSG(network_info.max_nodes > 1, "Trying to host a network of only one member.");
-
-        connection_status.status = NetworkStatus::ConnectedAsHost;
-        // Start broadcasting the network, send a beacon frame every 102.4ms.
-        system.CoreTiming().ScheduleEvent(msToCycles(DefaultBeaconInterval * MillisecondsPerTU),
-                                  beacon_broadcast_event, 0);
-        connection_status.status_change_reason = NetworkStatusChangeReason::ConnectionEstablished;
-
-        // Ensure the application data size is less than the maximum value.
         ASSERT_MSG(network_info.application_data_size <= ApplicationDataSize,
                    "Data size is too big.");
 
-        // Set up basic information for this network.
+        // Set up network info
         network_info.oui_value = NintendoOUI;
         network_info.oui_type = static_cast<u8>(NintendoTagId::NetworkInfo);
-
-        connection_status.max_nodes = network_info.max_nodes;
-
-        // Resize the nodes list to hold max_nodes.
-        node_info.clear();
-        node_info.resize(network_info.max_nodes);
-
-        // There's currently only one node in the network (the host).
-        connection_status.total_nodes = 1;
-        network_info.total_nodes = 1;
-
-        // The host is always the first node
-        connection_status.network_node_id = 1;
-        current_node.network_node_id = 1;
-        connection_status.nodes[0] = connection_status.network_node_id;
-        // Set the bit 0 in the nodes bitmask to indicate that node 1 is already taken.
-        connection_status.node_bitmask |= 1;
-        // Notify the application that the first node was set.
-        connection_status.changed_nodes |= 1;
-
         network_info.host_mac_address = GetMacAddress();
 
+        // Set up connection status
+        connection_status.status = NetworkStatus::ConnectedAsHost;
+        connection_status.status_change_reason = NetworkStatusChangeReason::ConnectionEstablished;
+        connection_status.max_nodes = network_info.max_nodes;
+        connection_status.total_nodes = 1;
+        connection_status.network_node_id = 1;
+        connection_status.nodes[0] = 1;
+        connection_status.node_bitmask |= 1;
+        connection_status.changed_nodes |= 1;
+
+        // Host is always node 1
+        current_node.network_node_id = 1;
+        node_info.clear();
+        node_info.resize(network_info.max_nodes);
         node_info[0] = current_node;
 
-        // If the game has a preferred channel, use that instead.
+        network_info.total_nodes = 1;
+
+        // Use preferred channel or default
         if (network_info.channel != 0)
             network_channel = network_info.channel;
         else
@@ -1570,20 +1433,14 @@ Result NWM_UDS::BeginHostingNetwork(std::span<const u8> network_info_buffer,
 
     connection_status_event->Signal();
 
-    // Start broadcasting the network, send a beacon frame every 102.4ms.
-system.CoreTiming().ScheduleEvent(msToCycles(DefaultBeaconInterval * MillisecondsPerTU),
-                                  beacon_broadcast_event, 0);
+    // Start beacon broadcast
+    system.CoreTiming().ScheduleEvent(msToCycles(DefaultBeaconInterval * MillisecondsPerTU),
+                                      beacon_broadcast_event, 0);
 
+    // Start keepalive heartbeat
+    system.CoreTiming().ScheduleEvent(msToCycles(1000), keepalive_event, 0);
 
-// Start UDS keepalive heartbeat.
-// This is separate from beacon broadcasting.
-system.CoreTiming().ScheduleEvent(
-    msToCycles(1000),
-    keepalive_event,
-    0);
-
-
-return ResultSuccess;
+    return ResultSuccess;
 }
 
 void NWM_UDS::BeginHostingNetwork(Kernel::HLERequestContext& ctx) {
@@ -2006,105 +1863,61 @@ Common::Expected<int, ResultStatus> NWM_UDS::PullPacketHLE(
     std::vector<u8>& output_buffer,
     void* secure_data_out) {
 
-    LOG_ERROR(Service_NWM,
-          "PullPacketHLE ENTER status={} bind={} channels={}",
-          static_cast<u32>(connection_status.status),
-          bind_node_id,
-          channel_data.size());
-
-    u32 buff_size = std::min<u32>(max_out_buff_size_aligned, 0x172) << 2;
-
     std::scoped_lock lock(connection_status_mutex);
-
 
     if (connection_status.status != NetworkStatus::ConnectedAsHost &&
         connection_status.status != NetworkStatus::ConnectedAsClient &&
         connection_status.status != NetworkStatus::ConnectedAsSpectator) {
-
-        LOG_ERROR(Service_NWM,
-                  "PullPacketHLE FAIL: not connected status={}",
-                  static_cast<u32>(connection_status.status));
-
+        LOG_WARNING(Service_NWM, "PullPacketHLE not connected status={}",
+                    static_cast<u32>(connection_status.status));
         return Common::Unexpected(ResultStatus::RecvError_NotConnected);
     }
 
-
-    auto channel =
-        std::find_if(channel_data.begin(),
-                     channel_data.end(),
-                     [bind_node_id](const auto& data) {
-                         return data.second.bind_node_id == bind_node_id;
-                     });
-
+    auto channel = std::find_if(channel_data.begin(), channel_data.end(),
+                                [bind_node_id](const auto& data) {
+                                    return data.second.bind_node_id == bind_node_id;
+                                });
 
     if (channel == channel_data.end()) {
-
-        LOG_ERROR(Service_NWM,
-                  "PullPacketHLE FAIL: channel missing bind={}",
-                  bind_node_id);
-
+        LOG_WARNING(Service_NWM, "PullPacketHLE channel missing bind={}", bind_node_id);
         return Common::Unexpected(ResultStatus::RecvError_BadNode);
     }
 
-
-    // No packet available.
-    // Do not log this. The game polls this constantly.
+    // No packet available - game polls constantly, don't log
     if (channel->second.received_packets.empty()) {
-
+        u32 buff_size = std::min<u32>(max_out_buff_size_aligned, 0x172) << 2;
         output_buffer.resize(buff_size);
         return int(0);
     }
 
-
-    const auto& next_packet =
-        channel->second.received_packets.front();
-
-
+    const auto& next_packet = channel->second.received_packets.front();
     auto secure_data = ParseSecureDataHeader(next_packet);
     auto data_size = secure_data.GetActualDataSize();
 
-
-    LOG_ERROR(Service_NWM,
-              "PullPacket RX src={} dst={} channel={} size={} bind={}",
+    LOG_DEBUG(Service_NWM, "PullPacket RX src={} dst={} channel={} size={}",
               static_cast<u32>(secure_data.src_node_id),
               static_cast<u32>(secure_data.dest_node_id),
               static_cast<u32>(secure_data.data_channel),
-              data_size,
-              bind_node_id);
-
+              data_size);
 
     if (secure_data_out) {
         *reinterpret_cast<SecureDataHeader*>(secure_data_out) = secure_data;
     }
 
-
     if (data_size > max_out_buff_size) {
-
-        LOG_ERROR(Service_NWM,
-                  "PullPacketHLE FAIL: packet too large size={} max={}",
-                  data_size,
-                  max_out_buff_size);
-
+        LOG_WARNING(Service_NWM, "PullPacketHLE packet too large size={} max={}",
+                    data_size, max_out_buff_size);
         return Common::Unexpected(ResultStatus::RecvError_PacketSizeTooLarge);
     }
 
-
+    u32 buff_size = std::min<u32>(max_out_buff_size_aligned, 0x172) << 2;
     output_buffer.resize(buff_size);
 
-
     std::memcpy(output_buffer.data(),
-                next_packet.data() + sizeof(LLCHeader) +
-                    sizeof(SecureDataHeader),
+                next_packet.data() + sizeof(LLCHeader) + sizeof(SecureDataHeader),
                 data_size);
 
-
     channel->second.received_packets.pop_front();
-
-
-    LOG_ERROR(Service_NWM,
-              "PullPacketHLE DONE remaining={}",
-              channel->second.received_packets.size());
-
 
     return int(data_size);
 }
