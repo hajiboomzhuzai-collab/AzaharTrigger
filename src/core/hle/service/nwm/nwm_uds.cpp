@@ -641,6 +641,11 @@ NWM_UDS::Node* NWM_UDS::FindNodeByNodeId(u16 node_id) {
     return nullptr;
 }
 
+NWM_UDS::Node* NWM_UDS::FindNodeByMac(const MacAddress& mac) {
+    auto it = node_map.find(mac);
+    return it != node_map.end() ? &it->second : nullptr;
+}
+
 void NWM_UDS::HandleSecureDataPacket(const Network::WifiPacket& packet) {
     const auto secure_data = ParseSecureDataHeader(packet.data);
 
@@ -975,8 +980,7 @@ void NWM_UDS::OnWifiPacketReceived(const Network::WifiPacket& packet) {
 
     {
         std::scoped_lock lock(connection_status_mutex);
-        // Update last_seen for the source node
-        if (auto* node = FindNodeByNodeId(packet.transmitter_address)) {
+        if (auto* node = FindNodeByMac(packet.transmitter_address)) {
             node->last_seen = std::chrono::steady_clock::now();
         }
     }
@@ -2471,69 +2475,39 @@ Network::MacAddress NWM_UDS::GetMacAddress() {
 }
 
 void NWM_UDS::KeepAliveCallback(std::uintptr_t user_data, s64 cycles_late) {
-
     NetworkStatus status;
     u16 node_id;
 
     {
         std::scoped_lock lock(connection_status_mutex);
-
         status = connection_status.status;
         node_id = connection_status.network_node_id;
     }
 
-
     if (status != NetworkStatus::ConnectedAsHost &&
         status != NetworkStatus::ConnectedAsClient) {
-
         return;
     }
-
 
     using Network::WifiPacket;
 
     WifiPacket packet;
-
     packet.type = WifiPacket::PacketType::Data;
     packet.destination_address = Network::BroadcastMac;
     packet.channel = network_channel;
 
-
     constexpr u8 keepalive_channel = 0;
-
-
-    std::array<u8, 1> heartbeat = {
-        0x00
-    };
-
-
+    std::array<u8, 1> heartbeat = {0x00};
     u16 sequence = keepalive_sequence_number++;
 
+    packet.data = GenerateDataPayload(heartbeat, keepalive_channel,
+                                       BroadcastNetworkNodeId, node_id, sequence);
 
-    packet.data = GenerateDataPayload(
-        heartbeat,
-        keepalive_channel,
-        BroadcastNetworkNodeId,
-        node_id,
-        sequence
-    );
-
-
-    LOG_ERROR(Service_NWM,
-              "UDS KEEPALIVE TX status={} seq={} size={} node={}",
-              static_cast<u32>(status),
-              sequence,
-              packet.data.size(),
-              node_id);
-
+    LOG_DEBUG(Service_NWM, "KEEPALIVE TX seq={}", sequence);
 
     SendPacket(packet);
 
-
-    system.CoreTiming().ScheduleEvent(
-        msToCycles(1000),
-        keepalive_event,
-        0);
+    system.CoreTiming().ScheduleEvent(msToCycles(1000), keepalive_event, 0);
 }
 
 NWM_UDS::NWM_UDS(Core::System& system) : ServiceFramework("nwm::UDS"), system(system) {
