@@ -349,33 +349,21 @@ void NWM_UDS::HandleEAPoLPacket(const Network::WifiPacket& packet) {
               static_cast<u32>(GetEAPoLFrameType(packet.data)));
 
     if (GetEAPoLFrameType(packet.data) == EAPoLStartMagic) {
+        LOG_ERROR(Service_NWM, "EAPoL-Start received");
+
         if (connection_status.status != NetworkStatus::ConnectedAsHost) {
-            LOG_DEBUG(Service_NWM, "Connection sequence aborted, status={}",
-                      static_cast<u32>(connection_status.status));
+            LOG_ERROR(Service_NWM, "Not hosting, abort");
             return;
         }
 
-        // Add new nodes to node_map if they don't exist
         auto node_it = node_map.find(packet.transmitter_address);
         if (node_it == node_map.end()) {
-            LOG_DEBUG(Service_NWM, "HOST: new node connecting mac={:02X}:{:02X}:{:02X}:{:02X}:{:02X}:{:02X}",
-                      packet.transmitter_address[0], packet.transmitter_address[1],
-                      packet.transmitter_address[2], packet.transmitter_address[3],
-                      packet.transmitter_address[4], packet.transmitter_address[5]);
-
-            Node new_node;
-            new_node.node_id = 0;
-            new_node.connected = false;
-            new_node.reconnecting = false;
-            new_node.spec = false;
-            new_node.last_seen = std::chrono::steady_clock::now();
-
-            node_map[packet.transmitter_address] = new_node;
-            node_it = node_map.find(packet.transmitter_address);
+            LOG_ERROR(Service_NWM, "EAPoL from unknown client, abort");
+            return;
         }
 
         if (node_it->second.connected) {
-            LOG_DEBUG(Service_NWM, "Connection aborted: client already connected");
+            LOG_ERROR(Service_NWM, "Client already connected, abort");
             return;
         }
 
@@ -390,7 +378,7 @@ void NWM_UDS::HandleEAPoLPacket(const Network::WifiPacket& packet) {
             existing->second.reconnecting &&
             existing->second.node_id != NodeIDSpec) {
             is_reconnect = true;
-            LOG_DEBUG(Service_NWM, "HOST: reconnect request old_node_id={}",
+            LOG_ERROR(Service_NWM, "HOST: reconnect request old_node_id={}",
                       existing->second.node_id);
         }
 
@@ -399,15 +387,16 @@ void NWM_UDS::HandleEAPoLPacket(const Network::WifiPacket& packet) {
 
             if (is_reconnect) {
                 node_id = existing->second.node_id;
-                LOG_DEBUG(Service_NWM, "HOST RECONNECT: reusing node_id={}", node_id);
+                LOG_ERROR(Service_NWM, "HOST RECONNECT: reusing node_id={}", node_id);
             } else {
                 node_id = GetNextAvailableNodeId();
-                LOG_DEBUG(Service_NWM, "HOST NEW CLIENT: assigning node_id={}", node_id);
+                LOG_ERROR(Service_NWM, "HOST NEW CLIENT: assigning node_id={}", node_id);
                 connection_status.total_nodes++;
                 network_info.total_nodes++;
             }
 
             node.network_node_id = node_id;
+
             connection_status.node_bitmask |= 1 << (node_id - 1);
             connection_status.changed_nodes |= 1 << (node_id - 1);
             connection_status.nodes[node_id - 1] = node_id;
@@ -419,9 +408,19 @@ void NWM_UDS::HandleEAPoLPacket(const Network::WifiPacket& packet) {
             host_node.reconnecting = false;
             host_node.spec = false;
             host_node.last_seen = std::chrono::steady_clock::now();
+
             node_lookup[node_id] = packet.transmitter_address;
 
+            LOG_ERROR(Service_NWM, "HOST STATE: total_nodes={} bitmask=0x{:X}",
+                      connection_status.total_nodes,
+                      connection_status.node_bitmask);
+
             BroadcastNodeMap();
+
+            LOG_ERROR(Service_NWM, "HOST AFTER JOIN: total_nodes={} node_map={} bitmask=0x{:X}",
+                      connection_status.total_nodes,
+                      node_map.size(),
+                      connection_status.node_bitmask);
 
         } else if (eapol_start.packet.connection_type == ConnectionType::Spectator) {
             auto& spec_node = node_map[packet.transmitter_address];
@@ -430,9 +429,10 @@ void NWM_UDS::HandleEAPoLPacket(const Network::WifiPacket& packet) {
             spec_node.reconnecting = false;
             spec_node.spec = true;
             spec_node.last_seen = std::chrono::steady_clock::now();
+
         } else {
-            LOG_WARNING(Service_NWM, "Unknown connection type: 0x{:x}",
-                        static_cast<u32>(eapol_start.packet.connection_type));
+            LOG_ERROR(Service_NWM, "Unknown connection type: 0x{:x}",
+                      static_cast<u32>(eapol_start.packet.connection_type));
         }
 
         // Send the EAPoL-Logoff packet
@@ -444,9 +444,12 @@ void NWM_UDS::HandleEAPoLPacket(const Network::WifiPacket& packet) {
                                      network_info.max_nodes, network_info.total_nodes);
         eapol_logoff.destination_address = Network::BroadcastMac;
         eapol_logoff.type = WifiPacket::PacketType::Data;
+
         SendPacket(eapol_logoff);
 
         connection_status_event->Signal();
+
+        LOG_ERROR(Service_NWM, "HandleEAPoLPacket END");
 
     } else if (connection_status.status == NetworkStatus::Connecting) {
         auto logoff = ParseEAPoLLogoffFrame(packet.data);
@@ -454,11 +457,12 @@ void NWM_UDS::HandleEAPoLPacket(const Network::WifiPacket& packet) {
         network_info.host_mac_address = packet.transmitter_address;
         network_info.total_nodes = logoff.connected_nodes;
         network_info.max_nodes = logoff.max_nodes;
+
         connection_status.network_node_id = logoff.assigned_node_id;
         connection_status.total_nodes = logoff.connected_nodes;
         connection_status.max_nodes = logoff.max_nodes;
 
-        LOG_DEBUG(Service_NWM, "CLIENT ASSIGNED NODE: {}", connection_status.network_node_id);
+        LOG_ERROR(Service_NWM, "CLIENT ASSIGNED NODE: {}", connection_status.network_node_id);
 
         node_info.clear();
         node_info.resize(network_info.max_nodes);
@@ -479,8 +483,7 @@ void NWM_UDS::HandleEAPoLPacket(const Network::WifiPacket& packet) {
         } else if (conn_type == ConnectionType::Spectator) {
             connection_status.status = NetworkStatus::ConnectedAsSpectator;
         } else {
-            LOG_WARNING(Service_NWM, "Unknown connection type: 0x{:x}",
-                        static_cast<u32>(conn_type));
+            LOG_ERROR(Service_NWM, "Unknown connection type: 0x{:x}", static_cast<u32>(conn_type));
         }
 
         if (auto* node = FindNodeByNodeId(connection_status.network_node_id)) {
@@ -503,7 +506,7 @@ void NWM_UDS::HandleEAPoLPacket(const Network::WifiPacket& packet) {
         connection_status.total_nodes = logoff.connected_nodes;
         connection_status.max_nodes = logoff.max_nodes;
 
-        LOG_DEBUG(Service_NWM, "EAPOL UPDATE: total_nodes={} max_nodes={}",
+        LOG_ERROR(Service_NWM, "EAPOL UPDATE: total_nodes={} max_nodes={}",
                   logoff.connected_nodes, logoff.max_nodes);
 
         const auto old_bitmask = connection_status.node_bitmask;
