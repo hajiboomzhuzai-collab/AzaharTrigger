@@ -2,7 +2,7 @@ name: citra-build
 
 on:
   push:
-    branches: [ "hajiboomzhuzai-collab-patch-7" ]
+    branches: [ "hajiboomzhuzai-collab-patch-8" ]
     tags: [ "1.0.0" ]
   pull_request:
     branches: [ "*" ]
