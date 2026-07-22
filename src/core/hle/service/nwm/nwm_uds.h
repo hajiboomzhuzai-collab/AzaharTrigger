@@ -635,6 +635,8 @@ private:
 
     Node* FindNodeByNodeId(u16 node_id);
 
+    Node* FindNodeByMac(const MacAddress& mac);
+
     std::map<MacAddress, Node> node_map;
 
     std::chrono::steady_clock::time_point last_packet_time =
