@@ -98,23 +98,6 @@ std::list<Network::WifiPacket> NWM_UDS::GetReceivedBeacons(const MacAddress& sen
 
 /// Sends a WifiPacket to the room we're currently connected to.
 void SendPacket(Network::WifiPacket& packet) {
-    const bool important_packet =
-        packet.type != Network::WifiPacket::PacketType::Data;
-
-    if (important_packet) {
-        LOG_ERROR(Service_NWM,
-                  "TX type={} ch={} size={} dst={:02X}:{:02X}:{:02X}:{:02X}:{:02X}:{:02X}",
-                  static_cast<u32>(packet.type),
-                  packet.channel,
-                  packet.data.size(),
-                  packet.destination_address[0],
-                  packet.destination_address[1],
-                  packet.destination_address[2],
-                  packet.destination_address[3],
-                  packet.destination_address[4],
-                  packet.destination_address[5]);
-    }
-
     if (auto room_member = Network::GetRoomMember().lock()) {
         const auto state = room_member->GetState();
 
@@ -122,36 +105,8 @@ void SendPacket(Network::WifiPacket& packet) {
             state == Network::RoomMember::State::Moderator) {
 
             packet.transmitter_address = room_member->GetMacAddress();
-
-            if (important_packet) {
-                LOG_ERROR(Service_NWM,
-                          "TX sender={:02X}:{:02X}:{:02X}:{:02X}:{:02X}:{:02X}",
-                          packet.transmitter_address[0],
-                          packet.transmitter_address[1],
-                          packet.transmitter_address[2],
-                          packet.transmitter_address[3],
-                          packet.transmitter_address[4],
-                          packet.transmitter_address[5]);
-            }
-
             room_member->SendWifiPacket(packet);
-
-            if (important_packet) {
-                LOG_ERROR(Service_NWM,
-                          "TX SENT type={} size={}",
-                          static_cast<u32>(packet.type),
-                          packet.data.size());
-            }
-
-        } else {
-            LOG_ERROR(Service_NWM,
-                      "TX FAILED room state={}",
-                      static_cast<u32>(state));
         }
-
-    } else {
-        LOG_ERROR(Service_NWM,
-                  "TX FAILED no RoomMember");
     }
 }
 
@@ -1868,8 +1823,6 @@ Common::Expected<int, ResultStatus> NWM_UDS::PullPacketHLE(
     if (connection_status.status != NetworkStatus::ConnectedAsHost &&
         connection_status.status != NetworkStatus::ConnectedAsClient &&
         connection_status.status != NetworkStatus::ConnectedAsSpectator) {
-        LOG_WARNING(Service_NWM, "PullPacketHLE not connected status={}",
-                    static_cast<u32>(connection_status.status));
         return Common::Unexpected(ResultStatus::RecvError_NotConnected);
     }
 
@@ -1879,11 +1832,9 @@ Common::Expected<int, ResultStatus> NWM_UDS::PullPacketHLE(
                                 });
 
     if (channel == channel_data.end()) {
-        LOG_WARNING(Service_NWM, "PullPacketHLE channel missing bind={}", bind_node_id);
         return Common::Unexpected(ResultStatus::RecvError_BadNode);
     }
 
-    // No packet available - game polls constantly, don't log
     if (channel->second.received_packets.empty()) {
         u32 buff_size = std::min<u32>(max_out_buff_size_aligned, 0x172) << 2;
         output_buffer.resize(buff_size);
@@ -1894,19 +1845,11 @@ Common::Expected<int, ResultStatus> NWM_UDS::PullPacketHLE(
     auto secure_data = ParseSecureDataHeader(next_packet);
     auto data_size = secure_data.GetActualDataSize();
 
-    LOG_DEBUG(Service_NWM, "PullPacket RX src={} dst={} channel={} size={}",
-              static_cast<u32>(secure_data.src_node_id),
-              static_cast<u32>(secure_data.dest_node_id),
-              static_cast<u32>(secure_data.data_channel),
-              data_size);
-
     if (secure_data_out) {
         *reinterpret_cast<SecureDataHeader*>(secure_data_out) = secure_data;
     }
 
     if (data_size > max_out_buff_size) {
-        LOG_WARNING(Service_NWM, "PullPacketHLE packet too large size={} max={}",
-                    data_size, max_out_buff_size);
         return Common::Unexpected(ResultStatus::RecvError_PacketSizeTooLarge);
     }
 
@@ -2316,7 +2259,7 @@ void NWM_UDS::KeepAliveCallback(std::uintptr_t user_data, s64 cycles_late) {
     packet.data = GenerateDataPayload(heartbeat, keepalive_channel,
                                        BroadcastNetworkNodeId, node_id, sequence);
 
-    LOG_DEBUG(Service_NWM, "KEEPALIVE TX seq={}", sequence);
+    LOG_ERROR(Service_NWM, "KEEPALIVE TX seq={}", sequence);
 
     SendPacket(packet);
 
