@@ -941,25 +941,6 @@ jboolean Java_org_citra_citra_1emu_NativeLibrary_onGamePadMoveEvent(
     return static_cast<jboolean>(InputManager::AnalogHandler()->MoveJoystick(axis, x, y));
 }
 
-jboolean Java_org_citra_citra_1emu_NativeLibrary_onGamePadMoveEvent(
-    [[maybe_unused]] JNIEnv* env, [[maybe_unused]] jobject obj, [[maybe_unused]] jstring j_device,
-    jint axis, jfloat x, jfloat y) {
-    // Clamp joystick movement to supported minimum and maximum
-    // Citra uses an inverted y axis sent by the frontend
-    x = std::clamp(x, -1.f, 1.f);
-    y = std::clamp(-y, -1.f, 1.f);
-
-    // Clamp the input to a circle (while touch input is already clamped in the frontend, gamepad is
-    // unknown)
-    float r = x * x + y * y;
-    if (r > 1.0f) {
-        r = std::sqrt(r);
-        x /= r;
-        y /= r;
-    }
-    return static_cast<jboolean>(InputManager::AnalogHandler()->MoveJoystick(axis, x, y));
-}
-
 jboolean Java_org_citra_citra_1emu_NativeLibrary_onGamePadAxisEvent(
     [[maybe_unused]] JNIEnv* env, [[maybe_unused]] jobject obj, [[maybe_unused]] jstring j_device,
     jint axis_id, jfloat axis_val) {
