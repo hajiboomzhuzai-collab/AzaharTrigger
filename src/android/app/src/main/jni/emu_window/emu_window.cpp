@@ -35,44 +35,16 @@ bool EmuWindow_Android::OnSurfaceChanged(ANativeWindow* surface) {
 }
 
 bool EmuWindow_Android::OnTouchEvent(int x, int y, bool pressed) {
-    const unsigned touch_x = static_cast<unsigned>(std::max(x, 0));
-    const unsigned touch_y = static_cast<unsigned>(std::max(y, 0));
-
-    LOG_ERROR(
-        Frontend,
-        "EmuWindow_Android::OnTouchEvent x={} y={} pressed={}",
-        touch_x,
-        touch_y,
-        static_cast<bool>(pressed));
-
     if (pressed) {
-        const bool result = TouchPressed(touch_x, touch_y);
-
-        LOG_ERROR(
-            Frontend,
-            "TouchPressed returned {}",
-            result);
-
-        return result;
+        return TouchPressed((unsigned)std::max(x, 0), (unsigned)std::max(y, 0));
     }
-
-    LOG_ERROR(Frontend, "TouchReleased");
 
     TouchReleased();
     return true;
 }
 
 void EmuWindow_Android::OnTouchMoved(int x, int y) {
-    const unsigned touch_x = static_cast<unsigned>(std::max(x, 0));
-    const unsigned touch_y = static_cast<unsigned>(std::max(y, 0));
-
-    LOG_ERROR(
-        Frontend,
-        "EmuWindow_Android::OnTouchMoved x={} y={}",
-        touch_x,
-        touch_y);
-
-    TouchMoved(touch_x, touch_y);
+    TouchMoved((unsigned)std::max(x, 0), (unsigned)std::max(y, 0));
 }
 
 void EmuWindow_Android::OnFramebufferSizeChanged() {
