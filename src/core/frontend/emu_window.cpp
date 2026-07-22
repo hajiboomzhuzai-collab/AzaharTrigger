@@ -153,23 +153,8 @@ void EmuWindow::CreateTouchState() {
 }
 
 bool EmuWindow::TouchPressed(unsigned framebuffer_x, unsigned framebuffer_y) {
-    LOG_ERROR(
-        Frontend,
-        "TouchPressed x={} y={}  "
-        "Touchscreen L={} R={} T={} B={}",
-        framebuffer_x,
-        framebuffer_y,
-        framebuffer_layout.bottom_screen.left,
-        framebuffer_layout.bottom_screen.right,
-        framebuffer_layout.bottom_screen.top,
-        framebuffer_layout.bottom_screen.bottom);
-
-    if (!IsWithinTouchscreen(framebuffer_layout, framebuffer_x, framebuffer_y)) {
-        LOG_ERROR(Frontend, "Touch REJECTED by IsWithinTouchscreen()");
+    if (!IsWithinTouchscreen(framebuffer_layout, framebuffer_x, framebuffer_y))
         return false;
-    }
-
-    LOG_ERROR(Frontend, "Touch ACCEPTED");
     Settings::StereoRenderOption render_3d_mode = get3DMode();
 
     if (framebuffer_x >= framebuffer_layout.width / 2) {
