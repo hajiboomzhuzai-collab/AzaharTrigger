@@ -537,9 +537,10 @@ NWM_UDS::Node* NWM_UDS::FindNodeByNodeId(u16 node_id) {
         return nullptr;
     }
 
-    auto it = node_lookup.find(node_id);
-    if (it != node_lookup.end()) {
-        auto node_it = node_map.find(*it->second);
+    // Check if node_lookup has a valid entry
+    if (node_lookup[node_id]) {
+        const auto& lookup_mac = *node_lookup[node_id];
+        auto node_it = node_map.find(lookup_mac);
         if (node_it != node_map.end()) {
             return &node_it->second;
         }
