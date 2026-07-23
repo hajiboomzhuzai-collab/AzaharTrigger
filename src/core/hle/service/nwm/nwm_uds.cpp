@@ -2199,8 +2199,6 @@ Network::MacAddress NWM_UDS::GetMacAddress() {
 }
 
 void NWM_UDS::KeepAliveCallback(std::uintptr_t user_data, s64 cycles_late) {
-    LOG_ERROR(Service_NWM, "KeepAliveCallback FIRED");
-
     NetworkStatus status;
     u16 node_id;
 
@@ -2210,11 +2208,8 @@ void NWM_UDS::KeepAliveCallback(std::uintptr_t user_data, s64 cycles_late) {
         node_id = connection_status.network_node_id;
     }
 
-    LOG_ERROR(Service_NWM, "KeepAliveCallback status={}", static_cast<u32>(status));
-
     if (status != NetworkStatus::ConnectedAsHost &&
         status != NetworkStatus::ConnectedAsClient) {
-        LOG_ERROR(Service_NWM, "KeepAliveCallback SKIP");
         return;
     }
 
@@ -2231,8 +2226,6 @@ void NWM_UDS::KeepAliveCallback(std::uintptr_t user_data, s64 cycles_late) {
 
     packet.data = GenerateDataPayload(heartbeat, keepalive_channel,
                                        BroadcastNetworkNodeId, node_id, sequence);
-
-    LOG_ERROR(Service_NWM, "KEEPALIVE TX seq={}", sequence);
 
     SendPacket(packet);
 
