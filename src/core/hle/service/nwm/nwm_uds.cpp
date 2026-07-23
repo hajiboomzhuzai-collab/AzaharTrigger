@@ -1760,20 +1760,6 @@ void NWM_UDS::PullPacket(Kernel::HLERequestContext& ctx) {
                              output_buffer,
                              &secure_data);
 
-    if (ret.has_value() && *ret > 0) {
-        LOG_ERROR(Service_NWM,
-                  "PullPacket RX size={} src_node={} bind={} buffer={}",
-                  *ret,
-                  static_cast<u32>(secure_data.src_node_id),
-                  bind_node_id,
-                  output_buffer.size());
-    } else if (!ret.has_value()) {
-        LOG_ERROR(Service_NWM,
-                  "PullPacket FAILED bind={} error={}",
-                  bind_node_id,
-                  static_cast<u32>(ret.error()));
-    }
-
     if (!ret.has_value()) {
         switch (ret.error()) {
         case ResultStatus::RecvError_NotConnected: {
@@ -2213,6 +2199,8 @@ Network::MacAddress NWM_UDS::GetMacAddress() {
 }
 
 void NWM_UDS::KeepAliveCallback(std::uintptr_t user_data, s64 cycles_late) {
+    LOG_ERROR(Service_NWM, "KeepAliveCallback FIRED");
+
     NetworkStatus status;
     u16 node_id;
 
@@ -2222,8 +2210,11 @@ void NWM_UDS::KeepAliveCallback(std::uintptr_t user_data, s64 cycles_late) {
         node_id = connection_status.network_node_id;
     }
 
+    LOG_ERROR(Service_NWM, "KeepAliveCallback status={}", static_cast<u32>(status));
+
     if (status != NetworkStatus::ConnectedAsHost &&
         status != NetworkStatus::ConnectedAsClient) {
+        LOG_ERROR(Service_NWM, "KeepAliveCallback SKIP");
         return;
     }
 
