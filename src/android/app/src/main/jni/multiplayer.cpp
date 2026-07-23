@@ -280,7 +280,7 @@ std::vector<std::string> AndroidMultiplayer::NetPlayRoomInfo() {
             info_list.push_back(room_info.name + "|" + std::to_string(room_info.member_slots));
             // all members
             for (const auto& member : members) {
-                info_list.push_back(member.nickname);
+                info_list.push_back(member.nickname + "|" + std::to_string(member.game_info.game_id) + "|" + member.game_info.game_name);
             }
         }
     }
