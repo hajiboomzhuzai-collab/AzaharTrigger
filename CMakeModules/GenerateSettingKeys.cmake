@@ -44,8 +44,6 @@ foreach(KEY IN ITEMS
     "use_display_refresh_rate_detection"
     "use_shader_jit"
     "resolution_factor"
-    "top_screen_resolution_factor"
-    "bottom_screen_resolution_factor"
     "frame_limit"
     "turbo_limit"
     "texture_filter"
