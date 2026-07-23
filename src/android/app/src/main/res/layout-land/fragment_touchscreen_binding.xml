@@ -105,8 +105,7 @@
         <FrameLayout
             android:layout_width="match_parent"
             android:layout_height="0dp"
-            android:layout_weight="1"
-            android:layout_marginBottom="12dp">
+            android:layout_weight="1">
 
             <org.citra.citra_emu.features.settings.ui.viewholder.TouchscreenBindingView
                 android:id="@+id/touchscreenView"
@@ -114,11 +113,21 @@
                 android:layout_height="match_parent"
                 android:background="@drawable/bg_touchscreen_preview"/>
         </FrameLayout>
+    </LinearLayout>
+
+    <!-- Right Panel -->
+    <LinearLayout
+        android:layout_width="0dp"
+        android:layout_height="match_parent"
+        android:layout_weight="1"
+        android:orientation="vertical"
+        android:padding="16dp">
 
         <!-- Info Section -->
         <androidx.cardview.widget.CardView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
+            android:layout_marginBottom="12dp"
             app:cardCornerRadius="12dp"
             app:cardElevation="1dp"
             app:cardBackgroundColor="?attr/colorSurfaceContainer">
@@ -162,15 +171,6 @@
                 </LinearLayout>
             </LinearLayout>
         </androidx.cardview.widget.CardView>
-    </LinearLayout>
-
-    <!-- Right Panel -->
-    <LinearLayout
-        android:layout_width="0dp"
-        android:layout_height="match_parent"
-        android:layout_weight="1"
-        android:orientation="vertical"
-        android:padding="16dp">
 
         <!-- Bindings List Header -->
         <LinearLayout
