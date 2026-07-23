@@ -175,7 +175,7 @@ class NetPlayDialog(context: Context) : BottomSheetDialog(context) {
         val option: Int,
         val name: String,
         val type: Int,
-        val id: Int = 0
+        val id: Int = 0,
         val subtitle: String = ""
     ) {
         companion object {
