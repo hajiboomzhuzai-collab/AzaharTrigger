@@ -35,24 +35,10 @@ class TouchscreenBindingFragment : Fragment() {
     override fun onConfigurationChanged(newConfig: Configuration) {
         super.onConfigurationChanged(newConfig)
     
-        // Save current state
-        val currentProfile = this.currentProfile
-    
-        // Re-inflate the layout
-        val inflater = LayoutInflater.from(requireContext())
-        val newView = inflater.inflate(R.layout.fragment_touchscreen_binding, null)
-    
-        // Replace the view
-        val parent = view?.parent as? ViewGroup
-        parent?.removeView(view)
-        (parent as? ViewGroup)?.addView(newView)
-    
-        // Re-bind
-        _binding = FragmentTouchscreenBindingBinding.bind(newView)
-        onViewCreated(newView, null)
-    
-        // Restore state
-        this.currentProfile = currentProfile
+        // The system already re-inflated the layout automatically
+        // Just refresh the dynamic content
+        setupTouchscreenView()
+        refreshBindingList()
     }
 
     override fun onCreateView(
