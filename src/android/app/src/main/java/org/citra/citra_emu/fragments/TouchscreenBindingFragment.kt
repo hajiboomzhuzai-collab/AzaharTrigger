@@ -1,5 +1,6 @@
 package org.citra.citra_emu.fragments
 
+import android.content.res.Configuration
 import android.os.Bundle
 import android.view.Gravity
 import android.view.LayoutInflater
