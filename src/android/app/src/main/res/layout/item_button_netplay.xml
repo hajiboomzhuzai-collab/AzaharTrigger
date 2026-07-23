@@ -3,7 +3,8 @@
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:orientation="horizontal"
-    android:padding="16dp">
+    android:gravity="center_vertical"
+    android:padding="8dp">
 
     <LinearLayout
         android:layout_width="0dp"
@@ -15,28 +16,25 @@
             android:id="@+id/item_button_netplay_name"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:textSize="16sp"/>
+            android:textAppearance="?attr/textAppearanceBodyLarge" />
 
         <TextView
             android:id="@+id/item_button_netplay_subtitle"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:textSize="12sp"
+            android:textAppearance="?attr/textAppearanceBodySmall"
             android:textColor="?attr/colorOnSurfaceVariant"
-            android:visibility="gone"/>
+            android:visibility="gone" />
 
     </LinearLayout>
-
-    <Button
-        android:id="@+id/item_button_netplay"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="@string/multiplayer_kick_member"/>
 
     <ImageButton
         android:id="@+id/item_button_more"
         android:layout_width="48dp"
         android:layout_height="48dp"
-        android:src="@drawable/ic_more"/>
+        android:background="?attr/selectableItemBackgroundBorderless"
+        android:contentDescription="@string/multiplayer_more_options"
+        android:src="@drawable/ic_more_vert"
+        android:padding="12dp" />
 
 </LinearLayout>
