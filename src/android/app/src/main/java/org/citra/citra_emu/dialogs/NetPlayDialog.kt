@@ -257,6 +257,8 @@ class NetPlayDialog(context: Context) : BottomSheetDialog(context) {
             override fun bind(item: NetPlayItems) {
                 netPlayItems = item
                 binding.itemButtonNetplayName.text = netPlayItems.name
+                binding.itemButtonNetplaySubtitle.text = netPlayItems.subtitle
+                binding.itemButtonNetplaySubtitle.visibility = if (netPlayItems.subtitle.isNotEmpty()) View.VISIBLE else View.GONE
             }
         }
 
