@@ -32,16 +32,6 @@ class TouchscreenBindingFragment : Fragment() {
     private lateinit var profileManager: TouchBindingProfileManager
     private var currentProfile: String = "Default"
 
-    override fun onConfigurationChanged(newConfig: Configuration) {
-        super.onConfigurationChanged(newConfig)
-    
-        // The system already re-inflated the layout automatically
-        // Just refresh the dynamic content
-        setupProfileSpinner()
-        setupTouchscreenView()
-        refreshBindingList()
-    }
-
     override fun onCreateView(
         inflater: LayoutInflater,
         container: ViewGroup?,

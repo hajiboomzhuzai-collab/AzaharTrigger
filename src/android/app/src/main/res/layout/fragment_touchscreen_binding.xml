@@ -1,206 +1,211 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:orientation="vertical"
-    android:background="?attr/colorSurface">
+    android:background="?attr/colorSurface"
+    android:fillViewport="true">
 
-    <!-- Header -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:orientation="horizontal"
-        android:gravity="center_vertical"
-        android:paddingHorizontal="16dp"
-        android:paddingTop="16dp"
-        android:paddingBottom="12dp">
+        android:orientation="vertical">
 
-        <androidx.cardview.widget.CardView
-            android:layout_width="0dp"
-            android:layout_height="48dp"
-            android:layout_weight="1"
-            android:layout_marginEnd="8dp"
-            app:cardCornerRadius="12dp"
-            app:cardElevation="1dp"
-            app:cardBackgroundColor="?attr/colorSurfaceContainer">
-
-            <Spinner
-                android:id="@+id/profileSpinner"
-                android:layout_width="match_parent"
-                android:layout_height="match_parent"
-                android:paddingHorizontal="12dp"/>
-        </androidx.cardview.widget.CardView>
-
-        <androidx.cardview.widget.CardView
-            android:id="@+id/editProfileButton"
-            android:layout_width="48dp"
-            android:layout_height="48dp"
-            android:layout_marginEnd="4dp"
-            app:cardCornerRadius="12dp"
-            app:cardElevation="1dp"
-            app:cardBackgroundColor="?attr/colorSurfaceContainer"
-            android:clickable="true"
-            android:focusable="true"
-            android:foreground="?attr/selectableItemBackground">
-
-            <ImageView
-                android:layout_width="match_parent"
-                android:layout_height="match_parent"
-                android:padding="12dp"
-                android:src="@drawable/ic_edit"
-                android:scaleType="centerInside"
-                app:tint="?attr/colorOnSurfaceVariant"/>
-        </androidx.cardview.widget.CardView>
-
-        <androidx.cardview.widget.CardView
-            android:id="@+id/deleteProfileButton"
-            android:layout_width="48dp"
-            android:layout_height="48dp"
-            android:layout_marginEnd="4dp"
-            app:cardCornerRadius="12dp"
-            app:cardElevation="1dp"
-            app:cardBackgroundColor="?attr/colorSurfaceContainer"
-            android:clickable="true"
-            android:focusable="true"
-            android:foreground="?attr/selectableItemBackground">
-
-            <ImageView
-                android:layout_width="match_parent"
-                android:layout_height="match_parent"
-                android:padding="12dp"
-                android:src="@drawable/ic_delete"
-                android:scaleType="centerInside"
-                app:tint="?attr/colorOnSurfaceVariant"/>
-        </androidx.cardview.widget.CardView>
-
-        <androidx.cardview.widget.CardView
-            android:id="@+id/addProfileButton"
-            android:layout_width="48dp"
-            android:layout_height="48dp"
-            app:cardCornerRadius="12dp"
-            app:cardElevation="1dp"
-            app:cardBackgroundColor="?attr/colorSurfaceContainer"
-            android:clickable="true"
-            android:focusable="true"
-            android:foreground="?attr/selectableItemBackground">
-
-            <ImageView
-                android:layout_width="match_parent"
-                android:layout_height="match_parent"
-                android:padding="12dp"
-                android:src="@drawable/ic_add"
-                android:scaleType="centerInside"
-                app:tint="?attr/colorOnSurfaceVariant"/>
-        </androidx.cardview.widget.CardView>
-    </LinearLayout>
-
-    <!-- Touchscreen Preview -->
-    <FrameLayout
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginHorizontal="16dp"
-        android:layout_marginBottom="20dp">
-
-        <org.citra.citra_emu.features.settings.ui.viewholder.TouchscreenBindingView
-            android:id="@+id/touchscreenView"
-            android:layout_width="match_parent"
-            android:layout_height="200dp"
-            android:background="@drawable/bg_touchscreen_preview"/>
-    </FrameLayout>
-
-    <!-- Info Section -->
-    <androidx.cardview.widget.CardView
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginHorizontal="16dp"
-        android:layout_marginBottom="12dp"
-        app:cardCornerRadius="12dp"
-        app:cardElevation="1dp"
-        app:cardBackgroundColor="?attr/colorSurfaceContainer">
-
+        <!-- Header -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="horizontal"
             android:gravity="center_vertical"
-            android:padding="16dp">
+            android:paddingHorizontal="16dp"
+            android:paddingTop="16dp"
+            android:paddingBottom="12dp">
 
-            <ImageView
-                android:layout_width="24dp"
-                android:layout_height="24dp"
-                android:layout_marginEnd="12dp"
-                android:src="@drawable/ic_info"
-                android:contentDescription="@string/edit_touch_bindings"/>
+            <androidx.cardview.widget.CardView
+                android:layout_width="0dp"
+                android:layout_height="48dp"
+                android:layout_weight="1"
+                android:layout_marginEnd="8dp"
+                app:cardCornerRadius="12dp"
+                app:cardElevation="1dp"
+                app:cardBackgroundColor="?attr/colorSurfaceContainer">
+
+                <Spinner
+                    android:id="@+id/profileSpinner"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:paddingHorizontal="12dp"/>
+            </androidx.cardview.widget.CardView>
+
+            <androidx.cardview.widget.CardView
+                android:id="@+id/editProfileButton"
+                android:layout_width="48dp"
+                android:layout_height="48dp"
+                android:layout_marginEnd="4dp"
+                app:cardCornerRadius="12dp"
+                app:cardElevation="1dp"
+                app:cardBackgroundColor="?attr/colorSurfaceContainer"
+                android:clickable="true"
+                android:focusable="true"
+                android:foreground="?attr/selectableItemBackground">
+
+                <ImageView
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:padding="12dp"
+                    android:src="@drawable/ic_edit"
+                    android:scaleType="centerInside"
+                    app:tint="?attr/colorOnSurfaceVariant"/>
+            </androidx.cardview.widget.CardView>
+
+            <androidx.cardview.widget.CardView
+                android:id="@+id/deleteProfileButton"
+                android:layout_width="48dp"
+                android:layout_height="48dp"
+                android:layout_marginEnd="4dp"
+                app:cardCornerRadius="12dp"
+                app:cardElevation="1dp"
+                app:cardBackgroundColor="?attr/colorSurfaceContainer"
+                android:clickable="true"
+                android:focusable="true"
+                android:foreground="?attr/selectableItemBackground">
+
+                <ImageView
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:padding="12dp"
+                    android:src="@drawable/ic_delete"
+                    android:scaleType="centerInside"
+                    app:tint="?attr/colorOnSurfaceVariant"/>
+            </androidx.cardview.widget.CardView>
+
+            <androidx.cardview.widget.CardView
+                android:id="@+id/addProfileButton"
+                android:layout_width="48dp"
+                android:layout_height="48dp"
+                app:cardCornerRadius="12dp"
+                app:cardElevation="1dp"
+                app:cardBackgroundColor="?attr/colorSurfaceContainer"
+                android:clickable="true"
+                android:focusable="true"
+                android:foreground="?attr/selectableItemBackground">
+
+                <ImageView
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:padding="12dp"
+                    android:src="@drawable/ic_add"
+                    android:scaleType="centerInside"
+                    app:tint="?attr/colorOnSurfaceVariant"/>
+            </androidx.cardview.widget.CardView>
+        </LinearLayout>
+
+        <!-- Touchscreen Preview -->
+        <FrameLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginHorizontal="16dp"
+            android:layout_marginBottom="20dp">
+
+            <org.citra.citra_emu.features.settings.ui.viewholder.TouchscreenBindingView
+                android:id="@+id/touchscreenView"
+                android:layout_width="match_parent"
+                android:layout_height="200dp"
+                android:background="@drawable/bg_touchscreen_preview"/>
+        </FrameLayout>
+
+        <!-- Info Section -->
+        <androidx.cardview.widget.CardView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginHorizontal="16dp"
+            android:layout_marginBottom="12dp"
+            app:cardCornerRadius="12dp"
+            app:cardElevation="1dp"
+            app:cardBackgroundColor="?attr/colorSurfaceContainer">
 
             <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:padding="16dp">
+
+                <ImageView
+                    android:layout_width="24dp"
+                    android:layout_height="24dp"
+                    android:layout_marginEnd="12dp"
+                    android:src="@drawable/ic_info"
+                    android:contentDescription="@string/edit_touch_bindings"/>
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:orientation="vertical">
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="@string/edit_touch_bindings"
+                        android:textSize="14sp"
+                        android:textColor="?attr/colorOnSurface"/>
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="@string/edit_touch_bindings_subtitle"
+                        android:textSize="12sp"
+                        android:textColor="?attr/colorOnSurfaceVariant"
+                        android:paddingTop="4dp"
+                        android:maxLines="3"
+                        android:ellipsize="end"/>
+                </LinearLayout>
+            </LinearLayout>
+        </androidx.cardview.widget.CardView>
+
+        <!-- Bindings List Header -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:paddingHorizontal="16dp"
+            android:paddingVertical="8dp">
+
+            <TextView
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:orientation="vertical">
+                android:text="@string/bindings"
+                android:textSize="12sp"
+                android:textStyle="bold"
+                android:textColor="?attr/colorOnSurface"/>
 
-                <TextView
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:text="@string/edit_touch_bindings"
-                    android:textSize="14sp"
-                    android:textColor="?attr/colorOnSurface"/>
-
-                <TextView
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:text="@string/edit_touch_bindings_subtitle"
-                    android:textSize="12sp"
-                    android:textColor="?attr/colorOnSurfaceVariant"
-                    android:paddingTop="4dp"
-                    android:maxLines="3"
-                    android:ellipsize="end"/>
-            </LinearLayout>
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/deleteAllButton"
+                style="@style/Widget.Material3.Button.TextButton"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/delete_all"
+                android:textColor="?attr/colorError"
+                android:minHeight="36dp"
+                android:insetTop="0dp"
+                android:insetBottom="0dp"/>
         </LinearLayout>
-    </androidx.cardview.widget.CardView>
 
-    <!-- Bindings List Header -->
-    <LinearLayout
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:orientation="horizontal"
-        android:gravity="center_vertical"
-        android:paddingHorizontal="16dp"
-        android:paddingVertical="8dp">
-
-        <TextView
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:text="@string/bindings"
-            android:textSize="12sp"
-            android:textStyle="bold"
-            android:textColor="?attr/colorOnSurface"/>
-
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/deleteAllButton"
-            style="@style/Widget.Material3.Button.TextButton"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="@string/delete_all"
-            android:textColor="?attr/colorError"
-            android:minHeight="36dp"
-            android:insetTop="0dp"
-            android:insetBottom="0dp"/>
-    </LinearLayout>
-
-    <!-- Binding List -->
-    <androidx.core.widget.NestedScrollView
-        android:layout_width="match_parent"
-        android:layout_height="0dp"
-        android:layout_weight="1"
-        android:paddingHorizontal="16dp">
-
-        <LinearLayout
-            android:id="@+id/bindingList"
+        <!-- Binding List -->
+        <androidx.core.widget.NestedScrollView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:orientation="vertical"/>
-    </androidx.core.widget.NestedScrollView>
+            android:paddingHorizontal="16dp">
 
-</LinearLayout>
+            <LinearLayout
+                android:id="@+id/bindingList"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"/>
+        </androidx.core.widget.NestedScrollView>
+
+    </LinearLayout>
+</ScrollView>
