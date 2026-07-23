@@ -692,6 +692,11 @@ template <class T>
 FramebufferHelper<T> RasterizerCache<T>::GetFramebufferSurfaces(bool using_color_fb,
                                                                 bool using_depth_fb) {
     const auto& config = regs.framebuffer.framebuffer;
+    LOG_INFO(HW_GPU,
+         "Framebuffer {}x{} address={:#X}",
+         config.GetWidth(),
+         config.GetHeight(),
+         config.GetColorBufferPhysicalAddress());
 
     const s32 framebuffer_width = config.GetWidth();
     const s32 framebuffer_height = config.GetHeight();
