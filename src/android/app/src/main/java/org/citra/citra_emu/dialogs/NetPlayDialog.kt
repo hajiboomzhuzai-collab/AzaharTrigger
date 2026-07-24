@@ -175,7 +175,8 @@ class NetPlayDialog(context: Context) : BottomSheetDialog(context) {
         val option: Int,
         val name: String,
         val type: Int,
-        val id: Int = 0
+        val id: Int = 0,
+        val subtitle: String = ""
     ) {
         companion object {
             const val MULTIPLAYER_ROOM_TEXT = 1
@@ -267,7 +268,15 @@ class NetPlayDialog(context: Context) : BottomSheetDialog(context) {
                 netPlayItems.add(NetPlayItems(NetPlayItems.MULTIPLAYER_ROOM_COUNT, "${infos.size - 1}/${roomInfo[1]}", NetPlayItems.TYPE_TEXT))
                 netPlayItems.add(NetPlayItems(NetPlayItems.MULTIPLAYER_SEPARATOR, "", NetPlayItems.TYPE_SEPARATOR))
                 for (i in 1 until infos.size) {
-                    netPlayItems.add(NetPlayItems(NetPlayItems.MULTIPLAYER_ROOM_MEMBER, infos[i], NetPlayItems.TYPE_BUTTON))
+                    val parts = infos[i].split("|")
+                    netPlayItems.add(
+                        NetPlayItems(
+                            NetPlayItems.MULTIPLAYER_ROOM_MEMBER,
+                            parts.getOrElse(0) { "" },  // nickname
+                            NetPlayItems.TYPE_BUTTON,
+                            subtitle = parts.getOrElse(2) { "" }  // game_name
+                        )
+                    )
                 }
             }
         }
