@@ -65,7 +65,7 @@ public:
     virtual void NotifySurfaceChanged(bool second) {}
 
     /// Returns the resolution scale factor relative to the native 3DS screen resolution
-    u32 GetResolutionScaleFactor(bool is_top_screen = true);
+    u32 GetResolutionScaleFactor();
 
     /// Updates the framebuffer layout of the contained render window handle.
     void UpdateCurrentFramebufferLayout(bool is_portrait_mode = {});
