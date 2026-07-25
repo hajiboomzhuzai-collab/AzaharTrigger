@@ -17,19 +17,16 @@ RendererBase::RendererBase(Core::System& system_, Frontend::EmuWindow& window,
 
 RendererBase::~RendererBase() = default;
 
-u32 RendererBase::GetResolutionScaleFactor(bool is_top_screen) {
+u32 RendererBase::GetResolutionScaleFactor() {
     const auto graphics_api = Settings::values.graphics_api.GetValue();
     if (graphics_api == Settings::GraphicsAPI::Software) {
         // Software renderer always render at native resolution
         return 1;
     }
 
-    // TEST: separate screen scaling
-    if (is_top_screen) {
-        return 2; // Top screen = 2x
-    } else {
-        return 1; // Bottom screen = 1x
-    }
+    const u32 scale_factor = Settings::values.resolution_factor.GetValue();
+    return scale_factor != 0 ? scale_factor
+                             : render_window.GetFramebufferLayout().GetScalingRatio();
 }
 
 void RendererBase::UpdateCurrentFramebufferLayout(bool is_portrait_mode) {
