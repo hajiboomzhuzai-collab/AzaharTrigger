@@ -6,7 +6,6 @@
 
 #include <array>
 #include <atomic>
-#include <chrono>
 #include <cstddef>
 #include <deque>
 #include <list>
@@ -610,52 +609,43 @@ private:
 
     // Mapping of mac addresses to their respective node_ids.
     struct Node {
-    bool connected = false;
-    bool spec = false;
+        bool connected;
+        bool spec;
+        u16 node_id;
 
-    // NEW
-    bool reconnecting = false;
-
-    u16 node_id = 0;
-
-    std::chrono::steady_clock::time_point last_seen =
-        std::chrono::steady_clock::now();
-
-private:
-    template <class Archive>
-    void serialize(Archive& ar, const unsigned int) {
-        ar & connected;
-        ar & spec;
-        ar & reconnecting;
-        ar & node_id;
-    }
-
-    friend class boost::serialization::access;
-};
-
-    Node* FindNodeByNodeId(u16 node_id);
-
-    Node* FindNodeByMac(const MacAddress& mac);
+    private:
+        template <class Archive>
+        void serialize(Archive& ar, const unsigned int) {
+            ar & connected;
+            ar & node_id;
+        }
+        friend class boost::serialization::access;
+    };
 
     std::map<MacAddress, Node> node_map;
-
-    std::chrono::steady_clock::time_point last_packet_time =
-    std::chrono::steady_clock::now();
-
-    // Fast lookup: node_id -> MAC address
-    std::array<boost::optional<MacAddress>, UDSMaxNodes + 1> node_lookup{};
 
     // Event that will generate and send the 802.11 beacon frames.
     Core::TimingEventType* beacon_broadcast_event;
 
+    // ================= KEEPALIVE SYSTEM =================
+
+    // Last time we received ANY valid network beacon/logoff/traffic
+    s64 last_keepalive_timestamp = 0;
+
+    // Host-side heartbeat counter
+    u32 keepalive_tick = 0;
+
+    // Keepalive interval (host sends every ~1s)
+    static constexpr s64 KEEPALIVE_INTERVAL_MS = 1000;
+
+    // Disconnect timeout (client side)
+    static constexpr s64 KEEPALIVE_TIMEOUT_MS = 6000;
+
+    // Enable toggle (safe rollback)
+    bool keepalive_enabled = true;
+
     // Callback identifier for the OnWifiPacketReceived event.
     Network::RoomMember::CallbackHandle<Network::WifiPacket> wifi_packet_received;
-
-    Core::TimingEventType* keepalive_event = nullptr;
-
-    u16 keepalive_sequence_number = 0;
-
-    void KeepAliveCallback(std::uintptr_t user_data, s64 cycles_late);
 
     // Mutex to synchronize access to the connection status between the emulation thread and the
     // network thread.
